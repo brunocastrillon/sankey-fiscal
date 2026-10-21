@@ -18,6 +18,8 @@ const FORMATOS: { nome: string; cfg: ConfigFormato; opcoes: { largura?: number; 
   { nome: 'desktop 1100', cfg: DESKTOP, opcoes: { largura: LARGURA_MIN_DESKTOP } },
   { nome: 'desktop 1200', cfg: DESKTOP, opcoes: { largura: 1200 } },
   { nome: 'celular 390', cfg: CELULAR, opcoes: { larguraVisivel: 390 } },
+  { nome: 'celular 768 (sem rolagem)', cfg: CELULAR, opcoes: { larguraVisivel: 768 } },
+  { nome: 'celular 990 (sem rolagem)', cfg: CELULAR, opcoes: { larguraVisivel: 990 } },
 ];
 
 const lateral = (L: Layout) => L.rotulos.filter((r) => r.lado !== 'meio');
@@ -71,6 +73,19 @@ describe.each(anos())('%i', (ano) => {
         expect(colisoes).toEqual([]);
       });
 
+      it('nenhum rótulo sobre a barra de outro nó', () => {
+        const sobre: string[] = [];
+        for (const r of L.rotulos)
+          for (const n of L.nos)
+            if (n.id !== r.id && sobrepoe(r.caixa, { x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 }, FOLGA)) sobre.push(`${r.id} sobre ${n.id}`);
+        expect(sobre).toEqual([]);
+      });
+
+      it('o desenho não passa da largura pedida', () => {
+        if (opcoes.largura) expect(L.largura).toBeLessThanOrEqual(opcoes.largura + 1e-9);
+        if (opcoes.larguraVisivel && !L.paradas) expect(L.largura).toBeLessThanOrEqual(opcoes.larguraVisivel);
+      });
+
       it('todo rótulo a pelo menos 12 px da borda do SVG, e a altura é a constante', () => {
         expect(L.altura).toBe(cfg.alturaSvg);
         const fora = L.rotulos.filter(
@@ -114,13 +129,13 @@ describe.each(anos())('%i', (ano) => {
           }
         });
 
-        it('paradas a 390 px: viável e nenhum rótulo atravessa as bordas', () => {
+        if (opcoes.larguraVisivel === 390) it('paradas a 390 px: viável e nenhum rótulo atravessa as bordas', () => {
           expect(L.paradas?.viavel).toBe(true);
           expect(cortes(L)).toBe(0);
         });
       }
 
-      if (fator === 1) {
+      if (fator === 1 && !nome.includes('sem rolagem')) {
         it('relato', () => {
           const linha: Record<string, unknown> = {
             ano,

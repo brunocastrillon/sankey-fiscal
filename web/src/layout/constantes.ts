@@ -50,13 +50,13 @@ export const DESKTOP: ConfigFormato = {
 export const CELULAR: ConfigFormato = {
   nome: 'celular',
   fonte: 11,
-  alturaSvg: 705,
+  alturaSvg: 712,
   alturaBarras: 540,
   larguraNo: 10,
   espacoEntreNos: 12,
   guiaDx: 22,
   margem: 12,
-  larguraMaxRotulo: { lado: 110, meio: 90, deficit: 120 },
+  larguraMaxRotulo: { lado: 100, meio: 90, deficit: 120 },
   posicaoMeio: {
     receita_total: 'direita',
     repasse: 'direita',
@@ -65,7 +65,7 @@ export const CELULAR: ConfigFormato = {
     obrigatorias: 'acima2',
     resultado_primario: 'abaixo',
   },
-  vaos: [100, 60, 80, 48, 48],
+  vaos: [100, 60, 80, 44, 44],
   alvoToque: 44,
   deslocamentoMax: 90,
 };

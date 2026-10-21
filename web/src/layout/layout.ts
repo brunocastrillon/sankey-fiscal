@@ -54,6 +54,8 @@ export interface AlvoLayout {
 }
 export interface Layout {
   largura: number;
+  /** Tamanho da fonte dos rótulos (px). */
+  fonte: number;
   altura: number;
   /** px por R$ milhão. */
   escala: number;
@@ -73,6 +75,27 @@ const ID_MEIO: Record<string, IdMeio> = {
   obrigatorias: 'obrigatorias',
   resultado: 'resultado_primario',
 };
+
+/** Vãos iguais quando todos cabem; senão, os que precisam de mais ficam no mínimo e os outros dividem o resto. */
+function distribuirVaos(total: number, minimos: number[]): number[] {
+  const vaos = new Array<number>(minimos.length).fill(0);
+  let livres = minimos.map((_, i) => i);
+  let resto = total;
+  while (livres.length) {
+    const igual = resto / livres.length;
+    const presos = livres.filter((i) => minimos[i] > igual);
+    if (!presos.length) {
+      for (const i of livres) vaos[i] = igual;
+      break;
+    }
+    for (const i of presos) {
+      vaos[i] = minimos[i];
+      resto -= minimos[i];
+    }
+    livres = livres.filter((i) => !presos.includes(i));
+  }
+  return vaos;
+}
 
 const colidem = (a: Caixa, b: Caixa, folga: number) =>
   a.x0 < b.x1 + folga && b.x0 < a.x1 + folga && a.y0 < b.y1 + folga && b.y0 < a.y1 + folga;
@@ -125,17 +148,25 @@ export function calcularLayout(
   // arredondadas para cima, com 1 px de folga, para o texto nunca ficar a menos de `margem` da borda
   const mE = Math.ceil(cfg.margem + cfg.guiaDx + maiorLargura(colunas[0])) + 1;
   const mD = Math.ceil(cfg.margem + cfg.guiaDx + maiorLargura(colunas[5])) + 1;
+  // vão mínimo depois de cada coluna: o rótulo à direita da barra não pode chegar à barra da coluna seguinte
+  const vaoMinimo = [0, 1, 2, 3, 4].map((c) => {
+    const larguras = colunas[c].filter((n) => textos.get(n.id)!.posicao === 'direita').map((n) => textos.get(n.id)!.largura);
+    return larguras.length ? 6 + Math.max(...larguras) + FOLGA_ROTULOS + 1 : 0;
+  });
+  const vaos = cfg.vaos
+    ? cfg.vaos.map((v, c) => Math.max(v, vaoMinimo[c]))
+    : distribuirVaos((opcoes.largura ?? LARGURA_MAX_DESKTOP) - mE - mD - 6 * nw, vaoMinimo);
   const xs: number[] = [];
-  if (cfg.vaos) {
-    let x = mE;
-    for (let c = 0; c < 6; c++) {
-      xs.push(x);
-      x += nw + (cfg.vaos[c] ?? 0);
-    }
-  } else {
-    const largura = opcoes.largura ?? LARGURA_MAX_DESKTOP;
-    const vao = (largura - mE - mD - 6 * nw) / 5;
-    for (let c = 0; c < 6; c++) xs.push(mE + c * (nw + vao));
+  for (let c = 0, x = mE; c < 6; c++) {
+    xs.push(x);
+    x += nw + (vaos[c] ?? 0);
+  }
+  // rótulos acima da barra só encontram a coluna das folhas (cujas barras sobem acima do topo de Obrigatórias)
+  for (const n of g.nos) {
+    const t = textos.get(n.id)!;
+    if (n.coluna === 5 || !t.posicao?.startsWith('acima')) continue;
+    const direita = t.posicao === 'acimaInicio' ? xs[n.coluna] + t.largura : xs[n.coluna] + nw / 2 + t.largura / 2;
+    xs[5] = Math.max(xs[5], direita + FOLGA_ROTULOS + 1);
   }
   let paradas: Layout['paradas'] = null;
   if (cfg.vaos && opcoes.larguraVisivel && xs[5] + nw + mD > opcoes.larguraVisivel) {
@@ -315,6 +346,7 @@ export function calcularLayout(
 
   return {
     largura,
+    fonte: cfg.fonte,
     altura: cfg.alturaSvg,
     escala,
     nos: g.nos.map((n) => nos.get(n.id)!),
