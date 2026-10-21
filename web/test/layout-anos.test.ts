@@ -27,15 +27,23 @@ const centroNo = (L: Layout, id: string) => {
 };
 const deslocamentoMax = (L: Layout) =>
   Math.max(0, ...lateral(L).map((r) => Math.abs((r.caixa.y0 + r.caixa.y1) / 2 - centroNo(L, r.id))));
-function menorDistanciaGuia(L: Layout): number {
+/**
+ * Menor distância de uma guia a obstáculos que não são do próprio nó (outras barras e caixas de outros rótulos).
+ * `mesmaColuna`: barras da coluna do nó e rótulos do mesmo lado — a distância a eles é fixa por construção (o trecho
+ * horizontal da guia termina a `min(10, guiaDx/2)` px da barra, e a coluna de rótulos começa a `guiaDx` px).
+ * `outrasColunas`: barras e rótulos de outras colunas — é aí que um rótulo do meio pode invadir o corredor das guias.
+ */
+function menorDistanciaGuia(L: Layout, quais: 'todas' | 'mesmaColuna' | 'outrasColunas' = 'todas'): number {
   let menor = Infinity;
   for (const gd of L.guias) {
+    const proprio = L.nos.find((n) => n.id === gd.id)!;
+    const ladoProprio = L.rotulos.find((r) => r.id === gd.id)!.lado;
     const obstaculos = [
-      ...L.nos.filter((n) => n.id !== gd.id).map((n) => ({ x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 })),
-      ...L.rotulos.filter((r) => r.id !== gd.id).map((r) => r.caixa),
-    ];
+      ...L.nos.filter((n) => n.id !== gd.id).map((n) => ({ mesma: n.x0 === proprio.x0, c: { x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 } })),
+      ...L.rotulos.filter((r) => r.id !== gd.id).map((r) => ({ mesma: r.lado === ladoProprio, c: r.caixa })),
+    ].filter((o) => quais === 'todas' || (quais === 'mesmaColuna') === o.mesma);
     for (let i = 1; i < gd.pontos.length; i++)
-      for (const c of obstaculos) menor = Math.min(menor, distanciaSegmentoCaixa(gd.pontos[i - 1], gd.pontos[i], c));
+      for (const o of obstaculos) menor = Math.min(menor, distanciaSegmentoCaixa(gd.pontos[i - 1], gd.pontos[i], o.c));
   }
   return menor;
 }
@@ -118,7 +126,8 @@ describe.each(anos())('%i', (ano) => {
             ano,
             formato: nome,
             'desloc. máx (px)': Number(deslocamentoMax(L).toFixed(1)),
-            'menor dist. guia–obstáculo (px)': L.guias.length ? Number(menorDistanciaGuia(L).toFixed(1)) : '—',
+            'guia–outras colunas (px)': L.guias.length ? Number(menorDistanciaGuia(L, 'outrasColunas').toFixed(1)) : '—',
+            'guia–mesma coluna (px, fixa)': L.guias.length ? Number(menorDistanciaGuia(L, 'mesmaColuna').toFixed(1)) : '—',
           };
           if (cfg.alvoToque > 0) {
             linha.viavel = L.paradas?.viavel;
