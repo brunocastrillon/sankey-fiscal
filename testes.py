@@ -173,7 +173,57 @@ def a3_pib(c, rtn):
     return ok, f"PIB implícito 2025 = R$ {pib/1e6:.3f} tri (IBGE: R$ 12,7 tri); déficit/PIB = {pct:.3f}% (RTN: 0,48%)"
 
 
-def lista_testes(c, rtn):
+CASOS_NOME = {
+    "1.3 -  Arrecadação Líquida para o RGPS": "Arrecadação Líquida para o RGPS",
+    "2. TRANSF. POR REPARTIÇÃO DE RECEITA 2/": "TRANSF. POR REPARTIÇÃO DE RECEITA",
+    "1.1.09    CIDE - Combustíveis": "CIDE - Combustíveis",
+    "3. RECEITA LÍQUIDA  (1-2)": "RECEITA LÍQUIDA (1-2)",
+    "5. RESULTADO PRIMÁRIO GOVERNO CENTRAL - ACIMA DA LINHA (3 - 4)":
+        "RESULTADO PRIMÁRIO GOVERNO CENTRAL - ACIMA DA LINHA (3 - 4)",
+}
+TOTAIS_COM_LINHAS = ("receita_total", "receita_liquida", "despesa_total", "primario_acima")
+
+
+def t9_linhas_nomes(c, rtn):
+    mapa = c[0]
+    erros = [f"{k!r} -> {P.normalizar_nome(k)!r}" for k, v in CASOS_NOME.items() if P.normalizar_nome(k) != v]
+    nomes = P.ler_nomes_linhas(rtn)
+    linhas = P.montar_linhas(mapa, nomes)
+    usados = {item["codigo"] for itens in linhas.values() for item in itens}
+    sem_nome = sorted(cod for cod in usados if not nomes.get(cod, "").strip())
+    ok = not erros and not sem_nome
+    return ok, (f"{len(CASOS_NOME)} casos de normalização ({'; '.join(erros) or 'todos batem'}); "
+                f"{len(usados)} códigos usados, sem nome na aba 1.2: {sem_nome or 'nenhum'}")
+
+
+def t10_linhas_mapeamento(c, rtn):
+    mapa = c[0]
+    linhas = P.montar_linhas(mapa, P.ler_nomes_linhas(rtn))
+    erros = []
+    for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"]:
+        itens = linhas.get(n["id"], [])
+        for op, chave in (("soma", "soma"), ("subtrai", "subtrai")):
+            obtido = [i["codigo"] for i in itens if i["operacao"] == op]
+            if obtido != n.get(chave, []):
+                erros.append(f"{n['id']}.{op}: {obtido} != {n.get(chave, [])}")
+    for k in TOTAIS_COM_LINHAS:
+        itens = linhas.get(k, [])
+        if [(i["codigo"], i["operacao"]) for i in itens] != [(mapa["totais"][k], "soma")]:
+            erros.append(f"{k}: {itens}")
+    esperadas = {n["id"] for n in mapa["receita"] + mapa["despesa"]} | {mapa["repasse"]["id"]} | set(TOTAIS_COM_LINHAS)
+    extras = sorted(set(linhas) - esperadas)
+    ok = not erros and not extras and set(linhas) == esperadas
+    return ok, f"{len(linhas)} chaves (esperadas {len(esperadas)}); divergências: {erros or 'nenhuma'}; a mais: {extras or 'nenhuma'}"
+
+
+def t11_determinismo(rtn, ipca):
+    import json
+    a = json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
+    b = json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
+    return a == b, f"duas gerações: {len(a)} caracteres, idênticas: {a == b}"
+
+
+def lista_testes(c, rtn, ipca):
     return [
         ("T1  Receita: soma dos 6 nós = receita total", lambda: t1_receita(c)),
         ("T2  Receita total − repasses = receita líquida", lambda: t2_receita_liquida(c)),
@@ -186,6 +236,9 @@ def lista_testes(c, rtn):
         ("A1  Âncora: boletim RTN de dez/2025 (2025 nominal)", lambda: a1_boletim(c)),
         ("A2  Âncora: financiamento (BC) e identidades 5+6+7=8, 8+9=10", lambda: a2_financiamento(c, rtn)),
         ("A3  Âncora: PIB implícito e déficit de 0,48% do PIB", lambda: a3_pib(c, rtn)),
+        ("T9  Linhas: códigos existem na aba 1.2 e nomes normalizados", lambda: t9_linhas_nomes(c, rtn)),
+        ("T10 Linhas reproduzem soma/subtrai do mapeamento e os totais", lambda: t10_linhas_mapeamento(c, rtn)),
+        ("T11 Gerar duas vezes dá JSON idêntico", lambda: t11_determinismo(rtn, ipca)),
     ]
 
 
@@ -198,7 +251,7 @@ def main():
     if not a.rtn:
         ap.error("nenhum arquivo entrada/seriehistorica*.xlsx encontrado; passe --rtn")
     c = contexto(a.rtn, a.ipca)
-    testes = lista_testes(c, a.rtn)
+    testes = lista_testes(c, a.rtn, a.ipca)
     falhas = 0
     for nome, fn in testes:
         ok, det = fn()

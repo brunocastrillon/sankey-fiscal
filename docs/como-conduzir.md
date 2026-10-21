@@ -70,7 +70,7 @@ Não comece a fase seguinte antes do critério de saída da anterior.
 
 ## 6. O que você revisa sempre
 
-- Qualquer mudança em `mapeamento.json` ou `pipeline.py`: os 11 testes verdes e a diferença nos JSON de `dados/`.
+- Qualquer mudança em `mapeamento.json` ou `pipeline.py`: todos os testes verdes e a diferença nos JSON de `dados/`.
 - Rótulos e textos de metodologia na tela: "não oficial", "Déficit primário (financiado com dívida)", "não inclui juros".
 - Que nenhum número fiscal apareça digitado no código do site (`git grep` por valores como `2902` ou `867`).
 - Que o site funcione em subcaminho (`/sankey-fiscal/`) e não use caminhos absolutos.

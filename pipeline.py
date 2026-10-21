@@ -10,6 +10,7 @@ Uso (com os arquivos em entrada/):
 """
 import argparse
 import json
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -38,14 +39,52 @@ def _codigo(rotulo):
     return str(rotulo).split()[0].rstrip(".")
 
 
-def ler_rtn_mensal(xlsx, aba="1.2"):
-    """Devolve (DataFrame código x mês, último mês publicado). Valores em R$ milhões correntes."""
+def normalizar_nome(rotulo):
+    """Nome oficial da linha sem o código, o separador logo após o código, as notas finais e espaços sobrando.
+
+    '1.3 -  Arrecadação Líquida para o RGPS' -> 'Arrecadação Líquida para o RGPS';
+    '2. TRANSF. POR REPARTIÇÃO DE RECEITA 2/' -> 'TRANSF. POR REPARTIÇÃO DE RECEITA'.
+    Hífens internos ficam: 'CIDE - Combustíveis', '... ACIMA DA LINHA (3 - 4)'.
+    """
+    s = str(rotulo).strip()
+    s = s[len(s.split()[0]):]
+    s = re.sub(r"^\s*-\s+", "", s)
+    s = re.sub(r"(\s+\d+/)+\s*$", "", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _corpo_aba(xlsx, aba):
     bruto = pd.read_excel(xlsx, sheet_name=aba, header=None)
     h = bruto.index[bruto[0].astype(str).str.startswith("Discriminação")][0]
     fim = bruto.index[bruto[0].astype(str).str.startswith("10. RESULTADO NOMINAL")][0]
-    datas = pd.to_datetime(bruto.iloc[h].iloc[1:], errors="coerce")
     corpo = bruto.iloc[h + 1: fim + 1].copy()
-    corpo = corpo[corpo[0].notna()]
+    return bruto, h, corpo[corpo[0].notna()]
+
+
+def ler_nomes_linhas(xlsx, aba="1.2"):
+    """Código -> nome oficial normalizado, para as linhas da aba (um rótulo por linha, válido para a série toda)."""
+    _, _, corpo = _corpo_aba(xlsx, aba)
+    return {_codigo(r): normalizar_nome(r) for r in corpo[0]}
+
+
+def montar_linhas(mapa, nomes):
+    """Linhas do RTN que formam cada nó do mapeamento e cada total desenhado, na ordem soma e depois subtrai."""
+    def item(codigo, operacao):
+        return {"codigo": codigo, "nome": nomes[codigo], "operacao": operacao}
+
+    linhas = {}
+    for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"]:
+        linhas[n["id"]] = ([item(c, "soma") for c in n["soma"]]
+                           + [item(c, "subtrai") for c in n.get("subtrai", [])])
+    for k in ("receita_total", "receita_liquida", "despesa_total", "primario_acima"):
+        linhas[k] = [item(mapa["totais"][k], "soma")]
+    return linhas
+
+
+def ler_rtn_mensal(xlsx, aba="1.2"):
+    """Devolve (DataFrame código x mês, último mês publicado). Valores em R$ milhões correntes."""
+    bruto, h, corpo = _corpo_aba(xlsx, aba)
+    datas = pd.to_datetime(bruto.iloc[h].iloc[1:], errors="coerce")
     corpo.index = [_codigo(r) for r in corpo[0]]
     if corpo.index.duplicated().any():
         raise ValueError(f"Códigos duplicados na aba {aba}: {list(corpo.index[corpo.index.duplicated()])}")
@@ -150,6 +189,7 @@ def montar_anos(xlsx, ipca_csv, base=None, mapa=None):
     rotulos = {n["id"]: n["rotulo"] for n in mapa["receita"] + mapa["despesa"]}
     rotulos[mapa["repasse"]["id"]] = mapa["repasse"]["rotulo"]
     grupos = {n["id"]: n["grupo"] for n in mapa["despesa"]}
+    linhas = montar_linhas(mapa, ler_nomes_linhas(xlsx))
 
     saida = {}
     for ano in range(ano0, ano1 + 1):
@@ -167,6 +207,7 @@ def montar_anos(xlsx, ipca_csv, base=None, mapa=None):
             "mapeamento_versao": mapa["versao"],
             "rotulos": rotulos,
             "grupos_despesa": grupos,
+            "linhas": linhas,
             "nominal": fatia(nominal),
             "real": fatia(real),
             "pib": {
