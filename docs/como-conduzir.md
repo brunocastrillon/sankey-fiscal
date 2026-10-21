@@ -19,7 +19,7 @@ gh repo create brunocastrillon/sankey-fiscal --public --source=. --remote=origin
 ```
 
 Sem o `gh`: crie o repositório vazio em github.com e rode `git remote add origin <url>` e `git push -u origin main`.
-O nome `sankey-fiscal` é sugestão; troque se preferir (o nome do produto ainda está em aberto).
+`sankey-fiscal` é o nome do repositório, do produto e da URL (`castrillon.dev/sankey-fiscal`).
 
 Depois do primeiro push, confira na aba *Actions* que o workflow `testes` ficou verde.
 
@@ -73,13 +73,14 @@ Não comece a fase seguinte antes do critério de saída da anterior.
 - Qualquer mudança em `mapeamento.json` ou `pipeline.py`: os 11 testes verdes e a diferença nos JSON de `dados/`.
 - Rótulos e textos de metodologia na tela: "não oficial", "Déficit primário (financiado com dívida)", "não inclui juros".
 - Que nenhum número fiscal apareça digitado no código do site (`git grep` por valores como `2902` ou `867`).
-- Que o site funcione em subcaminho (`/grafico`) e não use caminhos absolutos.
+- Que o site funcione em subcaminho (`/sankey-fiscal/`) e não use caminhos absolutos.
 
 ## 7. Checklist do repositório público
 
 - [x] `LICENSE` (MIT) para o código.
 - [x] `entrada/LEIAME.md` com a fonte dos dados (Tesouro Nacional e IBGE); confira os termos de uso do Tesouro Transparente antes de redistribuir arquivos novos.
 - [x] `.gitignore` cobre `.env` e arquivos locais do Claude Code (`CLAUDE.local.md`).
-- [ ] Descrição do repositório e tópicos (`sankey`, `d3`, `fiscal`, `brasil`, `dados-abertos`).
-- [ ] Aviso "visualização independente, baseada em dados do Tesouro Nacional" no README e na página.
-- [ ] Quando o site existir: link para `castrillon.dev/grafico` no README e na bio do repositório.
+- [x] Descrição do repositório e tópicos (`sankey`, `d3`, `fiscal`, `brasil`, `dados-abertos`).
+- [x] Aviso "visualização independente, baseada em dados do Tesouro Nacional" no topo do README.
+- [ ] Aviso também na página, quando o site existir.
+- [ ] Quando o site existir: URL do site (`castrillon.dev/sankey-fiscal`) no campo *Website* do repositório e no README.

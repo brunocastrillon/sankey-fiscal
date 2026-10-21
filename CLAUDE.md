@@ -5,7 +5,7 @@ Contexto do projeto para o Claude Code. Mantenha este arquivo curto; o detalhe e
 ## O que é
 
 Sankey interativo das contas do Governo Central do Brasil (dados do RTN, Tesouro Nacional), 2015–2025, com linha do tempo.
-Será publicado em `castrillon.dev/grafico` (nome provisório). É uma visualização **independente**, não um produto oficial.
+Será publicado em `castrillon.dev/sankey-fiscal`. É uma visualização **independente**, não um produto oficial.
 
 **Fonte de verdade das decisões:** `docs/especificacao.md`. Se uma decisão mudar, atualize a especificação no mesmo commit.
 
@@ -33,12 +33,12 @@ pytest -q                 # mesma bateria sob o pytest
 - "Bolsa Família, saúde e outros" aparece aberto: Bolsa Família, Saúde e Demais.
 - Rótulo do déficit: "Déficit primário (financiado com dívida)", nunca "dívida nova". Juros ficam no módulo de financiamento.
 - Sem marca ou título que sugiram origem oficial (nada de "gov.br").
-- O site roda em subcaminho (`/grafico`): nenhum caminho absoluto a partir da raiz do domínio.
+- Nome do produto: `sankey-fiscal` (repositório e URL).
+- O site roda em subcaminho (`/sankey-fiscal/`): configure o `base` do bundler para esse subcaminho e não use caminhos absolutos a partir da raiz do domínio.
 - PIB: fonte é o IBGE. Enquanto a série não é carregada, o pipeline usa o PIB implícito nas abas anuais do RTN.
 
 ## Em aberto
 
-- Nome do produto.
 - Carregar a série do PIB do IBGE no pipeline.
 
 ## Regras de trabalho

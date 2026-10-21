@@ -131,7 +131,7 @@ A validação é a única etapa que barra a publicação: se qualquer teste falh
 - Escala compartilhada entre os anos no modo R$ constantes, para a espessura ser comparável; escala própria por ano nos modos percentuais.
 - Layout do d3-sankey calculado uma vez e fixado, evitando que os nós "pulem" quando o ano muda.
 - Tooltip com valor, participação, as linhas do RTN que formam o nó e o boletim de origem.
-- O site vive em `castrillon.dev/grafico`: caminhos de JSON e de arquivos devem funcionar a partir desse subcaminho (nome provisório).
+- O site vive em `castrillon.dev/sankey-fiscal`: caminhos de JSON e de arquivos devem funcionar a partir desse subcaminho.
 
 ## Validações automáticas
 
@@ -201,8 +201,8 @@ verificado nos dados; falta o desenho.
 
 **Decisões**
 
-- **Onde vive a ferramenta.** Decidido: dentro do site pessoal, em castrillon.dev/grafico (o nome "grafico" é provisório). Os caminhos do JSON e dos arquivos do site precisam funcionar a partir desse subcaminho.
-- **Nome do produto.** Em aberto. Sem a marca gov.br e sem sugerir origem oficial.
+- **Onde vive a ferramenta.** Decidido: dentro do site pessoal, em castrillon.dev/sankey-fiscal. Os caminhos do JSON e dos arquivos do site precisam funcionar a partir desse subcaminho.
+- **Nome do produto.** Decidido: `sankey-fiscal` (nome do repositório e da URL). Sem a marca gov.br e sem sugerir origem oficial.
 - **Fonte e versão do PIB.** Decidido: IBGE, Contas Nacionais Trimestrais, valores correntes (R$ 12,7 trilhões em 2025), guardando a data de divulgação de cada valor. Enquanto a série do IBGE não é carregada, o pipeline usa o PIB implícito nas abas anuais do RTN (R$ 12,739 tri em 2025). Teste de âncora: R$ 61,7 bi sobre esse PIB dá 0,48%, o valor do RTN.
 - **Abrir "Bolsa Família, saúde e outros".** Confirmado: abrir em Bolsa Família, Saúde e Demais já na versão 1.
 - **Escala em 2020.** Confirmado: escala compartilhada entre anos no modo R$ constantes, com aviso na tela.

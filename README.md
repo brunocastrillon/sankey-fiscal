@@ -1,9 +1,9 @@
 # Sankey fiscal do Governo Central
 
-Visualização independente, baseada em dados do Tesouro Nacional (RTN) e do IBGE. Não é um produto oficial do governo.
+> **Visualização independente, baseada em dados do Tesouro Nacional.** Não é um produto oficial do governo.
 
 Sankey interativo de como o Governo Central arrecada e gasta, de 2015 a 2025, com linha do tempo. Cada nó mostra de quais
-linhas do RTN ele vem e quais metodologias foram usadas. Destino: `castrillon.dev/grafico` (nome provisório).
+linhas do RTN ele vem e quais metodologias foram usadas. Destino: `castrillon.dev/sankey-fiscal`.
 
 **Estado:** fase 1 (dados) concluída. A fase 2 (o Sankey de 2025) é a próxima.
 
