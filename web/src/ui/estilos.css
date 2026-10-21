@@ -1,0 +1,291 @@
+/* Cores vêm das variáveis de tema.ts (claro por padrão, escuro por prefers-color-scheme). */
+:root {
+  --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --painel-altura: 236px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--fonte);
+  line-height: 1.4;
+}
+
+.pagina {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 8px 0 12px;
+}
+h1 .ano {
+  color: var(--secundario);
+  font-weight: 400;
+}
+
+.erro {
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.cartao {
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  background: var(--fundo);
+  overflow: hidden;
+}
+
+.aviso {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  color: var(--secundario);
+  border-bottom: 1px solid var(--borda);
+}
+
+.amostra {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.area {
+  display: flex;
+  justify-content: center;
+}
+.formato-celular .area {
+  display: block;
+}
+
+/* SVG */
+.sankey {
+  display: block;
+  font-family: var(--fonte);
+  overflow: visible;
+}
+.sankey text,
+.amostra text {
+  font-family: var(--fonte);
+}
+.rotulo {
+  fill: var(--texto);
+}
+.rotulo .valor {
+  font-weight: 700;
+}
+.rotulo .secundario {
+  fill: var(--secundario);
+  font-style: italic;
+}
+.rotulo-meio {
+  paint-order: stroke;
+  stroke: var(--fundo);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.guia {
+  fill: none;
+  stroke: var(--secundario);
+  stroke-width: 1.25px;
+}
+.hachura-fundo {
+  fill: var(--deficit);
+}
+.hachura-listra {
+  fill: var(--fundo);
+  fill-opacity: 0.85;
+}
+.barra[data-deficit],
+.fluxo[data-deficit] {
+  stroke: var(--contornoDeficit);
+  stroke-width: 1px;
+}
+.no {
+  cursor: pointer;
+  outline: none;
+}
+.no:focus-visible .barra {
+  stroke: var(--texto);
+  stroke-width: 2px;
+}
+.no:focus-visible .rotulo {
+  text-decoration: underline;
+}
+.alvo {
+  pointer-events: all;
+}
+
+/* Rolagem do celular */
+.rolagem-moldura {
+  position: relative;
+}
+.rolagem {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+.rolagem:focus-visible {
+  outline: 2px solid var(--receita);
+  outline-offset: -2px;
+}
+.trilho {
+  position: relative;
+  margin: 0 auto; /* centralizado quando cabe sem rolagem */
+}
+.parada {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  scroll-snap-align: start;
+}
+.dica {
+  position: absolute;
+  right: 8px;
+  top: 45%;
+  padding: 6px 10px;
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  background: var(--painel);
+  color: var(--texto);
+  font-size: 0.75rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* Painel: altura sempre reservada; o desenho e o rodapé não se movem */
+.painel {
+  position: relative;
+  height: var(--painel-altura);
+  overflow: hidden;
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--borda);
+  background: var(--painel);
+  font-size: 0.875rem;
+}
+@media (max-width: 700px) {
+  .formato-celular .painel {
+    --painel-altura: 380px;
+  }
+}
+.painel:focus-visible {
+  outline: 2px solid var(--receita);
+  outline-offset: -2px;
+}
+.convite {
+  margin: 0;
+  color: var(--secundario);
+}
+.painel-titulo {
+  font-size: 1rem;
+  margin: 0 48px 2px 0;
+}
+.painel-valor {
+  margin: 0 0 8px;
+}
+.painel-sub {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--secundario);
+  margin: 0 0 2px;
+  font-weight: 600;
+}
+.linhas {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+.linhas.duas-colunas {
+  columns: 2;
+  column-gap: 24px;
+}
+.linhas li {
+  break-inside: avoid;
+}
+.linhas code {
+  font-size: 0.8rem;
+}
+.menos {
+  font-style: italic;
+}
+.secundario {
+  color: var(--secundario);
+}
+.painel-nota {
+  margin: 0;
+  font-size: 0.8rem;
+}
+.fechar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--secundario);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+.fechar:focus-visible {
+  outline: 2px solid var(--receita);
+  outline-offset: -4px;
+}
+
+.rodape {
+  padding: 8px 16px 12px;
+  border-top: 1px solid var(--borda);
+  font-size: 0.75rem;
+  color: var(--secundario);
+}
+
+.tabela {
+  padding: 8px 16px 12px;
+  border-top: 1px solid var(--borda);
+  font-size: 0.85rem;
+}
+.tabela summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.tabela table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.tabela th,
+.tabela td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--borda);
+}
+.tabela td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Telas estreitas: o cartão vai de ponta a ponta, para a largura visível do desenho ser a da tela */
+@media (max-width: 600px) {
+  .pagina {
+    padding: 12px 0;
+  }
+  h1 {
+    padding: 0 16px;
+  }
+  .cartao {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+}

@@ -12,7 +12,7 @@ const erros = [];
 
 const html = readFileSync(join(pasta, 'index.html'), 'utf8');
 for (const [, url] of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
-  if (!url.startsWith(BASE)) erros.push(`index.html referencia ${url}, fora de ${BASE}`);
+  if (!url.startsWith('data:') && !url.startsWith(BASE)) erros.push(`index.html referencia ${url}, fora de ${BASE}`);
 }
 
 const arquivosJs = [];

@@ -1,6 +1,8 @@
 // Texto de interface. Só texto: nenhum número fiscal (o teste garante que este arquivo não tem dígitos).
 
 export const TEXTOS = {
+  titulo: 'Receitas e despesas do Governo Central',
+  tituloSvg: 'Diagrama de Sankey: de onde vem e para onde vai o dinheiro do Governo Central',
   aviso: 'Visualização independente, baseada em dados do Tesouro Nacional.',
   naoIncluiJuros: 'não inclui juros',
   rotulos: {
@@ -21,6 +23,7 @@ export const TEXTOS = {
   menos: 'menos',
   registro: 'Receitas registradas por caixa; despesas, pelo pagamento efetivo.',
   precos: 'R$ constantes de',
+  deflator: '(IPCA)',
   fonte: 'Fonte: Tesouro Nacional, Resultado do Tesouro Nacional',
   fechar: 'Fechar detalhes',
   ariaRolagem: 'Diagrama de Sankey, mais largo que a tela. Role para a direita para ver os destinos do gasto.',
