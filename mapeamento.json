@@ -1,0 +1,44 @@
+{
+  "versao": 1,
+  "fonte": {
+    "arquivo": "seriehistorica<mesano>.xlsx (Tesouro Transparente, Resultado do Tesouro Nacional - Séries Históricas)",
+    "aba": "1.2",
+    "tabela": "Resultado Primário do Governo Central - Mensal - Valores Correntes (R$ milhões)"
+  },
+  "anos": [2015, 2025],
+  "mes_base_padrao": "2025-12",
+  "totais": {
+    "receita_total": "1",
+    "transferencias": "2",
+    "receita_liquida": "3",
+    "despesa_total": "4",
+    "primario_acima": "5"
+  },
+  "financiamento": {
+    "primario_acima": "5",
+    "ajustes_metodologicos": "6",
+    "discrepancia_estatistica": "7",
+    "primario_abaixo": "8",
+    "juros_nominais": "9",
+    "resultado_nominal": "10"
+  },
+  "receita": [
+    {"id": "imposto_renda", "rotulo": "Imposto de Renda", "soma": ["1.1.03"]},
+    {"id": "contribuicao_inss", "rotulo": "Contribuição ao INSS", "soma": ["1.3"]},
+    {"id": "cofins_pis", "rotulo": "Cofins e PIS", "soma": ["1.1.05", "1.1.06"]},
+    {"id": "iof_ipi_importacao", "rotulo": "IOF, IPI e importação", "soma": ["1.1.04", "1.1.02", "1.1.01"]},
+    {"id": "csll", "rotulo": "CSLL", "soma": ["1.1.07"]},
+    {"id": "royalties_dividendos_outras", "rotulo": "Royalties, dividendos e outras", "soma": ["1.1.08", "1.1.09", "1.1.10", "1.2", "1.4"]}
+  ],
+  "repasse": {"id": "repasse_estados_municipios", "rotulo": "Repasse a estados e municípios", "soma": ["2"]},
+  "despesa": [
+    {"id": "aposentadorias_pensoes", "rotulo": "Aposentadorias e pensões (INSS)", "grupo": "obrigatoria", "soma": ["4.1"]},
+    {"id": "servidores", "rotulo": "Servidores ativos e inativos", "grupo": "obrigatoria", "soma": ["4.2"]},
+    {"id": "bolsa_familia", "rotulo": "Bolsa Família", "grupo": "obrigatoria", "soma": ["4.4.1.2"]},
+    {"id": "saude_obrigatoria", "rotulo": "Saúde (obrigatória com controle de fluxo)", "grupo": "obrigatoria", "soma": ["4.4.1.3"]},
+    {"id": "demais_controle_fluxo", "rotulo": "Demais obrigatórias com controle de fluxo", "grupo": "obrigatoria", "soma": ["4.4.1.1", "4.4.1.4", "4.4.1.5"]},
+    {"id": "bpc", "rotulo": "BPC (idosos e PcD)", "grupo": "obrigatoria", "soma": ["4.3.05"]},
+    {"id": "fundeb_seguro_desemprego_outras", "rotulo": "Fundeb, seguro-desemprego e outras obrigatórias", "grupo": "obrigatoria", "soma": ["4.3"], "subtrai": ["4.3.05"]},
+    {"id": "discricionarias", "rotulo": "Despesas discricionárias (custeio e investimentos)", "grupo": "discricionaria", "soma": ["4.4.2"]}
+  ]
+}

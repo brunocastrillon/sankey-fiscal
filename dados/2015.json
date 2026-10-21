@@ -1,0 +1,106 @@
+{
+  "ano": 2015,
+  "unidade": "R$ milhões",
+  "mes_base": "2025-12",
+  "versao_dados": "RTN série histórica, último mês publicado 2026-07",
+  "mapeamento_versao": 1,
+  "rotulos": {
+    "imposto_renda": "Imposto de Renda",
+    "contribuicao_inss": "Contribuição ao INSS",
+    "cofins_pis": "Cofins e PIS",
+    "iof_ipi_importacao": "IOF, IPI e importação",
+    "csll": "CSLL",
+    "royalties_dividendos_outras": "Royalties, dividendos e outras",
+    "aposentadorias_pensoes": "Aposentadorias e pensões (INSS)",
+    "servidores": "Servidores ativos e inativos",
+    "bolsa_familia": "Bolsa Família",
+    "saude_obrigatoria": "Saúde (obrigatória com controle de fluxo)",
+    "demais_controle_fluxo": "Demais obrigatórias com controle de fluxo",
+    "bpc": "BPC (idosos e PcD)",
+    "fundeb_seguro_desemprego_outras": "Fundeb, seguro-desemprego e outras obrigatórias",
+    "discricionarias": "Despesas discricionárias (custeio e investimentos)",
+    "repasse_estados_municipios": "Repasse a estados e municípios"
+  },
+  "grupos_despesa": {
+    "aposentadorias_pensoes": "obrigatoria",
+    "servidores": "obrigatoria",
+    "bolsa_familia": "obrigatoria",
+    "saude_obrigatoria": "obrigatoria",
+    "demais_controle_fluxo": "obrigatoria",
+    "bpc": "obrigatoria",
+    "fundeb_seguro_desemprego_outras": "obrigatoria",
+    "discricionarias": "discricionaria"
+  },
+  "nominal": {
+    "nos": {
+      "imposto_renda": 300442.457,
+      "contribuicao_inss": 350272.004,
+      "cofins_pis": 256282.057,
+      "iof_ipi_importacao": 122398.33,
+      "csll": 60418.566,
+      "royalties_dividendos_outras": 159290.272,
+      "repasse_estados_municipios": 204684.257,
+      "aposentadorias_pensoes": 436090.1,
+      "servidores": 238499.024,
+      "bolsa_familia": 26966.979,
+      "saude_obrigatoria": 70853.382,
+      "demais_controle_fluxo": 16982.656,
+      "bpc": 42538.36,
+      "fundeb_seguro_desemprego_outras": 205963.604,
+      "discricionarias": 127027.551
+    },
+    "totais": {
+      "receita_total": 1249103.686,
+      "transferencias": 204684.257,
+      "receita_liquida": 1044419.429,
+      "despesa_total": 1164921.656,
+      "primario_acima": -120502.227
+    },
+    "financiamento": {
+      "primario_acima": -120502.227,
+      "ajustes_metodologicos": 3888.435,
+      "discrepancia_estatistica": -41.788,
+      "primario_abaixo": -116655.58,
+      "juros_nominais": -397240.424,
+      "resultado_nominal": -513896.004
+    }
+  },
+  "real": {
+    "nos": {
+      "imposto_renda": 517620.769,
+      "contribuicao_inss": 600570.415,
+      "cofins_pis": 440519.837,
+      "iof_ipi_importacao": 210356.279,
+      "csll": 104541.761,
+      "royalties_dividendos_outras": 273471.702,
+      "repasse_estados_municipios": 352123.888,
+      "aposentadorias_pensoes": 747537.675,
+      "servidores": 409142.231,
+      "bolsa_familia": 46440.938,
+      "saude_obrigatoria": 122241.726,
+      "demais_controle_fluxo": 29072.384,
+      "bpc": 73098.717,
+      "fundeb_seguro_desemprego_outras": 349898.258,
+      "discricionarias": 217660.295
+    },
+    "totais": {
+      "receita_total": 2147080.763,
+      "transferencias": 352123.888,
+      "receita_liquida": 1794956.876,
+      "despesa_total": 1995092.224,
+      "primario_acima": -200135.349
+    },
+    "financiamento": {
+      "primario_acima": -200135.349,
+      "ajustes_metodologicos": 6639.818,
+      "discrepancia_estatistica": -6.348,
+      "primario_abaixo": -193501.878,
+      "juros_nominais": -682831.727,
+      "resultado_nominal": -876333.605
+    }
+  },
+  "pib": {
+    "valor_nominal": 5995787.0,
+    "fonte": "implícito nas abas 2.2 e 2.2-A do RTN (provisório até carregar a série do IBGE)"
+  }
+}

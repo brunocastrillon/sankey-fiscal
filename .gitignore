@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Node (fase 2 em diante)
+node_modules/
+dist/
+.vite/
+
+# Ambiente e segredos
+.env
+.env.*
+*.local
+
+# Claude Code: configuração pessoal (o CLAUDE.md do projeto é versionado)
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Editor / SO
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
