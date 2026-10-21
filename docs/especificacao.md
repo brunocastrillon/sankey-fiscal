@@ -120,7 +120,7 @@ flowchart TD
         P1[Ingestão] --> P2[Mapeamento] --> P3[Deflação] --> P4["Validação<br/>(testes)"]
     end
     P --> J["Dados publicados (JSON)<br/>um arquivo por ano"]
-    J --> S["Site estático<br/>React + d3-sankey, linha do tempo"]
+    J --> S["Site estático<br/>React + layout próprio em SVG, linha do tempo"]
 ```
 
 A validação é a única etapa que barra a publicação: se qualquer teste falhar, o JSON anterior continua no ar.
@@ -129,7 +129,7 @@ A validação é a única etapa que barra a publicação: se qualquer teste falh
 
 - Ordem dos nós fixa entre os anos, definida no mapeamento, para a animação mexer só na espessura e não reordenar nós.
 - Escala compartilhada entre os anos no modo R$ constantes, para a espessura ser comparável; escala própria por ano nos modos percentuais.
-- Layout do d3-sankey calculado uma vez e fixado, evitando que os nós "pulem" quando o ano muda.
+- Layout próprio em SVG (função pura, sem d3-sankey), calculado uma vez e fixado, evitando que os nós "pulem" quando o ano muda.
 - Tooltip com valor, participação, as linhas do RTN que formam o nó e o boletim de origem.
 - O site vive em `castrillon.dev/sankey-fiscal`: caminhos de JSON e de arquivos devem funcionar a partir desse subcaminho.
 

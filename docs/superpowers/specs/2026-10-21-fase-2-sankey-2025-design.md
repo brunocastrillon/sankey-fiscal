@@ -140,7 +140,8 @@ déficit escuro acima de 3:1.
   base pela pilha de rótulos mais alta e mais baixa.
 - Altura única: uma constante de layout por formato, não calculada por ano; o teste prova que o pior ano cabe. Nesta fase a
   escala (px por R$) é de cada ano, com área de barras fixa. [minha decisão]
-- Quebra de linha dos rótulos pela largura medida (máximo em px por lado e formato), não por número de caracteres. [minha decisão]
+- Quebra de linha dos rótulos pela largura medida (máximo em px por lado e formato), não por número de caracteres; pode quebrar
+  logo depois de um hífen ("seguro-" / "desemprego"). [minha decisão]
 - Cartão: aviso "Visualização independente, baseada em dados do Tesouro Nacional." no topo; painel; rodapé "Somas podem diferir
   por arredondamento.", boletim de origem (`versao_dados`) e mês-base, fora do SVG.
 
@@ -154,7 +155,7 @@ déficit escuro acima de 3:1.
   não depende de hover.
 - Alvos de toque ≥ 44 × 44 px: cada rótulo lateral ocupa uma faixa de ≥ 44 px que inclui barra, guia e texto; faixas vizinhas
   não se sobrepõem; o × do painel tem 44 × 44 px. Fonte mínima 11 px.
-- Larguras [minha decisão]: layout de desktop a partir de 1000 px de contêiner (largura = min(contêiner, 1200)); abaixo, o
+- Larguras [minha decisão]: layout de desktop a partir de 1100 px de contêiner (largura = min(contêiner, 1200)); abaixo, o
   desenho do celular. Paradas calculadas para a largura visível real; teste estrito a 390 px; 360 px e 768 px são reportados.
 
 ### Painel de detalhes

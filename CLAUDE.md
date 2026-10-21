@@ -12,7 +12,8 @@ Será publicado em `castrillon.dev/sankey-fiscal`. É uma visualização **indep
 ## Estado
 
 - Fase 1 (dados): concluída. `pipeline.py` gera `dados/AAAA.json`; `testes.py` e `pytest` validam (18 testes).
-- Próxima: fase 2, Sankey de um ano (2025) com d3-sankey, lendo `dados/2025.json`. Critério de saída: bater com o gráfico
+- Em andamento: fase 2 (branch `fase-2-sankey-2025`, PR em rascunho), Sankey de 2025 em `web/` (React + layout próprio em
+  SVG, sem d3-sankey), lendo `dados/2025.json`. Critério de saída: bater com o gráfico
   original (até R$ 2 bi por nó). Os dados já batem (maior diferença R$ 0,6 bi); falta o desenho.
 - Fases 3 e 4 (linha do tempo; módulo de financiamento) só começam depois do critério de saída da anterior.
 

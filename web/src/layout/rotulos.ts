@@ -1,14 +1,21 @@
 import type { EstiloTexto, MedirTexto } from './medir';
 
-/** Quebra o texto em linhas de até `larguraMax` px (uma palavra maior que o limite fica sozinha na linha). */
+/**
+ * Quebra o texto em linhas de até `larguraMax` px. Pode quebrar entre palavras e logo depois de um hífen
+ * ("seguro-" / "desemprego"); um pedaço sem ponto de quebra maior que o limite fica sozinho na linha.
+ */
 export function quebrarPorLargura(texto: string, larguraMax: number, estilo: EstiloTexto, medir: MedirTexto): string[] {
+  // pedaços: cada palavra, partida depois de cada hífen interno; `colado` = segue o pedaço anterior sem espaço
+  const pedacos = texto.split(' ').flatMap((palavra) =>
+    (palavra.match(/[^-]+-+|[^-]+$|-+$/g) ?? [palavra]).map((texto, i) => ({ texto, colado: i > 0 })),
+  );
   const linhas: string[] = [];
   let atual = '';
-  for (const palavra of texto.split(' ')) {
-    const tentativa = atual ? `${atual} ${palavra}` : palavra;
+  for (const p of pedacos) {
+    const tentativa = atual ? `${atual}${p.colado ? '' : ' '}${p.texto}` : p.texto;
     if (atual && medir(tentativa, estilo) > larguraMax) {
       linhas.push(atual);
-      atual = palavra;
+      atual = p.texto;
     } else {
       atual = tentativa;
     }

@@ -13,15 +13,24 @@ describe('quebrarPorLargura', () => {
     'CSLL',
   ];
 
+  const juntar = (linhas: string[]) => linhas.join(' ').replace(/- /g, '-');
+
   it.each(textos)('nenhuma linha passa do limite e o texto volta inteiro: %s', (texto) => {
     const linhas = quebrarPorLargura(texto, 140, estilo, medir);
     for (const l of linhas) expect(medir(l, estilo)).toBeLessThanOrEqual(140);
-    expect(linhas.join(' ')).toBe(texto);
+    expect(juntar(linhas)).toBe(texto);
   });
 
-  it('palavra maior que o limite fica sozinha na linha', () => {
-    const linhas = quebrarPorLargura('a seguro-desemprego b', 40, estilo, medir);
-    expect(linhas).toEqual(['a', 'seguro-desemprego', 'b']);
+  it('palavra com hífen maior que o limite quebra depois do hífen', () => {
+    const linhas = quebrarPorLargura('Fundeb, seguro-desemprego e outras', 90, estilo, medir);
+    expect(linhas).toContain('seguro-');
+    for (const l of linhas) expect(medir(l, estilo)).toBeLessThanOrEqual(90);
+    expect(juntar(linhas)).toBe('Fundeb, seguro-desemprego e outras');
+  });
+
+  it('palavra sem hífen maior que o limite fica sozinha na linha', () => {
+    const linhas = quebrarPorLargura('a discricionárias b', 40, estilo, medir);
+    expect(linhas).toEqual(['a', 'discricionárias', 'b']);
   });
 });
 
