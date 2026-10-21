@@ -216,6 +216,24 @@ def t10_linhas_mapeamento(c, rtn):
     return ok, f"{len(linhas)} chaves (esperadas {len(esperadas)}); divergências: {erros or 'nenhuma'}; a mais: {extras or 'nenhuma'}"
 
 
+def t12_estrutura(c):
+    mapa = c[0]
+    e = P.montar_estrutura(mapa)
+    obrig = [n["id"] for n in mapa["despesa"] if n["grupo"] == "obrigatoria"]
+    discr = [n["id"] for n in mapa["despesa"] if n["grupo"] == "discricionaria"]
+    ids_nos = {n["id"] for n in mapa["receita"] + mapa["despesa"]} | {mapa["repasse"]["id"]}
+    checagens = {
+        "obrigatorias = ids do grupo obrigatório": sorted(e["obrigatorias"]) == sorted(obrig),
+        "obrigatorias sem repetição": len(set(e["obrigatorias"])) == len(e["obrigatorias"]),
+        "receita na ordem do mapeamento": e["receita"] == [n["id"] for n in mapa["receita"]],
+        "repasse": e["repasse"] == mapa["repasse"]["id"],
+        "discricionarias": [e["discricionarias"]] == discr,
+        "ids existem entre os nós": set(e["receita"] + e["obrigatorias"] + [e["repasse"], e["discricionarias"]]) <= ids_nos,
+    }
+    falhas = [k for k, ok in checagens.items() if not ok]
+    return not falhas, f"{len(checagens)} checagens; falharam: {falhas or 'nenhuma'}; ordem: {e['obrigatorias']}"
+
+
 def t11_determinismo(rtn, ipca):
     import json
     a = json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
@@ -239,6 +257,7 @@ def lista_testes(c, rtn, ipca):
         ("T9  Linhas: códigos existem na aba 1.2 e nomes normalizados", lambda: t9_linhas_nomes(c, rtn)),
         ("T10 Linhas reproduzem soma/subtrai do mapeamento e os totais", lambda: t10_linhas_mapeamento(c, rtn)),
         ("T11 Gerar duas vezes dá JSON idêntico", lambda: t11_determinismo(rtn, ipca)),
+        ("T12 Estrutura: papéis e ordem fixa das obrigatórias", lambda: t12_estrutura(c)),
     ]
 
 

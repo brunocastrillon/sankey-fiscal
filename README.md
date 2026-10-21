@@ -12,7 +12,7 @@ linhas do RTN ele vem e quais metodologias foram usadas. Destino: `castrillon.de
 ```bash
 pip install -r requirements.txt
 python pipeline.py     # lê entrada/ e grava dados/AAAA.json
-pytest -q              # 14 testes de validação
+pytest -q              # 15 testes de validação
 ```
 
 ## O que há aqui
@@ -43,6 +43,7 @@ mês-base e o último mês publicado.
 | `rotulos` | Id do nó → rótulo exibido |
 | `grupos_despesa` | Id do nó de despesa → `obrigatoria` ou `discricionaria` |
 | `linhas` | Id do nó ou do total → linhas do RTN que o formam, na ordem do mapeamento |
+| `estrutura` | Papéis e ordem de desenho: `receita` (origens), `repasse`, `obrigatorias` (ordem fixa de `mapeamento.json → desenho`) e `discricionarias` |
 | `nominal`, `real` | Valores do ano em R$ correntes e em R$ constantes do mês-base: `nos`, `totais` e `financiamento` |
 | `pib` | PIB nominal do ano e a fonte |
 

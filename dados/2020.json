@@ -216,6 +216,27 @@
       }
     ]
   },
+  "estrutura": {
+    "receita": [
+      "imposto_renda",
+      "contribuicao_inss",
+      "cofins_pis",
+      "iof_ipi_importacao",
+      "csll",
+      "royalties_dividendos_outras"
+    ],
+    "repasse": "repasse_estados_municipios",
+    "obrigatorias": [
+      "aposentadorias_pensoes",
+      "servidores",
+      "fundeb_seguro_desemprego_outras",
+      "saude_obrigatoria",
+      "bolsa_familia",
+      "bpc",
+      "demais_controle_fluxo"
+    ],
+    "discricionarias": "discricionarias"
+  },
   "nominal": {
     "nos": {
       "imposto_renda": 384124.926,

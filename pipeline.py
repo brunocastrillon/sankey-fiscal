@@ -81,6 +81,19 @@ def montar_linhas(mapa, nomes):
     return linhas
 
 
+def montar_estrutura(mapa):
+    """Papéis dos nós e ordem fixa de desenho, para o site não depender de mapeamento.json."""
+    discr = [n["id"] for n in mapa["despesa"] if n["grupo"] == "discricionaria"]
+    if len(discr) != 1:
+        raise ValueError(f"o desenho supõe uma única folha discricionária; há {discr}")
+    return {
+        "receita": [n["id"] for n in mapa["receita"]],
+        "repasse": mapa["repasse"]["id"],
+        "obrigatorias": list(mapa["desenho"]["ordem_obrigatorias"]),
+        "discricionarias": discr[0],
+    }
+
+
 def ler_rtn_mensal(xlsx, aba="1.2"):
     """Devolve (DataFrame código x mês, último mês publicado). Valores em R$ milhões correntes."""
     bruto, h, corpo = _corpo_aba(xlsx, aba)
@@ -190,6 +203,7 @@ def montar_anos(xlsx, ipca_csv, base=None, mapa=None):
     rotulos[mapa["repasse"]["id"]] = mapa["repasse"]["rotulo"]
     grupos = {n["id"]: n["grupo"] for n in mapa["despesa"]}
     linhas = montar_linhas(mapa, ler_nomes_linhas(xlsx))
+    estrutura = montar_estrutura(mapa)
 
     saida = {}
     for ano in range(ano0, ano1 + 1):
@@ -208,6 +222,7 @@ def montar_anos(xlsx, ipca_csv, base=None, mapa=None):
             "rotulos": rotulos,
             "grupos_despesa": grupos,
             "linhas": linhas,
+            "estrutura": estrutura,
             "nominal": fatia(nominal),
             "real": fatia(real),
             "pib": {
