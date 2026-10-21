@@ -27,7 +27,7 @@ export interface ConfigFormato {
 export const DESKTOP: ConfigFormato = {
   nome: 'desktop',
   fonte: 13,
-  alturaSvg: 740,
+  alturaSvg: 723,
   alturaBarras: 600,
   larguraNo: 12,
   espacoEntreNos: 14,
@@ -50,7 +50,7 @@ export const DESKTOP: ConfigFormato = {
 export const CELULAR: ConfigFormato = {
   nome: 'celular',
   fonte: 11,
-  alturaSvg: 735,
+  alturaSvg: 705,
   alturaBarras: 540,
   larguraNo: 10,
   espacoEntreNos: 12,
