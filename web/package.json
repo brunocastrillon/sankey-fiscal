@@ -1,0 +1,32 @@
+{
+  "name": "sankey-fiscal-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "copiar-dados": "node scripts/copiar-dados.mjs",
+    "predev": "npm run copiar-dados",
+    "dev": "vite",
+    "prebuild": "npm run copiar-dados",
+    "build": "tsc -b && vite build",
+    "prebuild:teste": "npm run copiar-dados",
+    "build:teste": "vite build --mode teste --outDir dist-teste",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "typescript": "6.0.3",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}
