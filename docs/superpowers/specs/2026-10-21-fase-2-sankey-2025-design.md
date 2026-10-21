@@ -168,7 +168,8 @@ déficit escuro acima de 3:1.
   fecha o painel e devolve o foco.
 - Conteúdo: rótulo; valor; participação com a base escrita ("6,1% da receita total" para origens, Receita total, Receita líquida
   e repasse; "x% da despesa total" para despesas, Gasto total, Obrigatórias e resultado), calculada do JSON; linhas do RTN como
-  código + nome vindos de `linhas` (nunca digitados); para Obrigatórias, "Soma das despesas do grupo obrigatório" e a lista das
+  código + nome vindos de `linhas` (nunca digitados), com o prefixo "menos" nas de `operacao: "subtrai"` (por exemplo,
+  "menos 4.3.05 Benefícios de Prestação Continuada da LOAS/RMV"); para Obrigatórias, "Soma das despesas do grupo obrigatório" e a lista das
   folhas de `estrutura.obrigatorias`; para o déficit, "não inclui juros"; aviso de registro por caixa e por pagamento; mês-base.
 - Abaixo do cartão, tabela recolhível com todos os valores, para leitor de tela. [minha decisão]
 
