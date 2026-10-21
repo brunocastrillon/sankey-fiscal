@@ -12,7 +12,7 @@ linhas do RTN ele vem e quais metodologias foram usadas. Destino: `castrillon.de
 ```bash
 pip install -r requirements.txt
 python pipeline.py     # lê entrada/ e grava dados/AAAA.json
-pytest -q              # 15 testes de validação
+pytest -q              # 18 testes de validação
 ```
 
 ## O que há aqui
@@ -25,6 +25,7 @@ pytest -q              # 15 testes de validação
 | `mapeamento.json` | Linhas do RTN → nós do Sankey |
 | `pipeline.py` | Leitura do RTN e do IPCA, mapeamento, deflação, JSON por ano |
 | `testes.py`, `tests/` | Testes de validação (identidades contábeis, deflação, regressão contra o gráfico original) |
+| `referencias/` | Valores impressos no gráfico original (2025), usados pelos testes do pipeline e do site |
 | `entrada/` | Arquivos públicos de entrada (RTN e IPCA) e a fonte de cada um |
 | `dados/` | JSON gerados, um por ano, com valores nominais e em R$ constantes |
 

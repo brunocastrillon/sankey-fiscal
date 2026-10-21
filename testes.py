@@ -6,6 +6,7 @@ Uso (com os arquivos em entrada/):
 Sai com código 1 se qualquer teste falhar (o pipeline não deve publicar nesse caso).
 """
 import argparse
+import json
 import sys
 
 import pandas as pd
@@ -14,16 +15,9 @@ import pipeline as P
 
 TOL = 0.01  # R$ milhões (R$ 10 mil): ruído de ponto flutuante, não erro contábil
 
-# Gráfico original, 2025, preços de dez/2025, R$ bi (valores impressos na imagem)
-ORIGINAL = {
-    "imposto_renda": 880, "contribuicao_inss": 719, "cofins_pis": 504, "iof_ipi_importacao": 269,
-    "csll": 181, "royalties_dividendos_outras": 390, "repasse_estados_municipios": 578,
-    "aposentadorias_pensoes": 1041, "servidores": 408, "bpc": 129,
-    "fundeb_seguro_desemprego_outras": 267, "discricionarias": 207,
-}
-ORIGINAL_BF_SAUDE_OUTROS = 374  # = bolsa_familia + saude_obrigatoria + demais_controle_fluxo
-ORIGINAL_TOTAIS = {"receita_total": 2944, "receita_liquida": 2366, "despesa_total": 2427}
-ORIGINAL_DEFICIT = 60
+# Gráfico original (2025, preços de dez/2025, R$ bi): valores em referencias/, lidos também pelo Vitest do site
+REFERENCIA = P.AQUI / "referencias" / "original-2025.json"
+N_VALORES_REFERENCIA = 18  # 12 nós + 1 grupo + 4 totais + déficit
 
 
 def contexto(rtn, ipca_csv):
@@ -124,20 +118,35 @@ def t7_sinais(c):
     return not anuais_neg, f"nós com valor anual negativo: {anuais_neg or 'nenhum'}{info}"
 
 
-def t8_regressao(c):
+def carregar_referencia(caminho=None):
+    with open(caminho or REFERENCIA, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def t8_regressao(c, ref=None):
     mapa, M, nos, totais, ipca = c
+    ref = carregar_referencia() if ref is None else ref
+    if not ref:
+        return False, "referência vazia"
     base = pd.Timestamp(mapa["mes_base_padrao"])
     f = pd.Series(P.fator_deflacao(ipca, M.columns, base), index=M.columns)
-    ano = lambda s: float((s * f).groupby(s.index.year).sum()[2025]) / 1000  # R$ bi
-    difs = {k: ano(nos[k]) - v for k, v in ORIGINAL.items()}
-    bf = ano(nos["bolsa_familia"]) + ano(nos["saude_obrigatoria"]) + ano(nos["demais_controle_fluxo"])
-    difs["bolsa_familia_saude_outros"] = bf - ORIGINAL_BF_SAUDE_OUTROS
-    for k, v in ORIGINAL_TOTAIS.items():
-        difs[k] = ano(totais[k]) - v
-    difs["deficit"] = -ano(totais["primario_acima"]) - ORIGINAL_DEFICIT
+    ano = lambda s: float((s * f).groupby(s.index.year).sum()[ref["ano"]]) / 1000  # R$ bi
+    obrig = [n["id"] for n in mapa["despesa"] if n["grupo"] == "obrigatoria"]
+    calculado = {k: ano(totais[k]) for k in ("receita_total", "receita_liquida", "despesa_total")}
+    calculado["obrigatorias"] = sum(ano(nos[k]) for k in obrig)
+    difs = {k: ano(nos[k]) - v for k, v in ref.get("nos", {}).items()}
+    for g, d in ref.get("grupos", {}).items():
+        difs[g] = sum(ano(nos[k]) for k in d["nos"]) - d["valor"]
+    for k, v in ref.get("totais", {}).items():
+        difs[k] = calculado[k] - v
+    if "deficit" in ref:
+        difs["deficit"] = -ano(totais["primario_acima"]) - ref["deficit"]
+    if len(difs) != N_VALORES_REFERENCIA:
+        return False, f"{len(difs)} valores comparados; esperados {N_VALORES_REFERENCIA}"
+    tol = ref["tolerancia_por_no"]
     pior_k = max(difs, key=lambda k: abs(difs[k]))
     pior = abs(difs[pior_k])
-    return pior <= 2.0, f"{len(difs)} valores comparados; maior diferença R$ {pior:.2f} bi ({pior_k}); limite R$ 2 bi"
+    return pior <= tol, f"{len(difs)} valores comparados; maior diferença R$ {pior:.2f} bi ({pior_k}); limite R$ {tol:g} bi"
 
 
 def a1_boletim(c):
@@ -235,8 +244,7 @@ def t12_estrutura(c):
 
 
 def t11_determinismo(rtn, ipca):
-    import json
-    a = json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
+    a =json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
     b = json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
     return a == b, f"duas gerações: {len(a)} caracteres, idênticas: {a == b}"
 

@@ -72,7 +72,7 @@ Não comece a fase seguinte antes do critério de saída da anterior.
 
 - Qualquer mudança em `mapeamento.json` ou `pipeline.py`: todos os testes verdes e a diferença nos JSON de `dados/`.
 - Rótulos e textos de metodologia na tela: "não oficial", "Déficit primário (financiado com dívida)", "não inclui juros".
-- Que nenhum número fiscal apareça digitado no código do site (`git grep` por valores como `2902` ou `867`).
+- Que nenhum número fiscal apareça digitado no código do site (`git grep` por valores como `2902` ou `867` em `web/src`). Os valores de referência do gráfico original ficam em `referencias/`, fora do site.
 - Que o site funcione em subcaminho (`/sankey-fiscal/`) e não use caminhos absolutos.
 
 ## 7. Checklist do repositório público
