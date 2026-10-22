@@ -49,6 +49,18 @@ function menorDistanciaGuia(L: Layout, quais: 'todas' | 'mesmaColuna' | 'outrasC
   }
   return menor;
 }
+/** Menor distância entre segmentos de guias de nós diferentes (Infinity se há menos de duas guias). */
+function distanciaEntreGuias(L: Layout): number {
+  let menor = Infinity;
+  const segmentos = L.guias.flatMap((g) => g.pontos.slice(1).map((p, i) => ({ id: g.id, a: g.pontos[i], b: p })));
+  for (const s1 of segmentos)
+    for (const s2 of segmentos) {
+      if (s1.id >= s2.id) continue;
+      const caixa = { x0: Math.min(s2.a[0], s2.b[0]), x1: Math.max(s2.a[0], s2.b[0]), y0: Math.min(s2.a[1], s2.b[1]), y1: Math.max(s2.a[1], s2.b[1]) };
+      menor = Math.min(menor, distanciaSegmentoCaixa(s1.a, s1.b, caixa));
+    }
+  return menor;
+}
 const cortes = (L: Layout) =>
   L.paradas ? L.rotulos.filter((r) => L.paradas!.bordas.some((b) => r.caixa.x0 < b && r.caixa.x1 > b)).length : 0;
 
@@ -111,6 +123,10 @@ describe.each(anos())('%i', (ano) => {
         expect(menorDistanciaGuia(L)).toBeGreaterThan(0);
       });
 
+      it('guias de nós diferentes a pelo menos 3 px uma da outra', () => {
+        expect(distanciaEntreGuias(L)).toBeGreaterThanOrEqual(3);
+      });
+
       it('deslocamento máximo do rótulo dentro do limite declarado', () => {
         expect(deslocamentoMax(L)).toBeLessThanOrEqual(cfg.deslocamentoMax);
       });
@@ -143,6 +159,7 @@ describe.each(anos())('%i', (ano) => {
             'desloc. máx (px)': Number(deslocamentoMax(L).toFixed(1)),
             'guia–outras colunas (px)': L.guias.length ? Number(menorDistanciaGuia(L, 'outrasColunas').toFixed(1)) : '—',
             'guia–mesma coluna (px, fixa)': L.guias.length ? Number(menorDistanciaGuia(L, 'mesmaColuna').toFixed(1)) : '—',
+            'guia–guia (px)': L.guias.length > 1 ? Number(distanciaEntreGuias(L).toFixed(1)) : '—',
           };
           if (cfg.alvoToque > 0) {
             linha.viavel = L.paradas?.viavel;

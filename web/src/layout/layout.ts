@@ -97,6 +97,54 @@ function distribuirVaos(total: number, minimos: number[]): number[] {
   return vaos;
 }
 
+interface GuiaPendente {
+  id: string;
+  /** x da borda da barra (1 px fora) e x onde a guia chega ao rótulo. */
+  xa: number;
+  xFim: number;
+  /** y do centro da barra e do centro do rótulo. */
+  cn: number;
+  cl: number;
+}
+
+const FOLGA_GUIAS = 3;
+
+/**
+ * Guias em cotovelo, cada uma na sua faixa vertical quando as alturas se sobrepõem. Entre guias que descem, a de baixo
+ * fica mais perto da barra; entre as que sobem, a de cima. Assim guias vizinhas nunca se cruzam nem se tocam.
+ */
+function tracarGuias(pendentes: GuiaPendente[], s: 1 | -1): GuiaLayout[] {
+  const faixa = new Map<string, number>();
+  const vao = (p: GuiaPendente) => [Math.min(p.cn, p.cl), Math.max(p.cn, p.cl)] as const;
+  const interagem = (a: GuiaPendente, b: GuiaPendente) => {
+    const [a0, a1] = vao(a);
+    const [b0, b1] = vao(b);
+    return a0 < b1 + FOLGA_GUIAS && b0 < a1 + FOLGA_GUIAS;
+  };
+  const descem = pendentes.filter((p) => p.cl > p.cn).sort((a, b) => b.cn - a.cn);
+  const sobem = pendentes.filter((p) => p.cl <= p.cn).sort((a, b) => a.cn - b.cn);
+  for (const grupo of [descem, sobem]) {
+    const feitas: GuiaPendente[] = [];
+    for (const p of grupo) {
+      const anteriores = feitas.filter((q) => interagem(p, q)).map((q) => faixa.get(q.id)!);
+      faixa.set(p.id, anteriores.length ? Math.max(...anteriores) + 1 : 0);
+      feitas.push(p);
+    }
+  }
+  const nFaixas = Math.max(0, ...faixa.values()) + 1;
+  const alcance = pendentes.length ? Math.min(...pendentes.map((p) => Math.abs(p.xFim - p.xa))) - 2 : 0;
+  let inicio = 5;
+  let passo = nFaixas > 1 ? Math.min(5, (alcance - inicio) / (nFaixas - 1)) : 0;
+  if (nFaixas > 1 && passo < FOLGA_GUIAS) {
+    inicio = 2;
+    passo = Math.max(FOLGA_GUIAS, (alcance - inicio) / (nFaixas - 1));
+  }
+  return pendentes.map((p) => {
+    const xm = p.xa + s * (inicio + faixa.get(p.id)! * passo);
+    return { id: p.id, pontos: [[p.xa, p.cn], [xm, p.cn], [xm, p.cl], [p.xFim, p.cl]] };
+  });
+}
+
 const colidem = (a: Caixa, b: Caixa, folga: number) =>
   a.x0 < b.x1 + folga && b.x0 < a.x1 + folga && a.y0 < b.y1 + folga && b.y0 < a.y1 + folga;
 
@@ -303,6 +351,7 @@ export function calcularLayout(
   const alvos: AlvoLayout[] = [];
   const limites = { min: cfg.margem + 4, max: cfg.alturaSvg - cfg.margem - 4 };
   for (const fila of filas) {
+    const pendentes: GuiaPendente[] = [];
     for (const item of fila.itens) item.centro += dy;
     const topos = resolverFila(fila.itens, FOLGA_ROTULOS, limites);
     for (const item of fila.itens) {
@@ -316,12 +365,7 @@ export function calcularLayout(
       const direita = fila.lado === 'direita';
       const x = direita ? nl.x1 + cfg.guiaDx : nl.x0 - cfg.guiaDx;
       novoRotulo(item.id, x, direita ? 'start' : 'end', topo, deslocado);
-      if (deslocado) {
-        const s = direita ? 1 : -1;
-        const xa = direita ? nl.x1 + 1 : nl.x0 - 1;
-        const xm = xa + s * Math.min(10, cfg.guiaDx / 2);
-        guias.push({ id: item.id, pontos: [[xa, cn], [xm, cn], [xm, cl], [x - s * 3, cl]] });
-      }
+      if (deslocado) pendentes.push({ id: item.id, xa: direita ? nl.x1 + 1 : nl.x0 - 1, xFim: direita ? x - 3 : x + 3, cn, cl });
       if (cfg.alvoToque > 0) {
         const caixa = rotulos[rotulos.length - 1].caixa;
         alvos.push({
@@ -330,6 +374,7 @@ export function calcularLayout(
         });
       }
     }
+    guias.push(...tracarGuias(pendentes, fila.lado === 'direita' ? 1 : -1));
   }
   if (cfg.alvoToque > 0) {
     // nós do meio: barra + rótulo, com o mínimo do alvo de toque
