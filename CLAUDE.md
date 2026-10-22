@@ -59,6 +59,8 @@ npm run e2e               # Playwright (build de teste com ?ano=); PW_CANAL=chro
 6. Texto de interface e documentação em português do Brasil. Identificadores de domínio em português, como já está no código.
 7. Commits pequenos, uma mudança lógica por commit, mensagem em português no imperativo (`feat:`, `fix:`, `docs:`, `test:`).
 8. Nunca versionar segredos ou `.env`.
+9. A main é protegida por ruleset: toda mudança entra por branch e PR, com os três checks (validacoes, site, site-navegador)
+   verdes. A Vercel publica todo push na main.
 
 ## Fluxo com Superpowers
 
