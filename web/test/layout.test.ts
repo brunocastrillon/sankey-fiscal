@@ -66,6 +66,26 @@ describe('celular em tela que cabe o desenho inteiro', () => {
   });
 });
 
+describe('escala com uma coluna somando zero', () => {
+  it('o espaço extra da coluna das folhas continua na coluna das folhas (índice da coluna, não do filtro)', () => {
+    const g: Grafo = structuredClone(montarGrafo(lerAno(2025)));
+    // coluna 4 (Obrigatórias) com soma zero e a coluna 5 como a que limita a escala
+    g.nos.find((n) => n.id === 'obrigatorias')!.valor = 0;
+    g.nos.find((n) => n.id === 'aposentadorias_pensoes')!.valor *= 4;
+    const L = calcularLayout(g, DESKTOP, medir, { largura: LARGURA_MAX_DESKTOP });
+    const esperada = Math.min(
+      ...[0, 1, 2, 3, 4, 5]
+        .map((c) => ({ c, nos: g.nos.filter((n) => n.coluna === c) }))
+        .filter(({ nos }) => nos.reduce((s, n) => s + n.valor, 0) > 0)
+        .map(({ c, nos }) =>
+          (DESKTOP.alturaBarras - (nos.length - 1) * DESKTOP.espacoEntreNos - (c === 5 ? DESKTOP.espacoEntreNos : 0)) /
+          nos.reduce((s, n) => s + n.valor, 0),
+        ),
+    );
+    expect(L.escala).toBeCloseTo(esperada, 12);
+  });
+});
+
 describe('folha zerada', () => {
   it('não produz NaN nem espessura negativa, e a folha ainda tem rótulo', () => {
     const g: Grafo = structuredClone(montarGrafo(lerAno(2025)));

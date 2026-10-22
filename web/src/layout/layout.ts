@@ -234,10 +234,12 @@ export function calcularLayout(
 
   // escala e posições y das barras (coordenadas locais; deslocadas no fim)
   const soma = (c: No[]) => c.reduce((s, n) => s + n.valor, 0);
+  // índice da coluna (não da lista filtrada): a coluna das folhas tem um espaço extra antes da discricionária
   const escala = Math.min(
     ...colunas
-      .filter((c) => soma(c) > 0)
-      .map((c, i) => (cfg.alturaBarras - (c.length - 1) * pad - (i === 5 ? pad : 0)) / soma(c)),
+      .map((c, coluna) => ({ c, coluna }))
+      .filter(({ c }) => soma(c) > 0)
+      .map(({ c, coluna }) => (cfg.alturaBarras - (c.length - 1) * pad - (coluna === 5 ? pad : 0)) / soma(c)),
   );
   const nos = new Map<string, NoLayout>();
   for (const n of g.nos) nos.set(n.id, { id: n.id, x0: xs[n.coluna], x1: xs[n.coluna] + nw, y0: 0, y1: 0 });
