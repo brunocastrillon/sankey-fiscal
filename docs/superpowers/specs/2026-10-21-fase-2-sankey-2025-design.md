@@ -160,13 +160,20 @@ déficit escuro acima de 3:1.
 
 ### Painel de detalhes
 
-- Desktop: abre com hover e com clique. Celular: abre com toque. Teclado: cada nó é focável e abre com Enter. [minha decisão:
-  nós focáveis]
-- Altura sempre reservada, abaixo do SVG, dentro do cartão: vazio, mostra "Passe o mouse ou toque num nó para ver os detalhes.".
-  A posição do SVG e do rodapé não muda ao abrir, trocar de nó ou fechar. Se o conteúdo mais longo (Obrigatórias, com as 7
-  folhas) não couber, o painel usa duas colunas; a altura não varia.
-- Foco: o painel só recebe foco por clique, toque ou Enter; hover não move o foco. O × devolve o foco ao nó de origem; Esc
-  fecha o painel e devolve o foco.
+- Abre com clique, toque ou Enter (cada nó é focável). [decidido] O hover de mouse no desktop **não** abre o painel: mostra só uma
+  dica flutuante e curta (rótulo, valor, participação), dentro do cartão e da janela, `aria-hidden`, sem mudar o layout nem o
+  foco — porque o SVG ocupa ~740 px e o painel ficava abaixo da dobra em notebooks.
+- Fica abaixo do SVG, dentro do cartão; vazio, mostra "Passe o mouse ou toque num nó para ver os detalhes.".
+- Altura: **desktop** reservada (264 px), para o rodapé não se mover ao abrir, trocar ou fechar; listas longas em duas colunas.
+  **Desenho do celular**: altura automática (vazio, só o convite; aberto, cresce até o conteúdo). O SVG nunca se move; rodapé e
+  tabela descem, o que é aceitável porque só ocorre depois de uma ação do usuário. [decidido; motivo: como o hover agora só mostra
+  a dica, a reserva só se justifica no desktop, e no celular ela deixava ~380 px vazios]
+- Ao abrir, a página rola o mínimo: o nó fica inteiro na tela, a pelo menos 16 px do topo, e ao menos 120 px do painel entram.
+  Se as duas condições não cabem juntas, o nó vence e o painel mostra o máximo possível (o resto se lê rolando). Medido: a 390 ×
+  844, Imposto de Renda fica a 711 px do painel (o limite para caber tudo é 708), e o painel mostra 117 px. [decidido]
+- Botão "↑ ver no desenho" (alvo de 44 × 44 px): devolve o foco ao nó e rola até ele; o painel continua aberto. [decidido]
+- Foco: o painel só recebe foco por clique, toque ou Enter; hover e foco no nó não abrem o painel. O × devolve o foco ao nó de
+  origem; Esc fecha o painel e devolve o foco.
 - Conteúdo: rótulo; valor; participação com a base escrita ("6,1% da receita total" para origens, Receita total, Receita líquida
   e repasse; "x% da despesa total" para despesas, Gasto total, Obrigatórias e resultado), calculada do JSON; linhas do RTN como
   código + nome vindos de `linhas` (nunca digitados), com o prefixo "menos" nas de `operacao: "subtrai"` (por exemplo,
