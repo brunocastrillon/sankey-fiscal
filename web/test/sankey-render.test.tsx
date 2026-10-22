@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { montarGrafo } from '../src/grafo/grafo';
 import { ASCENDENTE, CELULAR, DESKTOP, DESCENDENTE } from '../src/layout/constantes';
 import { calcularLayout } from '../src/layout/layout';
+import { TEXTOS } from '../src/textos';
 import { Sankey } from '../src/ui/Sankey';
 import { lerAno } from './apoio/dados';
 import { espessurasDaFaixa } from './apoio/geometria';
@@ -49,6 +50,11 @@ describe.each([
       expect(ys[0] - ASCENDENTE * L.fonte, `${id}: topo da primeira linha`).toBeCloseTo(r.caixa.y0, 6);
       expect(ys[ys.length - 1] + DESCENDENTE * L.fonte, `${id}: fundo da última linha`).toBeCloseTo(r.caixa.y1, 6);
     }
+  });
+
+  it('o botão do déficit anuncia "não inclui juros" junto ao valor', () => {
+    const deficit = html.match(/<g[^>]*class="no"[^>]*data-id="resultado_primario"[^>]*>/)?.[0] ?? '';
+    expect(attr(deficit, 'aria-label')).toContain(TEXTOS.naoIncluiJuros);
   });
 
   it('cada nó é um botão acessível com rótulo e valor', () => {

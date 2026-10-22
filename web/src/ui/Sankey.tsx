@@ -80,7 +80,7 @@ export function Sankey({ grafo, layout: L, idSvg, aoPassarMouse, aoEscolher, aoS
             data-id={nl.id}
             role="button"
             tabIndex={0}
-            aria-label={`${n.rotulo}: ${formatarBi(n.valor)}`}
+            aria-label={`${n.rotulo}: ${formatarBi(n.valor)}${deficit ? `, ${TEXTOS.naoIncluiJuros}` : ''}`}
             onPointerEnter={(e) => {
               const barra = e.currentTarget.querySelector('rect.barra');
               if (e.pointerType === 'mouse' && barra) aoPassarMouse(nl.id, barra);

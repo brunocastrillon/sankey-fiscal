@@ -246,6 +246,35 @@ for (const tela of TELAS)
           });
       });
 
+test.describe('fonte do navegador maior (20 px)', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+  test('o painel do desktop não corta conteúdo em nenhum nó', async ({ page }) => {
+    await abrir(page, 2025);
+    await page.addStyleTag({ content: 'html { font-size: 20px; }' });
+    const painel = page.getByTestId('painel');
+    const cortados: string[] = [];
+    for (const id of await idsDosNos(page)) {
+      await acionar(page, id, false);
+      await expect(painel.locator('.painel-titulo')).toBeVisible();
+      if (!(await painel.evaluate((el) => el.scrollHeight <= el.clientHeight + 1))) cortados.push(id);
+    }
+    expect(cortados).toEqual([]);
+  });
+});
+
+test.describe('desenho do celular sem rolagem (1024 px)', () => {
+  test.use({ viewport: { width: 1024, height: 768 } });
+  test('o contêiner não se anuncia como rolável nem vira parada de Tab', async ({ page }) => {
+    await abrir(page, 2025);
+    const rolagem = page.getByTestId('rolagem');
+    await expect(rolagem).not.toHaveAttribute('tabindex', /.*/);
+    await expect(rolagem).not.toHaveAttribute('role', /.*/);
+    await expect(rolagem).not.toHaveAttribute('aria-label', /.*/);
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.id)).toBe((await idsDosNos(page))[0]);
+  });
+});
+
 test.describe('foco da revisão', () => {
   test('erro de carga: mensagem em texto, não página em branco', async ({ page }) => {
     await page.route('**/dados/2025.json', (r) => r.fulfill({ status: 404, body: '' }));

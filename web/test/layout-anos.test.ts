@@ -153,6 +153,15 @@ describe.each(anos())('%i', (ano) => {
           expect(cobre).toEqual([]);
         });
 
+        it('nenhum alvo de toque cobre o alvo ou o rótulo de outro nó', () => {
+          const cobre: string[] = [];
+          for (const a of L.alvos) {
+            for (const b of L.alvos) if (a.id < b.id && sobrepoe(a.caixa, b.caixa)) cobre.push(`alvo ${a.id} × alvo ${b.id}`);
+            for (const r of L.rotulos) if (r.id !== a.id && sobrepoe(a.caixa, r.caixa)) cobre.push(`alvo ${a.id} × rótulo ${r.id}`);
+          }
+          expect(cobre).toEqual([]);
+        });
+
         if (opcoes.larguraVisivel === 390) it('paradas a 390 px: viável e nenhum rótulo atravessa as bordas', () => {
           expect(L.paradas?.viavel).toBe(true);
           expect(cortes(L)).toBe(0);

@@ -12,9 +12,10 @@ export function Rolagem({ layout, children }: { layout: Layout; children: ReactN
         className="rolagem"
         data-testid="rolagem"
         data-parada={paradas ? paradas.bordas.join(',') : undefined}
-        tabIndex={0}
-        role="region"
-        aria-label={TEXTOS.ariaRolagem}
+        // só é região rolável (e parada de Tab) quando o desenho é mais largo que a tela
+        tabIndex={paradas ? 0 : undefined}
+        role={paradas ? 'region' : undefined}
+        aria-label={paradas ? TEXTOS.ariaRolagem : undefined}
         onScroll={() => setDica(false)}
       >
         <div className="trilho" style={{ width: layout.largura }}>

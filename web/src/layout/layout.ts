@@ -309,7 +309,8 @@ export function calcularLayout(
       case 'esquerda': novoRotulo(n.id, nl.x0 - 6, 'end', nl.y0); break;
       case 'acima': novoRotulo(n.id, (nl.x0 + nl.x1) / 2, 'middle', nl.y0 - 4 - t.altura); break;
       case 'acimaInicio': novoRotulo(n.id, nl.x0, 'start', nl.y0 - 4 - t.altura); break;
-      case 'acima2': novoRotulo(n.id, (nl.x0 + nl.x1) / 2, 'middle', nl.y0 - 8 - 2 * t.altura); break;
+      // um nível acima do rótulo de baixo e do alvo de toque dele (que cresce para cima até alvoToque)
+      case 'acima2': novoRotulo(n.id, (nl.x0 + nl.x1) / 2, 'middle', nl.y0 - 8 - Math.max(t.altura, cfg.alvoToque) - t.altura); break;
       case 'abaixo': novoRotulo(n.id, nl.x0, 'start', nl.y1 + 4); break;
     }
     // vãos estreitos ou fonte larga: um rótulo do meio que encosta num anterior desce (ou sobe, se fica acima da barra)
