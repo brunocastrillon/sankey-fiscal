@@ -23,3 +23,9 @@ CLAUDE.local.md
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# Site (fase 2 em diante)
+web/public/dados/
+web/dist-teste/
+web/test-results/
+web/playwright-report/

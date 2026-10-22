@@ -11,9 +11,12 @@ Será publicado em `castrillon.dev/sankey-fiscal`. É uma visualização **indep
 
 ## Estado
 
-- Fase 1 (dados): concluída. `pipeline.py` gera `dados/AAAA.json`; `testes.py` e `pytest` validam (11 testes).
-- Próxima: fase 2, Sankey de um ano (2025) com d3-sankey, lendo `dados/2025.json`. Critério de saída: bater com o gráfico
-  original (até R$ 2 bi por nó). Os dados já batem (maior diferença R$ 0,6 bi); falta o desenho.
+- Fase 1 (dados): concluída. `pipeline.py` gera `dados/AAAA.json`; `testes.py` e `pytest` validam (18 testes).
+- Fase 2 (Sankey de 2025): implementada na branch `fase-2-sankey-2025`, PR em rascunho em revisão. Site em `web/` (React +
+  layout próprio em SVG, sem d3-sankey); critério de saída provado no Vitest (18 valores do original, até R$ 2 bi). Design:
+  `docs/superpowers/specs/2026-10-21-fase-2-sankey-2025-design.md`; pendências da fase 3 no fim do plano.
+- Interação do site (fase 2): só clique, toque ou Enter abrem o painel; o foco no nó não abre o painel; o hover mostra apenas a
+  dica. Esc e × fecham e devolvem o foco ao nó.
 - Fases 3 e 4 (linha do tempo; módulo de financiamento) só começam depois do critério de saída da anterior.
 
 ## Comandos
@@ -23,6 +26,12 @@ pip install -r requirements.txt
 python pipeline.py        # regenera dados/*.json a partir de entrada/
 python testes.py          # bateria completa, com detalhes
 pytest -q                 # mesma bateria sob o pytest
+
+cd web
+npm ci
+npm run dev               # site em http://localhost:5173/sankey-fiscal/ (copia dados/ para public/dados/)
+npm test                  # Vitest: grafo, regressão contra o original, layout nos 11 anos, temas
+npm run e2e               # Playwright (build de teste com ?ano=); PW_CANAL=chrome usa o Chrome instalado
 ```
 
 ## Decisões fechadas (não reabrir sem perguntar)

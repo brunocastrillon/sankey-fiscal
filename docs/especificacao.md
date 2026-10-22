@@ -120,7 +120,7 @@ flowchart TD
         P1[Ingestão] --> P2[Mapeamento] --> P3[Deflação] --> P4["Validação<br/>(testes)"]
     end
     P --> J["Dados publicados (JSON)<br/>um arquivo por ano"]
-    J --> S["Site estático<br/>React + d3-sankey, linha do tempo"]
+    J --> S["Site estático<br/>React + layout próprio em SVG, linha do tempo"]
 ```
 
 A validação é a única etapa que barra a publicação: se qualquer teste falhar, o JSON anterior continua no ar.
@@ -129,7 +129,7 @@ A validação é a única etapa que barra a publicação: se qualquer teste falh
 
 - Ordem dos nós fixa entre os anos, definida no mapeamento, para a animação mexer só na espessura e não reordenar nós.
 - Escala compartilhada entre os anos no modo R$ constantes, para a espessura ser comparável; escala própria por ano nos modos percentuais.
-- Layout do d3-sankey calculado uma vez e fixado, evitando que os nós "pulem" quando o ano muda.
+- Layout próprio em SVG (função pura, sem d3-sankey), calculado uma vez e fixado, evitando que os nós "pulem" quando o ano muda.
 - Tooltip com valor, participação, as linhas do RTN que formam o nó e o boletim de origem.
 - O site vive em `castrillon.dev/sankey-fiscal`: caminhos de JSON e de arquivos devem funcionar a partir desse subcaminho.
 
@@ -196,8 +196,9 @@ flowchart LR
 ```
 
 A fase 2 é a que reduz o risco: se 2025 não bater com o gráfico original dentro da tolerância, o mapeamento está errado e é melhor
-descobrir isso antes de construir a linha do tempo. **Estado:** a fase 1 está concluída e o critério numérico da fase 2 já foi
-verificado nos dados; falta o desenho.
+descobrir isso antes de construir a linha do tempo. **Estado:** a fase 1 está concluída; a fase 2 está implementada em `web/`
+(PR em rascunho, em revisão), com o critério de saída provado no Vitest: os 18 valores do gráfico original batem com o grafo de
+2025 a até R$ 2 bi (maior diferença R$ 0,6 bi, no déficit). Detalhes em `docs/superpowers/specs/2026-10-21-fase-2-sankey-2025-design.md`.
 
 **Decisões**
 
@@ -207,6 +208,15 @@ verificado nos dados; falta o desenho.
 - **Abrir "Bolsa Família, saúde e outros".** Confirmado: abrir em Bolsa Família, Saúde e Demais já na versão 1.
 - **Escala em 2020.** Confirmado: escala compartilhada entre anos no modo R$ constantes, com aviso na tela.
 - **Juros e resultado nominal do Governo Central.** Resolvido: os valores vêm da série histórica do RTN.
+- **Painel e dica (fase 2).** Decidido: só clique, toque ou Enter abrem o painel de detalhes abaixo do desenho; o foco no nó
+  (Tab) não abre o painel, e o hover de mouse mostra apenas uma dica curta (rótulo, valor, participação), sem mover o foco. No desktop o painel tem altura reservada; no desenho do celular, automática.
+  O painel traz as linhas do RTN com código e nome oficial, com "menos" nas que subtraem.
+- **Participação (fase 2).** Decidido: com a base escrita — "da receita total" no lado da receita (origens, receita total,
+  receita líquida, repasse) e "da despesa total" no lado da despesa (inclusive o déficit).
+- **Celular (fase 2).** Decidido: o mesmo Sankey, com rolagem horizontal em duas paradas (origens; destinos), alvos de toque de
+  44 px e fonte mínima de 11 px. O desenho do desktop vale a partir de 1100 px de largura.
+- **Temas (fase 2).** Decidido: claro e escuro por `prefers-color-scheme`, com paletas validadas para daltonismo; déficit com
+  hachura nos dois temas e contorno claro no escuro.
 
 ## Fontes
 

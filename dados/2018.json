@@ -31,6 +31,212 @@
     "fundeb_seguro_desemprego_outras": "obrigatoria",
     "discricionarias": "discricionaria"
   },
+  "linhas": {
+    "imposto_renda": [
+      {
+        "codigo": "1.1.03",
+        "nome": "Imposto sobre a Renda",
+        "operacao": "soma"
+      }
+    ],
+    "contribuicao_inss": [
+      {
+        "codigo": "1.3",
+        "nome": "Arrecadação Líquida para o RGPS",
+        "operacao": "soma"
+      }
+    ],
+    "cofins_pis": [
+      {
+        "codigo": "1.1.05",
+        "nome": "Cofins",
+        "operacao": "soma"
+      },
+      {
+        "codigo": "1.1.06",
+        "nome": "PIS/Pasep",
+        "operacao": "soma"
+      }
+    ],
+    "iof_ipi_importacao": [
+      {
+        "codigo": "1.1.04",
+        "nome": "IOF",
+        "operacao": "soma"
+      },
+      {
+        "codigo": "1.1.02",
+        "nome": "IPI",
+        "operacao": "soma"
+      },
+      {
+        "codigo": "1.1.01",
+        "nome": "Imposto sobre a Importação",
+        "operacao": "soma"
+      }
+    ],
+    "csll": [
+      {
+        "codigo": "1.1.07",
+        "nome": "CSLL",
+        "operacao": "soma"
+      }
+    ],
+    "royalties_dividendos_outras": [
+      {
+        "codigo": "1.1.08",
+        "nome": "CPMF",
+        "operacao": "soma"
+      },
+      {
+        "codigo": "1.1.09",
+        "nome": "CIDE - Combustíveis",
+        "operacao": "soma"
+      },
+      {
+        "codigo": "1.1.10",
+        "nome": "Outras Receitas Administradas pela RFB",
+        "operacao": "soma"
+      },
+      {
+        "codigo": "1.2",
+        "nome": "Incentivos Fiscais",
+        "operacao": "soma"
+      },
+      {
+        "codigo": "1.4",
+        "nome": "Receitas Não Administradas pela RFB",
+        "operacao": "soma"
+      }
+    ],
+    "repasse_estados_municipios": [
+      {
+        "codigo": "2",
+        "nome": "TRANSF. POR REPARTIÇÃO DE RECEITA",
+        "operacao": "soma"
+      }
+    ],
+    "aposentadorias_pensoes": [
+      {
+        "codigo": "4.1",
+        "nome": "Benefícios Previdenciários",
+        "operacao": "soma"
+      }
+    ],
+    "servidores": [
+      {
+        "codigo": "4.2",
+        "nome": "Pessoal e Encargos Sociais",
+        "operacao": "soma"
+      }
+    ],
+    "bolsa_familia": [
+      {
+        "codigo": "4.4.1.2",
+        "nome": "Bolsa Família e Auxílio Brasil",
+        "operacao": "soma"
+      }
+    ],
+    "saude_obrigatoria": [
+      {
+        "codigo": "4.4.1.3",
+        "nome": "Saúde",
+        "operacao": "soma"
+      }
+    ],
+    "demais_controle_fluxo": [
+      {
+        "codigo": "4.4.1.1",
+        "nome": "Benefícios a servidores públicos",
+        "operacao": "soma"
+      },
+      {
+        "codigo": "4.4.1.4",
+        "nome": "Educação",
+        "operacao": "soma"
+      },
+      {
+        "codigo": "4.4.1.5",
+        "nome": "Demais",
+        "operacao": "soma"
+      }
+    ],
+    "bpc": [
+      {
+        "codigo": "4.3.05",
+        "nome": "Benefícios de Prestação Continuada da LOAS/RMV",
+        "operacao": "soma"
+      }
+    ],
+    "fundeb_seguro_desemprego_outras": [
+      {
+        "codigo": "4.3",
+        "nome": "Outras Despesas Obrigatórias",
+        "operacao": "soma"
+      },
+      {
+        "codigo": "4.3.05",
+        "nome": "Benefícios de Prestação Continuada da LOAS/RMV",
+        "operacao": "subtrai"
+      }
+    ],
+    "discricionarias": [
+      {
+        "codigo": "4.4.2",
+        "nome": "Despesas Discricionárias",
+        "operacao": "soma"
+      }
+    ],
+    "receita_total": [
+      {
+        "codigo": "1",
+        "nome": "RECEITA TOTAL",
+        "operacao": "soma"
+      }
+    ],
+    "receita_liquida": [
+      {
+        "codigo": "3",
+        "nome": "RECEITA LÍQUIDA (1-2)",
+        "operacao": "soma"
+      }
+    ],
+    "despesa_total": [
+      {
+        "codigo": "4",
+        "nome": "DESPESA TOTAL",
+        "operacao": "soma"
+      }
+    ],
+    "primario_acima": [
+      {
+        "codigo": "5",
+        "nome": "RESULTADO PRIMÁRIO GOVERNO CENTRAL - ACIMA DA LINHA (3 - 4)",
+        "operacao": "soma"
+      }
+    ]
+  },
+  "estrutura": {
+    "receita": [
+      "imposto_renda",
+      "contribuicao_inss",
+      "cofins_pis",
+      "iof_ipi_importacao",
+      "csll",
+      "royalties_dividendos_outras"
+    ],
+    "repasse": "repasse_estados_municipios",
+    "obrigatorias": [
+      "aposentadorias_pensoes",
+      "servidores",
+      "fundeb_seguro_desemprego_outras",
+      "saude_obrigatoria",
+      "bolsa_familia",
+      "bpc",
+      "demais_controle_fluxo"
+    ],
+    "discricionarias": "discricionarias"
+  },
   "nominal": {
     "nos": {
       "imposto_renda": 362757.267,

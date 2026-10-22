@@ -70,9 +70,9 @@ Não comece a fase seguinte antes do critério de saída da anterior.
 
 ## 6. O que você revisa sempre
 
-- Qualquer mudança em `mapeamento.json` ou `pipeline.py`: os 11 testes verdes e a diferença nos JSON de `dados/`.
+- Qualquer mudança em `mapeamento.json` ou `pipeline.py`: todos os testes verdes e a diferença nos JSON de `dados/`.
 - Rótulos e textos de metodologia na tela: "não oficial", "Déficit primário (financiado com dívida)", "não inclui juros".
-- Que nenhum número fiscal apareça digitado no código do site (`git grep` por valores como `2902` ou `867`).
+- Que nenhum número fiscal apareça digitado no código do site (`git grep` por valores como `2902` ou `867` em `web/src`). Os valores de referência do gráfico original ficam em `referencias/`, fora do site.
 - Que o site funcione em subcaminho (`/sankey-fiscal/`) e não use caminhos absolutos.
 
 ## 7. Checklist do repositório público
@@ -82,5 +82,5 @@ Não comece a fase seguinte antes do critério de saída da anterior.
 - [x] `.gitignore` cobre `.env` e arquivos locais do Claude Code (`CLAUDE.local.md`).
 - [x] Descrição do repositório e tópicos (`sankey`, `d3`, `fiscal`, `brasil`, `dados-abertos`).
 - [x] Aviso "visualização independente, baseada em dados do Tesouro Nacional" no topo do README.
-- [ ] Aviso também na página, quando o site existir.
+- [x] Aviso também na página, quando o site existir.
 - [ ] Quando o site existir: URL do site (`castrillon.dev/sankey-fiscal`) no campo *Website* do repositório e no README.

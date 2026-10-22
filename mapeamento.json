@@ -40,5 +40,9 @@
     {"id": "bpc", "rotulo": "BPC (idosos e PcD)", "grupo": "obrigatoria", "soma": ["4.3.05"]},
     {"id": "fundeb_seguro_desemprego_outras", "rotulo": "Fundeb, seguro-desemprego e outras obrigatórias", "grupo": "obrigatoria", "soma": ["4.3"], "subtrai": ["4.3.05"]},
     {"id": "discricionarias", "rotulo": "Despesas discricionárias (custeio e investimentos)", "grupo": "discricionaria", "soma": ["4.4.2"]}
-  ]
+  ],
+  "desenho": {
+    "nota": "Ordem fixada com base nos valores de 2025. NÃO reordenar por ano.",
+    "ordem_obrigatorias": ["aposentadorias_pensoes", "servidores", "fundeb_seguro_desemprego_outras", "saude_obrigatoria", "bolsa_familia", "bpc", "demais_controle_fluxo"]
+  }
 }

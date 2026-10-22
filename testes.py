@@ -6,6 +6,7 @@ Uso (com os arquivos em entrada/):
 Sai com código 1 se qualquer teste falhar (o pipeline não deve publicar nesse caso).
 """
 import argparse
+import json
 import sys
 
 import pandas as pd
@@ -14,16 +15,9 @@ import pipeline as P
 
 TOL = 0.01  # R$ milhões (R$ 10 mil): ruído de ponto flutuante, não erro contábil
 
-# Gráfico original, 2025, preços de dez/2025, R$ bi (valores impressos na imagem)
-ORIGINAL = {
-    "imposto_renda": 880, "contribuicao_inss": 719, "cofins_pis": 504, "iof_ipi_importacao": 269,
-    "csll": 181, "royalties_dividendos_outras": 390, "repasse_estados_municipios": 578,
-    "aposentadorias_pensoes": 1041, "servidores": 408, "bpc": 129,
-    "fundeb_seguro_desemprego_outras": 267, "discricionarias": 207,
-}
-ORIGINAL_BF_SAUDE_OUTROS = 374  # = bolsa_familia + saude_obrigatoria + demais_controle_fluxo
-ORIGINAL_TOTAIS = {"receita_total": 2944, "receita_liquida": 2366, "despesa_total": 2427}
-ORIGINAL_DEFICIT = 60
+# Gráfico original (2025, preços de dez/2025, R$ bi): valores em referencias/, lidos também pelo Vitest do site
+REFERENCIA = P.AQUI / "referencias" / "original-2025.json"
+N_VALORES_REFERENCIA = 18  # 12 nós + 1 grupo + 4 totais + déficit
 
 
 def contexto(rtn, ipca_csv):
@@ -124,20 +118,35 @@ def t7_sinais(c):
     return not anuais_neg, f"nós com valor anual negativo: {anuais_neg or 'nenhum'}{info}"
 
 
-def t8_regressao(c):
+def carregar_referencia(caminho=None):
+    with open(caminho or REFERENCIA, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def t8_regressao(c, ref=None):
     mapa, M, nos, totais, ipca = c
+    ref = carregar_referencia() if ref is None else ref
+    if not ref:
+        return False, "referência vazia"
     base = pd.Timestamp(mapa["mes_base_padrao"])
     f = pd.Series(P.fator_deflacao(ipca, M.columns, base), index=M.columns)
-    ano = lambda s: float((s * f).groupby(s.index.year).sum()[2025]) / 1000  # R$ bi
-    difs = {k: ano(nos[k]) - v for k, v in ORIGINAL.items()}
-    bf = ano(nos["bolsa_familia"]) + ano(nos["saude_obrigatoria"]) + ano(nos["demais_controle_fluxo"])
-    difs["bolsa_familia_saude_outros"] = bf - ORIGINAL_BF_SAUDE_OUTROS
-    for k, v in ORIGINAL_TOTAIS.items():
-        difs[k] = ano(totais[k]) - v
-    difs["deficit"] = -ano(totais["primario_acima"]) - ORIGINAL_DEFICIT
+    ano = lambda s: float((s * f).groupby(s.index.year).sum()[ref["ano"]]) / 1000  # R$ bi
+    obrig = [n["id"] for n in mapa["despesa"] if n["grupo"] == "obrigatoria"]
+    calculado = {k: ano(totais[k]) for k in ("receita_total", "receita_liquida", "despesa_total")}
+    calculado["obrigatorias"] = sum(ano(nos[k]) for k in obrig)
+    difs = {k: ano(nos[k]) - v for k, v in ref.get("nos", {}).items()}
+    for g, d in ref.get("grupos", {}).items():
+        difs[g] = sum(ano(nos[k]) for k in d["nos"]) - d["valor"]
+    for k, v in ref.get("totais", {}).items():
+        difs[k] = calculado[k] - v
+    if "deficit" in ref:
+        difs["deficit"] = -ano(totais["primario_acima"]) - ref["deficit"]
+    if len(difs) != N_VALORES_REFERENCIA:
+        return False, f"{len(difs)} valores comparados; esperados {N_VALORES_REFERENCIA}"
+    tol = ref["tolerancia_por_no"]
     pior_k = max(difs, key=lambda k: abs(difs[k]))
     pior = abs(difs[pior_k])
-    return pior <= 2.0, f"{len(difs)} valores comparados; maior diferença R$ {pior:.2f} bi ({pior_k}); limite R$ 2 bi"
+    return pior <= tol, f"{len(difs)} valores comparados; maior diferença R$ {pior:.2f} bi ({pior_k}); limite R$ {tol:g} bi"
 
 
 def a1_boletim(c):
@@ -173,7 +182,74 @@ def a3_pib(c, rtn):
     return ok, f"PIB implícito 2025 = R$ {pib/1e6:.3f} tri (IBGE: R$ 12,7 tri); déficit/PIB = {pct:.3f}% (RTN: 0,48%)"
 
 
-def lista_testes(c, rtn):
+CASOS_NOME = {
+    "1.3 -  Arrecadação Líquida para o RGPS": "Arrecadação Líquida para o RGPS",
+    "2. TRANSF. POR REPARTIÇÃO DE RECEITA 2/": "TRANSF. POR REPARTIÇÃO DE RECEITA",
+    "1.1.09    CIDE - Combustíveis": "CIDE - Combustíveis",
+    "3. RECEITA LÍQUIDA  (1-2)": "RECEITA LÍQUIDA (1-2)",
+    "5. RESULTADO PRIMÁRIO GOVERNO CENTRAL - ACIMA DA LINHA (3 - 4)":
+        "RESULTADO PRIMÁRIO GOVERNO CENTRAL - ACIMA DA LINHA (3 - 4)",
+}
+TOTAIS_COM_LINHAS = ("receita_total", "receita_liquida", "despesa_total", "primario_acima")
+
+
+def t9_linhas_nomes(c, rtn):
+    mapa = c[0]
+    erros = [f"{k!r} -> {P.normalizar_nome(k)!r}" for k, v in CASOS_NOME.items() if P.normalizar_nome(k) != v]
+    nomes = P.ler_nomes_linhas(rtn)
+    linhas = P.montar_linhas(mapa, nomes)
+    usados = {item["codigo"] for itens in linhas.values() for item in itens}
+    sem_nome = sorted(cod for cod in usados if not nomes.get(cod, "").strip())
+    ok = not erros and not sem_nome
+    return ok, (f"{len(CASOS_NOME)} casos de normalização ({'; '.join(erros) or 'todos batem'}); "
+                f"{len(usados)} códigos usados, sem nome na aba 1.2: {sem_nome or 'nenhum'}")
+
+
+def t10_linhas_mapeamento(c, rtn):
+    mapa = c[0]
+    linhas = P.montar_linhas(mapa, P.ler_nomes_linhas(rtn))
+    erros = []
+    for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"]:
+        itens = linhas.get(n["id"], [])
+        for op, chave in (("soma", "soma"), ("subtrai", "subtrai")):
+            obtido = [i["codigo"] for i in itens if i["operacao"] == op]
+            if obtido != n.get(chave, []):
+                erros.append(f"{n['id']}.{op}: {obtido} != {n.get(chave, [])}")
+    for k in TOTAIS_COM_LINHAS:
+        itens = linhas.get(k, [])
+        if [(i["codigo"], i["operacao"]) for i in itens] != [(mapa["totais"][k], "soma")]:
+            erros.append(f"{k}: {itens}")
+    esperadas = {n["id"] for n in mapa["receita"] + mapa["despesa"]} | {mapa["repasse"]["id"]} | set(TOTAIS_COM_LINHAS)
+    extras = sorted(set(linhas) - esperadas)
+    ok = not erros and not extras and set(linhas) == esperadas
+    return ok, f"{len(linhas)} chaves (esperadas {len(esperadas)}); divergências: {erros or 'nenhuma'}; a mais: {extras or 'nenhuma'}"
+
+
+def t12_estrutura(c):
+    mapa = c[0]
+    e = P.montar_estrutura(mapa)
+    obrig = [n["id"] for n in mapa["despesa"] if n["grupo"] == "obrigatoria"]
+    discr = [n["id"] for n in mapa["despesa"] if n["grupo"] == "discricionaria"]
+    ids_nos = {n["id"] for n in mapa["receita"] + mapa["despesa"]} | {mapa["repasse"]["id"]}
+    checagens = {
+        "obrigatorias = ids do grupo obrigatório": sorted(e["obrigatorias"]) == sorted(obrig),
+        "obrigatorias sem repetição": len(set(e["obrigatorias"])) == len(e["obrigatorias"]),
+        "receita na ordem do mapeamento": e["receita"] == [n["id"] for n in mapa["receita"]],
+        "repasse": e["repasse"] == mapa["repasse"]["id"],
+        "discricionarias": [e["discricionarias"]] == discr,
+        "ids existem entre os nós": set(e["receita"] + e["obrigatorias"] + [e["repasse"], e["discricionarias"]]) <= ids_nos,
+    }
+    falhas = [k for k, ok in checagens.items() if not ok]
+    return not falhas, f"{len(checagens)} checagens; falharam: {falhas or 'nenhuma'}; ordem: {e['obrigatorias']}"
+
+
+def t11_determinismo(rtn, ipca):
+    a =json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
+    b = json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
+    return a == b, f"duas gerações: {len(a)} caracteres, idênticas: {a == b}"
+
+
+def lista_testes(c, rtn, ipca):
     return [
         ("T1  Receita: soma dos 6 nós = receita total", lambda: t1_receita(c)),
         ("T2  Receita total − repasses = receita líquida", lambda: t2_receita_liquida(c)),
@@ -186,6 +262,10 @@ def lista_testes(c, rtn):
         ("A1  Âncora: boletim RTN de dez/2025 (2025 nominal)", lambda: a1_boletim(c)),
         ("A2  Âncora: financiamento (BC) e identidades 5+6+7=8, 8+9=10", lambda: a2_financiamento(c, rtn)),
         ("A3  Âncora: PIB implícito e déficit de 0,48% do PIB", lambda: a3_pib(c, rtn)),
+        ("T9  Linhas: códigos existem na aba 1.2 e nomes normalizados", lambda: t9_linhas_nomes(c, rtn)),
+        ("T10 Linhas reproduzem soma/subtrai do mapeamento e os totais", lambda: t10_linhas_mapeamento(c, rtn)),
+        ("T11 Gerar duas vezes dá JSON idêntico", lambda: t11_determinismo(rtn, ipca)),
+        ("T12 Estrutura: papéis e ordem fixa das obrigatórias", lambda: t12_estrutura(c)),
     ]
 
 
@@ -198,7 +278,7 @@ def main():
     if not a.rtn:
         ap.error("nenhum arquivo entrada/seriehistorica*.xlsx encontrado; passe --rtn")
     c = contexto(a.rtn, a.ipca)
-    testes = lista_testes(c, a.rtn)
+    testes = lista_testes(c, a.rtn, a.ipca)
     falhas = 0
     for nome, fn in testes:
         ok, det = fn()

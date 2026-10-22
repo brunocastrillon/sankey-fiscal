@@ -1,0 +1,34 @@
+{
+  "ano": 2025,
+  "unidade": "R$ bi",
+  "precos": "dez/2025",
+  "fonte": "valores impressos no gráfico 'Como o gov.br gasta o dinheiro', divulgado por Pixel Financeiro; a imagem não é versionada",
+  "tolerancia_por_no": 2.0,
+  "nos": {
+    "imposto_renda": 880,
+    "contribuicao_inss": 719,
+    "cofins_pis": 504,
+    "iof_ipi_importacao": 269,
+    "csll": 181,
+    "royalties_dividendos_outras": 390,
+    "repasse_estados_municipios": 578,
+    "aposentadorias_pensoes": 1041,
+    "servidores": 408,
+    "bpc": 129,
+    "fundeb_seguro_desemprego_outras": 267,
+    "discricionarias": 207
+  },
+  "grupos": {
+    "bolsa_familia_saude_outros": {
+      "nos": ["bolsa_familia", "saude_obrigatoria", "demais_controle_fluxo"],
+      "valor": 374
+    }
+  },
+  "totais": {
+    "receita_total": 2944,
+    "receita_liquida": 2366,
+    "despesa_total": 2427,
+    "obrigatorias": 2220
+  },
+  "deficit": 60
+}

@@ -12,7 +12,7 @@ import testes as T  # noqa: E402
 
 RTN, IPCA = P.entradas_padrao()
 CTX = T.contexto(RTN, IPCA)
-CASOS = T.lista_testes(CTX, RTN)
+CASOS = T.lista_testes(CTX, RTN, IPCA)
 
 
 @pytest.mark.parametrize("nome,fn", CASOS, ids=[n.split()[0] for n, _ in CASOS])
