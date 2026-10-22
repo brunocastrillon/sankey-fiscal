@@ -40,6 +40,9 @@ jobs:
       - run: npm run build
       - name: Caminhos sob /sankey-fiscal/ e build de produção sem o parâmetro de teste
         run: node scripts/conferir-bundle.mjs dist
+      - run: npm run build:teste
+      - name: Build de teste com o parâmetro ?ano= (sentinela PARAM_ANO_SO_TESTE)
+        run: node scripts/conferir-bundle.mjs dist-teste --teste
 
   site-navegador:
     runs-on: ubuntu-latest
