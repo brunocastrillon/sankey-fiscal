@@ -80,10 +80,10 @@ Não comece a fase seguinte antes do critério de saída da anterior.
 - [x] `LICENSE` (MIT) para o código.
 - [x] `entrada/LEIAME.md` com a fonte dos dados (Tesouro Nacional e IBGE); confira os termos de uso do Tesouro Transparente antes de redistribuir arquivos novos.
 - [x] `.gitignore` cobre `.env` e arquivos locais do Claude Code (`CLAUDE.local.md`).
-- [x] Descrição do repositório e tópicos (`sankey`, `d3`, `fiscal`, `brasil`, `dados-abertos`).
+- [x] Descrição do repositório e tópicos (`sankey`, `svg`, `data-visualization`, `fiscal`, `brasil`, `dados-abertos`).
 - [x] Aviso "visualização independente, baseada em dados do Tesouro Nacional" no topo do README.
-- [x] Aviso também na página, quando o site existir.
-- [ ] Quando o site existir: URL do site (`castrillon.dev/sankey-fiscal`) no campo *Website* do repositório e no README.
+- [x] Aviso também na página (`web/src/textos.ts`), publicada em `castrillon.dev/sankey-fiscal`.
+- [x] URL do site (`https://castrillon.dev/sankey-fiscal`) no campo *Website* do repositório e no README.
 
 ## 8. Publicação na Vercel
 
@@ -95,8 +95,9 @@ do repositório como *Root Directory*. Tudo o que o build precisa está no `verc
 - `outputDirectory` é `web/dist`.
 - `framework` é `null` (preset *Other*): o `requirements.txt` e o `pipeline.py` na raiz fariam a Vercel detectar o projeto
   como Python.
-- O build usa `base: '/sankey-fiscal/'`, mas os arquivos ficam na raiz de `web/dist`; a reescrita
-  `/sankey-fiscal/:path*` → `/:path*` liga uma coisa à outra.
+- O build usa `base: '/sankey-fiscal/'`, mas os arquivos ficam na raiz de `web/dist`; duas reescritas ligam uma coisa à
+  outra: `/sankey-fiscal/` → `/index.html` (a regra com `:path*` não casa com a barra final sozinha) e
+  `/sankey-fiscal/:path*` → `/:path*`. O teste de `web/test/publicacao.test.ts` confere isso com o conversor da Vercel.
 - Cache: `assets/` (nomes com hash) é imutável por um ano; `dados/` é sempre revalidado pelo navegador e guardado 5 minutos na
   CDN; a página é sempre revalidada.
 
@@ -116,3 +117,12 @@ responder sem login.
 Authentication*). O site da prévia fica em `https://<prévia>.vercel.app/sankey-fiscal/`.
 
 O CI do GitHub continua sendo a barreira: só se faz merge na `main` com os três jobs verdes.
+
+## 9. Publicação
+
+- O Sankey é um projeto Vercel próprio (<https://sankey-fiscal.vercel.app>), publicado pelo merge na `main`.
+- A landing (repositório `protocolo-genesis`, `clientes/bruno-castrillon-landing/site/vercel.json`) o serve em
+  `castrillon.dev/sankey-fiscal` por reescrita.
+- A landing **não** tem integração com o Git: todo deploy dela sai de `site/` com `vercel --prod` e deve ser seguido de
+  `curl.exe -sI https://castrillon.dev/sankey-fiscal/` (esperado: 200, `text/html`).
+- Atenção: se a landing ganhar uma CSP, ela vale para este caminho e precisa permitir os estilos inline do Sankey.

@@ -5,13 +5,14 @@ Contexto do projeto para o Claude Code. Mantenha este arquivo curto; o detalhe e
 ## O que é
 
 Sankey interativo das contas do Governo Central do Brasil (dados do RTN, Tesouro Nacional), 2015–2025, com linha do tempo.
-Será publicado em `castrillon.dev/sankey-fiscal`. É uma visualização **independente**, não um produto oficial.
+Publicado em `castrillon.dev/sankey-fiscal`. É uma visualização **independente**, não um produto oficial.
 
 **Fonte de verdade das decisões:** `docs/especificacao.md`. Se uma decisão mudar, atualize a especificação no mesmo commit.
 
 ## Estado
 
-- Fase 1 e fase 2 concluídas (PR #1). Próximas: publicação na Vercel e depois a fase 3.
+- Fases 1 e 2 concluídas e publicadas em castrillon.dev/sankey-fiscal. Próxima: fase 3 (linha do tempo, escala
+  compartilhada, superávit em 2022, módulo de financiamento).
 - Site em `web/` (React + layout próprio em SVG, sem d3-sankey). Design da fase 2:
   `docs/superpowers/specs/2026-10-21-fase-2-sankey-2025-design.md`; pendências da fase 3 no fim do plano da fase 2.
 - Interação do site (fase 2): só clique, toque ou Enter abrem o painel; o foco no nó não abre o painel; o hover mostra apenas a
