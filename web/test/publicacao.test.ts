@@ -13,6 +13,7 @@ interface Cabecalho {
   headers: { key: string; value: string }[];
 }
 interface ConfigVercel {
+  framework?: string | null;
   installCommand: string;
   buildCommand: string;
   outputDirectory: string;
@@ -26,6 +27,13 @@ describe('vercel.json', () => {
   it('existe na raiz do repositório e é JSON válido', () => {
     expect(existsSync(VERCEL_JSON)).toBe(true);
     expect(() => lerConfig()).not.toThrow();
+  });
+
+  it('fixa o preset "Other" (framework null), sem detecção automática', () => {
+    // O requirements.txt e o pipeline.py na raiz fariam a Vercel detectar o projeto como Python.
+    const config = lerConfig();
+    expect(config).toHaveProperty('framework');
+    expect(config.framework).toBeNull();
   });
 
   it('instala, constrói e publica a partir de web/', () => {
