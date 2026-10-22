@@ -25,6 +25,9 @@ npm test               # Vitest
 npm run e2e            # Playwright
 ```
 
+No site, clique, toque ou Enter num nó abrem o painel de detalhes (valor, participação, linhas do RTN e boletim de origem); o
+foco no nó não abre o painel, e passar o mouse mostra apenas uma dica curta.
+
 ## O que há aqui
 
 | Caminho | Conteúdo |

@@ -15,6 +15,8 @@ Será publicado em `castrillon.dev/sankey-fiscal`. É uma visualização **indep
 - Fase 2 (Sankey de 2025): implementada na branch `fase-2-sankey-2025`, PR em rascunho em revisão. Site em `web/` (React +
   layout próprio em SVG, sem d3-sankey); critério de saída provado no Vitest (18 valores do original, até R$ 2 bi). Design:
   `docs/superpowers/specs/2026-10-21-fase-2-sankey-2025-design.md`; pendências da fase 3 no fim do plano.
+- Interação do site (fase 2): só clique, toque ou Enter abrem o painel; o foco no nó não abre o painel; o hover mostra apenas a
+  dica. Esc e × fecham e devolvem o foco ao nó.
 - Fases 3 e 4 (linha do tempo; módulo de financiamento) só começam depois do critério de saída da anterior.
 
 ## Comandos

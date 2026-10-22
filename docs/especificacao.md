@@ -208,8 +208,8 @@ descobrir isso antes de construir a linha do tempo. **Estado:** a fase 1 está c
 - **Abrir "Bolsa Família, saúde e outros".** Confirmado: abrir em Bolsa Família, Saúde e Demais já na versão 1.
 - **Escala em 2020.** Confirmado: escala compartilhada entre anos no modo R$ constantes, com aviso na tela.
 - **Juros e resultado nominal do Governo Central.** Resolvido: os valores vêm da série histórica do RTN.
-- **Painel e dica (fase 2).** Decidido: clique, toque ou Enter abrem o painel de detalhes abaixo do desenho; o hover de mouse só
-  mostra uma dica curta (rótulo, valor, participação). No desktop o painel tem altura reservada; no desenho do celular, automática.
+- **Painel e dica (fase 2).** Decidido: só clique, toque ou Enter abrem o painel de detalhes abaixo do desenho; o foco no nó
+  (Tab) não abre o painel, e o hover de mouse mostra apenas uma dica curta (rótulo, valor, participação), sem mover o foco. No desktop o painel tem altura reservada; no desenho do celular, automática.
   O painel traz as linhas do RTN com código e nome oficial, com "menos" nas que subtraem.
 - **Participação (fase 2).** Decidido: com a base escrita — "da receita total" no lado da receita (origens, receita total,
   receita líquida, repasse) e "da despesa total" no lado da despesa (inclusive o déficit).

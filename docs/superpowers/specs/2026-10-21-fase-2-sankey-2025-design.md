@@ -163,8 +163,9 @@ déficit escuro acima de 3:1.
 - Abre com clique, toque ou Enter (cada nó é focável). [decidido] O hover de mouse no desktop **não** abre o painel: mostra só uma
   dica flutuante e curta (rótulo, valor, participação), dentro do cartão e da janela, `aria-hidden`, sem mudar o layout nem o
   foco — porque o SVG ocupa ~740 px e o painel ficava abaixo da dobra em notebooks.
-- Fica abaixo do SVG, dentro do cartão; vazio, mostra "Passe o mouse ou toque num nó para ver os detalhes.".
-- Altura: **desktop** reservada (264 px), para o rodapé não se mover ao abrir, trocar ou fechar; listas longas em duas colunas.
+- Fica abaixo do SVG, dentro do cartão; vazio, mostra "Clique ou toque num nó para ver os detalhes.". Não é região `aria-live`
+  (ele recebe foco). Traz o boletim de origem (`versao_dados`) e o mês-base em todo nó.
+- Altura: **desktop** reservada (18 rem, 288 px na fonte padrão, crescendo com a fonte do navegador), para o rodapé não se mover ao abrir, trocar ou fechar; listas longas em duas colunas.
   **Desenho do celular**: altura automática (vazio, só o convite; aberto, cresce até o conteúdo). O SVG nunca se move; rodapé e
   tabela descem, o que é aceitável porque só ocorre depois de uma ação do usuário. [decidido; motivo: como o hover agora só mostra
   a dica, a reserva só se justifica no desktop, e no celular ela deixava ~380 px vazios]
