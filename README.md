@@ -26,7 +26,11 @@ npm ci
 npm run dev            # http://localhost:5173/sankey-fiscal/
 npm test               # Vitest
 npm run e2e            # Playwright
+npm run gerar-og       # regenera public/og-image.png (imagem de compartilhamento, 1200 × 630); PW_CANAL=chrome usa o Chrome
 ```
+
+A imagem de compartilhamento (`web/public/og-image.png`) é um print do nosso gráfico, gerado por `web/scripts/gerar-og.mjs`;
+regenere e versione quando o desenho mudar. O CI roda `npm audit --omit=dev --audit-level=high` no job `site`.
 
 No site, clique, toque ou Enter num nó abrem o painel de detalhes (valor, participação, linhas do RTN e boletim de origem); o
 foco no nó não abre o painel, e passar o mouse mostra apenas uma dica curta.
