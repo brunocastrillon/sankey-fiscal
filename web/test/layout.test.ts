@@ -87,21 +87,42 @@ describe('escala com uma coluna somando zero', () => {
 });
 
 describe('folha zerada', () => {
-  it('não produz NaN nem espessura negativa, e a folha ainda tem rótulo', () => {
-    const g: Grafo = structuredClone(montarGrafo(lerAno(2025)));
-    g.nos.find((n) => n.id === 'bpc')!.valor = 0;
-    g.fluxos.find((f) => f.destino === 'bpc')!.valor = 0;
-    for (const { cfg, opcoes } of formatos) {
-      const L = calcularLayout(g, cfg, medir, opcoes);
-      const naoFinitos: string[] = [];
-      const percorrer = (v: unknown, caminho: string): void => {
-        if (typeof v === 'number' && !Number.isFinite(v)) naoFinitos.push(caminho);
-        else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) percorrer(x, `${caminho}.${k}`);
-      };
-      percorrer(L, 'layout');
-      expect(naoFinitos).toEqual([]);
-      expect(L.fluxos.filter((f) => f.espessura < 0)).toEqual([]);
-      expect(L.rotulos.some((r) => r.id === 'bpc')).toBe(true);
+  // grafo consistente: zera o BPC no próprio JSON e recalcula a despesa total e o resultado primário
+  const d = structuredClone(lerAno(2025));
+  const bpc = d.real.nos.bpc;
+  d.real.nos.bpc = 0;
+  d.real.totais.despesa_total -= bpc;
+  d.real.totais.primario_acima = d.real.totais.receita_liquida - d.real.totais.despesa_total;
+  const g = montarGrafo(d);
+
+  it('o grafo continua conservando em todo nó', () => {
+    for (const n of g.nos) {
+      const ent = g.fluxos.filter((f) => f.destino === n.id).reduce((s, f) => s + f.valor, 0);
+      const sai = g.fluxos.filter((f) => f.origem === n.id).reduce((s, f) => s + f.valor, 0);
+      if (g.fluxos.some((f) => f.destino === n.id)) expect(Math.abs(ent - n.valor), `entradas de ${n.id}`).toBeLessThan(0.01);
+      if (g.fluxos.some((f) => f.origem === n.id)) expect(Math.abs(sai - n.valor), `saídas de ${n.id}`).toBeLessThan(0.01);
     }
   });
+
+  it.each(formatos)('$nome: sem NaN, sem espessura negativa, conservação na geometria e rótulo da folha', ({ cfg, opcoes }) => {
+    const L = calcularLayout(g, cfg, medir, opcoes);
+    const naoFinitos: string[] = [];
+    const percorrer = (v: unknown, caminho: string): void => {
+      if (typeof v === 'number' && !Number.isFinite(v)) naoFinitos.push(caminho);
+      else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) percorrer(x, `${caminho}.${k}`);
+    };
+    percorrer(L, 'layout');
+    expect(naoFinitos).toEqual([]);
+    expect(L.fluxos.filter((f) => f.espessura < 0)).toEqual([]);
+    expect(L.fluxos.find((f) => f.destino === 'bpc')!.espessura).toBe(0);
+    for (const n of L.nos) {
+      const h = n.y1 - n.y0;
+      const ent = L.fluxos.filter((f) => f.destino === n.id).reduce((s, f) => s + f.espessura, 0);
+      const sai = L.fluxos.filter((f) => f.origem === n.id).reduce((s, f) => s + f.espessura, 0);
+      if (L.fluxos.some((f) => f.destino === n.id)) expect(Math.abs(ent - h), `entradas de ${n.id}`).toBeLessThan(0.01);
+      if (L.fluxos.some((f) => f.origem === n.id)) expect(Math.abs(sai - h), `saídas de ${n.id}`).toBeLessThan(0.01);
+    }
+    expect(L.rotulos.some((r) => r.id === 'bpc')).toBe(true);
+  });
 });
+
