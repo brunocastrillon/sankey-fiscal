@@ -139,6 +139,20 @@ O CI do GitHub continua sendo a barreira: só se faz merge na `main` com os trê
   ecossistema (no máximo 3 abertos cada), commits com `chore(deps):`. As atualizações de versão só consideram versões
   publicadas há 14 dias ou mais (`cooldown`). As atualizações de **segurança** ignoram o cooldown e o mês: saem assim que o
   alerta aparece. Cada PR passa pelos três checks como qualquer outro.
+- **Cooldown só para versão.** O `cooldown` de 14 dias vale só para os PRs de atualização de versão; os de segurança saem
+  sem espera.
+- **pip com versões exatas.** O `requirements.txt` fixa cada pacote com `==`, numa versão publicada há mais de 14 dias; quem
+  sobe é o Dependabot, com o cooldown. Com `>=`, o pip instalaria a versão do dia e o cooldown não valeria. Uma troca de
+  versão do pandas só entra com o `diff -r dados /tmp/dados` do job `validacoes` verde (os JSON não podem mudar).
+- **Versão do Node em 4 lugares, que mudam juntos** (hoje, Node 24; v24.21.0 no CI em 22/10/2026):
+  1. `engines.node` do `web/package.json` (`24.x`);
+  2. `node-version` do `setup-node` nos jobs `site` e `site-navegador` do `.github/workflows/testes.yml` (`"24"`);
+  3. `nodeVersion` do projeto na Vercel (*Settings → Build and Deployment → Node.js Version*: `24.x`);
+  4. o Node da imagem do Playwright (`v24.21.0` na `v1.64.1-noble`; o passo "Node da imagem do Playwright" do job
+     `site-navegador` mostra a versão).
+
+  O `@types/node` acompanha o mesmo major: o Dependabot não sobe o major dele (`ignore` com
+  `update-types: ["version-update:semver-major"]`); ele sobe à mão, no PR que trocar o Node.
 - **Playwright** fica fora do Dependabot (`@playwright/test`, `playwright` e `playwright-core` no `ignore`, que vale também
   para as atualizações de segurança): o pacote e a imagem do job `site-navegador` sobem juntos, à mão, no mesmo PR.
   1. `cd web && npm install -D --save-exact @playwright/test@<versão>`.
