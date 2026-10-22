@@ -370,22 +370,27 @@ export function calcularLayout(
         const caixa = rotulos[rotulos.length - 1].caixa;
         alvos.push({
           id: item.id,
-          caixa: { x0: Math.min(nl.x0, caixa.x0) - 2, x1: Math.max(nl.x1, caixa.x1) + 2, y0: faixaTopo, y1: faixaTopo + item.altura },
+          // do início da guia ao fim do texto: o rótulo é o alvo; a coluna de barras fica de fora
+          caixa: direita
+            ? { x0: nl.x1 + 1, x1: caixa.x1 + 2, y0: faixaTopo, y1: faixaTopo + item.altura }
+            : { x0: caixa.x0 - 2, x1: nl.x0 - 1, y0: faixaTopo, y1: faixaTopo + item.altura },
         });
       }
     }
     guias.push(...tracarGuias(pendentes, fila.lado === 'direita' ? 1 : -1));
   }
   if (cfg.alvoToque > 0) {
-    // nós do meio: barra + rótulo, com o mínimo do alvo de toque
+    // nós do meio: o rótulo, ampliado até o mínimo do alvo de toque (a barra continua tocável por si)
     for (const r of rotulos.filter((x) => x.lado === 'meio')) {
-      const nl = nos.get(r.id)!;
-      const c = { x0: Math.min(nl.x0, r.caixa.x0), x1: Math.max(nl.x1, r.caixa.x1), y0: Math.min(nl.y0, r.caixa.y0), y1: Math.max(nl.y1, r.caixa.y1) };
+      const c = r.caixa;
       const cx = (c.x0 + c.x1) / 2;
       const cy = (c.y0 + c.y1) / 2;
       const w = Math.max(cfg.alvoToque, c.x1 - c.x0);
       const h = Math.max(cfg.alvoToque, c.y1 - c.y0);
-      alvos.push({ id: r.id, caixa: { x0: cx - w / 2, x1: cx + w / 2, y0: cy - h / 2, y1: cy + h / 2 } });
+      // cresce para longe da barra: para cima nos rótulos acima dela, para baixo nos de baixo
+      const posicao = textos.get(r.id)!.posicao;
+      const y0 = posicao?.startsWith('acima') ? c.y1 - h : posicao === 'abaixo' ? c.y0 : cy - h / 2;
+      alvos.push({ id: r.id, caixa: { x0: cx - w / 2, x1: cx + w / 2, y0, y1: y0 + h } });
     }
   }
 

@@ -145,6 +145,14 @@ describe.each(anos())('%i', (ano) => {
           }
         });
 
+        it('nenhum alvo de toque cobre a barra de outro nó', () => {
+          const cobre: string[] = [];
+          for (const al of L.alvos)
+            for (const n of L.nos)
+              if (n.id !== al.id && sobrepoe(al.caixa, { x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 })) cobre.push(`${al.id} cobre ${n.id}`);
+          expect(cobre).toEqual([]);
+        });
+
         if (opcoes.larguraVisivel === 390) it('paradas a 390 px: viável e nenhum rótulo atravessa as bordas', () => {
           expect(L.paradas?.viavel).toBe(true);
           expect(cortes(L)).toBe(0);
