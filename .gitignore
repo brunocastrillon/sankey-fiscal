@@ -30,3 +30,6 @@ web/public/dados/
 web/dist-teste/
 web/test-results/
 web/playwright-report/
+
+# Vercel CLI (vínculo local do projeto)
+.vercel
