@@ -20,6 +20,7 @@ describe('guardas de texto', () => {
     expect(TEXTOS.aviso).toBe('Visualização independente, baseada em dados do Tesouro Nacional.');
     expect(TEXTOS.rotulos.deficit).toBe('Déficit primário (financiado com dívida)');
     expect(TEXTOS.menos).toBe('menos');
+    expect(TEXTOS.convitePainel).toBe('Clique ou toque num nó para ver os detalhes.');
   });
 
   it('textos.ts não tem dígitos (nenhum número fiscal escrito à mão)', () => {

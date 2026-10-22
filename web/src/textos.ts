@@ -14,7 +14,7 @@ export const TEXTOS = {
     superavit: 'Superávit primário',
   },
   rodape: 'Somas podem diferir por arredondamento.',
-  convitePainel: 'Passe o mouse ou toque num nó para ver os detalhes.',
+  convitePainel: 'Clique ou toque num nó para ver os detalhes.',
   dicaArraste: 'arraste →',
   baseReceita: 'da receita total',
   baseDespesa: 'da despesa total',
