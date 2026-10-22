@@ -5,7 +5,7 @@
 Sankey interativo de como o Governo Central arrecada e gasta, de 2015 a 2025, com linha do tempo. Cada nó mostra de quais
 linhas do RTN ele vem e quais metodologias foram usadas. Destino: `castrillon.dev/sankey-fiscal`.
 
-**Estado:** fase 1 (dados) concluída. Fase 2 (o Sankey de 2025, em `web/`: React + layout próprio em SVG) em andamento.
+**Estado:** fase 1 (dados) concluída. Fase 2 (o Sankey de 2025, em `web/`: React + layout próprio em SVG) implementada, em revisão.
 
 ## Começando
 
@@ -13,6 +13,16 @@ linhas do RTN ele vem e quais metodologias foram usadas. Destino: `castrillon.de
 pip install -r requirements.txt
 python pipeline.py     # lê entrada/ e grava dados/AAAA.json
 pytest -q              # 18 testes de validação
+```
+
+O site (Node 24):
+
+```bash
+cd web
+npm ci
+npm run dev            # http://localhost:5173/sankey-fiscal/
+npm test               # Vitest
+npm run e2e            # Playwright
 ```
 
 ## O que há aqui
@@ -28,6 +38,7 @@ pytest -q              # 18 testes de validação
 | `referencias/` | Valores impressos no gráfico original (2025), usados pelos testes do pipeline e do site |
 | `entrada/` | Arquivos públicos de entrada (RTN e IPCA) e a fonte de cada um |
 | `dados/` | JSON gerados, um por ano, com valores nominais e em R$ constantes |
+| `web/` | O site: grafo, layout próprio em SVG e interface React, com testes (Vitest e Playwright) |
 
 ## Formato de cada AAAA.json
 

@@ -82,5 +82,5 @@ Não comece a fase seguinte antes do critério de saída da anterior.
 - [x] `.gitignore` cobre `.env` e arquivos locais do Claude Code (`CLAUDE.local.md`).
 - [x] Descrição do repositório e tópicos (`sankey`, `d3`, `fiscal`, `brasil`, `dados-abertos`).
 - [x] Aviso "visualização independente, baseada em dados do Tesouro Nacional" no topo do README.
-- [ ] Aviso também na página, quando o site existir.
+- [x] Aviso também na página, quando o site existir.
 - [ ] Quando o site existir: URL do site (`castrillon.dev/sankey-fiscal`) no campo *Website* do repositório e no README.

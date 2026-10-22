@@ -196,8 +196,9 @@ flowchart LR
 ```
 
 A fase 2 é a que reduz o risco: se 2025 não bater com o gráfico original dentro da tolerância, o mapeamento está errado e é melhor
-descobrir isso antes de construir a linha do tempo. **Estado:** a fase 1 está concluída e o critério numérico da fase 2 já foi
-verificado nos dados; falta o desenho.
+descobrir isso antes de construir a linha do tempo. **Estado:** a fase 1 está concluída; a fase 2 está implementada em `web/`
+(PR em rascunho, em revisão), com o critério de saída provado no Vitest: os 18 valores do gráfico original batem com o grafo de
+2025 a até R$ 2 bi (maior diferença R$ 0,6 bi, no déficit). Detalhes em `docs/superpowers/specs/2026-10-21-fase-2-sankey-2025-design.md`.
 
 **Decisões**
 
@@ -207,6 +208,15 @@ verificado nos dados; falta o desenho.
 - **Abrir "Bolsa Família, saúde e outros".** Confirmado: abrir em Bolsa Família, Saúde e Demais já na versão 1.
 - **Escala em 2020.** Confirmado: escala compartilhada entre anos no modo R$ constantes, com aviso na tela.
 - **Juros e resultado nominal do Governo Central.** Resolvido: os valores vêm da série histórica do RTN.
+- **Painel e dica (fase 2).** Decidido: clique, toque ou Enter abrem o painel de detalhes abaixo do desenho; o hover de mouse só
+  mostra uma dica curta (rótulo, valor, participação). No desktop o painel tem altura reservada; no desenho do celular, automática.
+  O painel traz as linhas do RTN com código e nome oficial, com "menos" nas que subtraem.
+- **Participação (fase 2).** Decidido: com a base escrita — "da receita total" no lado da receita (origens, receita total,
+  receita líquida, repasse) e "da despesa total" no lado da despesa (inclusive o déficit).
+- **Celular (fase 2).** Decidido: o mesmo Sankey, com rolagem horizontal em duas paradas (origens; destinos), alvos de toque de
+  44 px e fonte mínima de 11 px. O desenho do desktop vale a partir de 1100 px de largura.
+- **Temas (fase 2).** Decidido: claro e escuro por `prefers-color-scheme`, com paletas validadas para daltonismo; déficit com
+  hachura nos dois temas e contorno claro no escuro.
 
 ## Fontes
 
