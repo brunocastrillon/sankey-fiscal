@@ -5,7 +5,8 @@
 Sankey interativo de como o Governo Central arrecada e gasta, de 2015 a 2025, com linha do tempo. Cada nó mostra de quais
 linhas do RTN ele vem e quais metodologias foram usadas. Destino: `castrillon.dev/sankey-fiscal`.
 
-**Estado:** fase 1 (dados) concluída. Fase 2 (o Sankey de 2025, em `web/`: React + layout próprio em SVG) implementada, em revisão.
+**Estado:** fase 1 (dados) e fase 2 (o Sankey de 2025, em `web/`: React + layout próprio em SVG) concluídas. Próximas: a
+publicação na Vercel e a fase 3 (linha do tempo).
 
 ## Começando
 
@@ -28,6 +29,14 @@ npm run e2e            # Playwright
 No site, clique, toque ou Enter num nó abrem o painel de detalhes (valor, participação, linhas do RTN e boletim de origem); o
 foco no nó não abre o painel, e passar o mouse mostra apenas uma dica curta.
 
+## Publicação
+
+O site é um projeto próprio na Vercel, ligado a este repositório e configurado pelo `vercel.json` da raiz: instala e constrói
+em `web/` e publica `web/dist`. O endereço público é `castrillon.dev/sankey-fiscal`: a landing de `castrillon.dev` reescreve
+esse subcaminho para o domínio de produção deste projeto, e o `vercel.json` daqui reescreve `/sankey-fiscal/*` para a raiz do
+build. Cada merge na `main` vira produção; cada PR ganha uma prévia, protegida por login na Vercel. Detalhes em
+`docs/como-conduzir.md`.
+
 ## O que há aqui
 
 | Caminho | Conteúdo |
@@ -42,6 +51,7 @@ foco no nó não abre o painel, e passar o mouse mostra apenas uma dica curta.
 | `entrada/` | Arquivos públicos de entrada (RTN e IPCA) e a fonte de cada um |
 | `dados/` | JSON gerados, um por ano, com valores nominais e em R$ constantes |
 | `web/` | O site: grafo, layout próprio em SVG e interface React, com testes (Vitest e Playwright) |
+| `vercel.json` | Publicação na Vercel: comandos de build, reescrita do subcaminho e cache |
 
 ## Formato de cada AAAA.json
 

@@ -23,6 +23,7 @@ CLAUDE.local.md
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+*.code-workspace
 
 # Site (fase 2 em diante)
 web/public/dados/

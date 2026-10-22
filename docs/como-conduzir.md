@@ -84,3 +84,33 @@ Não comece a fase seguinte antes do critério de saída da anterior.
 - [x] Aviso "visualização independente, baseada em dados do Tesouro Nacional" no topo do README.
 - [x] Aviso também na página, quando o site existir.
 - [ ] Quando o site existir: URL do site (`castrillon.dev/sankey-fiscal`) no campo *Website* do repositório e no README.
+
+## 8. Publicação na Vercel
+
+O site é publicado por um **projeto próprio na Vercel** (`sankey-fiscal`), ligado a este repositório pelo GitHub, com a raiz
+do repositório como *Root Directory*. Tudo o que o build precisa está no `vercel.json` da raiz:
+
+- `installCommand` e `buildCommand` entram em `web/` e rodam `npm ci` e `npm run build`; o `prebuild` copia `dados/` para
+  `web/public/dados/`, então os JSON publicados são os versionados no repositório.
+- `outputDirectory` é `web/dist`.
+- O build usa `base: '/sankey-fiscal/'`, mas os arquivos ficam na raiz de `web/dist`; a reescrita
+  `/sankey-fiscal/:path*` → `/:path*` liga uma coisa à outra.
+- Cache: `assets/` (nomes com hash) é imutável por um ano; `dados/` é sempre revalidado pelo navegador e guardado 5 minutos na
+  CDN; a página é sempre revalidada.
+
+**Node.** O CI usa o Node 24 e `web/package.json` declara `"engines": { "node": "24.x" }`. A Vercel lê o `engines` do
+`package.json` da *Root Directory*, e a raiz deste repositório não tem `package.json`; por isso a versão também fica fixada em
+*Settings → Build and Deployment → Node.js Version* (24.x).
+
+**Reescrita pela landing.** O endereço público é `castrillon.dev/sankey-fiscal`. O projeto da landing (`castrillon.dev`) tem
+uma reescrita de `/sankey-fiscal/:path*` para `https://<domínio de produção do sankey-fiscal>/sankey-fiscal/:path*`. O navegador
+continua vendo `castrillon.dev`; o `<link rel="canonical">` do `index.html` aponta para `https://castrillon.dev/sankey-fiscal/`.
+
+**Domínio de produção.** Cada merge na `main` gera um deploy de produção, servido no domínio de produção do projeto (o
+`*.vercel.app` que a Vercel atribui, ou um domínio próprio). É esse domínio que a reescrita da landing usa, e ele precisa
+responder sem login.
+
+**Prévias.** Cada PR gera uma prévia com URL própria, protegida por login na Vercel (*Deployment Protection → Vercel
+Authentication*). O site da prévia fica em `https://<prévia>.vercel.app/sankey-fiscal/`.
+
+O CI do GitHub continua sendo a barreira: só se faz merge na `main` com os três jobs verdes.
