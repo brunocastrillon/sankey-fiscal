@@ -11,10 +11,9 @@ Será publicado em `castrillon.dev/sankey-fiscal`. É uma visualização **indep
 
 ## Estado
 
-- Fase 1 (dados): concluída. `pipeline.py` gera `dados/AAAA.json`; `testes.py` e `pytest` validam (18 testes).
-- Fase 2 (Sankey de 2025): implementada na branch `fase-2-sankey-2025`, PR em rascunho em revisão. Site em `web/` (React +
-  layout próprio em SVG, sem d3-sankey); critério de saída provado no Vitest (18 valores do original, até R$ 2 bi). Design:
-  `docs/superpowers/specs/2026-10-21-fase-2-sankey-2025-design.md`; pendências da fase 3 no fim do plano.
+- Fase 1 e fase 2 concluídas (PR #1). Próximas: publicação na Vercel e depois a fase 3.
+- Site em `web/` (React + layout próprio em SVG, sem d3-sankey). Design da fase 2:
+  `docs/superpowers/specs/2026-10-21-fase-2-sankey-2025-design.md`; pendências da fase 3 no fim do plano da fase 2.
 - Interação do site (fase 2): só clique, toque ou Enter abrem o painel; o foco no nó não abre o painel; o hover mostra apenas a
   dica. Esc e × fecham e devolvem o foco ao nó.
 - Fases 3 e 4 (linha do tempo; módulo de financiamento) só começam depois do critério de saída da anterior.
