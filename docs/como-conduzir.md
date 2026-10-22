@@ -102,7 +102,9 @@ do repositório como *Root Directory*. Tudo o que o build precisa está no `verc
   CDN; a página é sempre revalidada.
 - Título, descrição e Open Graph entram no `index.html` pelo plugin `sankey-metadados` do `vite.config.ts` (textos de
   `src/textos.ts`, mês-base de `dados/indice.json`). A imagem `web/public/og-image.png` (1200 × 630, menos de 400 KB) é um print
-  do nosso gráfico: `npm run gerar-og` a regenera (tema claro, último ano, desktop); versione o PNG quando o desenho mudar.
+  do nosso gráfico: `npm run gerar-og` a regenera (tema claro, último ano, desktop); versione o PNG quando o desenho mudar. O
+  script escala a página para o título, o aviso e o desenho inteiro caberem com 24 px de margem, e sai com erro, sem gravar,
+  se alguma caixa ficar fora (`OG_ESCALA=1.3` força a escala para testar a trava).
 - O job `site` do CI roda `npm audit --omit=dev --audit-level=high`: só as dependências de produção barram o merge.
 
 **Node.** O CI usa o Node 24 e `web/package.json` declara `"engines": { "node": "24.x" }`. A Vercel lê o `engines` do
