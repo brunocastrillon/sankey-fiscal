@@ -46,7 +46,12 @@ jobs:
 
   site-navegador:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 6
+    # Imagem oficial com os navegadores e as dependências do sistema já instalados. A tag precisa ser a mesma versão do
+    # @playwright/test no web/package-lock.json; senão o Playwright não encontra o navegador.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --user 1001
     defaults:
       run:
         working-directory: web
@@ -58,10 +63,5 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci --prefer-offline
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
-      - run: npx playwright install --with-deps chromium
       - name: Testes de navegador (Playwright, build de teste)
         run: npm run e2e
