@@ -19,7 +19,7 @@ const LISTA_LONGA = 3;
 export function Painel({ grafo, no, aoFechar, aoVerNoDesenho, ref }: Props) {
   if (!no) {
     return (
-      <section className="painel" data-testid="painel" ref={ref} tabIndex={-1} aria-live="polite">
+      <section className="painel" data-testid="painel" ref={ref} tabIndex={-1}>
         <p className="convite">{TEXTOS.convitePainel}</p>
       </section>
     );
@@ -29,7 +29,7 @@ export function Painel({ grafo, no, aoFechar, aoVerNoDesenho, ref }: Props) {
   const folhas = grafo.obrigatorias.map((id) => grafo.nos.find((n) => n.id === id)!);
   const itens = no.papel === 'obrigatorias' ? folhas.length : no.linhas.length;
   return (
-    <section className="painel" data-testid="painel" ref={ref} tabIndex={-1} aria-live="polite">
+    <section className="painel" data-testid="painel" ref={ref} tabIndex={-1}>
       <button type="button" className="fechar" aria-label={TEXTOS.fechar} onClick={aoFechar}>
         ×
       </button>

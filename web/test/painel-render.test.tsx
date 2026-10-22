@@ -47,6 +47,11 @@ describe('painel de detalhes (2025)', () => {
     }
   });
 
+  it('o painel não é região aria-live (ele recebe foco; anunciar duas vezes atrapalha)', () => {
+    expect(render(null)).not.toContain('aria-live');
+    expect(render('csll')).not.toContain('aria-live');
+  });
+
   it('o botão de fechar tem nome acessível', () => {
     expect(render('csll')).toContain(`aria-label="${TEXTOS.fechar}"`);
   });
