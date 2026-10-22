@@ -350,7 +350,16 @@ test.describe('foco da revisão', () => {
     for (const largura of [1280, 390]) {
       await page.setViewportSize({ width: largura, height: 900 });
       await abrir(page, 2025);
-      const ordem = await idsDosNos(page);
+      // ordem de leitura calculada pelas posições das barras (coluna a coluna, de cima para baixo), não pela ordem do DOM
+      const ordem = await page.locator('svg.sankey').evaluate((svg) =>
+        [...svg.querySelectorAll<SVGGElement>('g.no')]
+          .map((g) => {
+            const r = g.querySelector('rect.barra')!;
+            return { id: g.dataset.id!, x: Number(r.getAttribute('x')), y: Number(r.getAttribute('y')) };
+          })
+          .sort((a, b) => a.x - b.x || a.y - b.y)
+          .map((n) => n.id),
+      );
       const visitados: string[] = [];
       for (let i = 0; i < ordem.length + 1; i++) {
         await page.keyboard.press('Tab');
