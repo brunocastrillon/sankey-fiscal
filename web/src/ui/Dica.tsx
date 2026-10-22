@@ -11,7 +11,20 @@ const MARGEM = 8;
  * Dica de hover do desktop: curta, flutuante, dentro do cartão e da janela. Não muda o layout, não move o foco e fica
  * fora da árvore de acessibilidade (o caminho acessível é o botão do nó e o painel).
  */
-export function Dica({ grafo, no, barra, cartao }: { grafo: Grafo; no: No; barra: Element; cartao: HTMLElement }) {
+export function Dica({
+  grafo,
+  no,
+  barra,
+  cartao,
+  lado,
+}: {
+  grafo: Grafo;
+  no: No;
+  barra: Element;
+  cartao: HTMLElement;
+  /** Lado da barra onde a dica abre: o oposto ao do rótulo, sobre os fluxos. */
+  lado: 'direita' | 'esquerda';
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [posicao, setPosicao] = useState<{ x: number; y: number } | null>(null);
 
@@ -27,8 +40,8 @@ export function Dica({ grafo, no, barra, cartao }: { grafo: Grafo; no: No; barra
       y1: Math.min(c.height, window.innerHeight - c.top) - MARGEM,
     };
     const alvo = { x0: b.left - c.left, y0: b.top - c.top, x1: b.right - c.left, y1: b.bottom - c.top };
-    setPosicao(posicionarDica(alvo, { largura: el.offsetWidth, altura: el.offsetHeight }, limites));
-  }, [no, barra, cartao]);
+    setPosicao(posicionarDica(alvo, { largura: el.offsetWidth, altura: el.offsetHeight }, limites, lado));
+  }, [no, barra, cartao, lado]);
 
   const p = participacao(grafo, no.id);
   const deficit = no.papel === 'resultado' && grafo.resultado === 'deficit';

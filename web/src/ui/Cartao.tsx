@@ -129,7 +129,14 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
       </footer>
       <TabelaValores grafo={grafo} />
       {dica && refCartao.current && (
-        <Dica grafo={grafo} no={grafo.nos.find((n) => n.id === dica.id)!} barra={dica.barra} cartao={refCartao.current} />
+        <Dica
+          grafo={grafo}
+          no={grafo.nos.find((n) => n.id === dica.id)!}
+          barra={dica.barra}
+          cartao={refCartao.current}
+          // rótulo à direita da barra (âncora start) → dica à esquerda; rótulo à esquerda ou acima → dica à direita
+          lado={layout?.rotulos.find((r) => r.id === dica.id)?.ancora === 'start' ? 'esquerda' : 'direita'}
+        />
       )}
     </article>
   );

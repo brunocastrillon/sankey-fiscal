@@ -246,6 +246,40 @@ for (const tela of TELAS)
           });
       });
 
+for (const esquema of ESQUEMAS)
+  for (const ano of ANOS)
+    test.describe(`dica de hover · ${ano} · 1280x720 · ${esquema}`, () => {
+      test.use({ viewport: { width: 1280, height: 720 }, colorScheme: esquema });
+      test('a dica abre sobre os fluxos: não cobre rótulos da mesma coluna nem o próprio rótulo', async ({ page }) => {
+        await abrir(page, ano);
+        const colunas = await page.locator('svg.sankey').evaluate((svg) =>
+          [...svg.querySelectorAll<SVGGElement>('g.no')].map((g) => ({ id: g.dataset.id!, x: Number(g.querySelector('rect.barra')!.getAttribute('x')) })),
+        );
+        const xs = colunas.map((c) => c.x);
+        const [min, max] = [Math.min(...xs), Math.max(...xs)];
+        const viz = (ids: string[]) =>
+          page.locator('svg.sankey').evaluate((svg, ids) =>
+            [...svg.querySelectorAll<SVGTextElement>('text.rotulo')].filter((t) => ids.includes(t.dataset.id!)).map((t) => {
+              const r = t.getBoundingClientRect();
+              return { id: t.dataset.id!, x0: r.left, y0: r.top, x1: r.right, y1: r.bottom };
+            }), ids);
+        const problemas: string[] = [];
+        for (const no of colunas) {
+          const mesmaColuna = no.x === min || no.x === max ? colunas.filter((c) => c.x === no.x).map((c) => c.id) : [no.id];
+          await page.locator(`g.no[data-id="${no.id}"] rect.barra`).hover();
+          const dica = page.getByTestId('tooltip');
+          await expect(dica).toBeVisible();
+          const d = (await dica.boundingBox())!;
+          const caixaDica = { x0: d.x, y0: d.y, x1: d.x + d.width, y1: d.y + d.height };
+          const c = (await page.getByTestId('cartao').boundingBox())!;
+          if (d.x < Math.max(0, c.x) || d.y < Math.max(0, c.y) || d.x + d.width > Math.min(1280, c.x + c.width) || d.y + d.height > Math.min(720, c.y + c.height))
+            problemas.push(`${no.id}: fora do cartão ou da janela`);
+          for (const r of await viz(mesmaColuna)) if (sobrepoe(r, caixaDica)) problemas.push(`${no.id}: cobre o rótulo ${r.id}`);
+        }
+        expect(problemas).toEqual([]);
+      });
+    });
+
 test.describe('fonte do navegador maior (20 px)', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
   test('o painel do desktop não corta conteúdo em nenhum nó', async ({ page }) => {

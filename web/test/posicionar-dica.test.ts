@@ -12,6 +12,17 @@ describe('posicionarDica', () => {
     expect(p).toEqual({ x: 320, y: 310 });
   });
 
+  it('com preferência à esquerda, abre à esquerda da barra quando cabe', () => {
+    const p = posicionarDica({ x0: 600, y0: 300, x1: 612, y1: 400 }, tamanho, limites, 'esquerda');
+    expect(p).toEqual({ x: 600 - 8 - 200, y: 310 });
+  });
+
+  it('com preferência à esquerda, inverte para a direita perto da borda esquerda', () => {
+    const p = posicionarDica({ x0: 50, y0: 300, x1: 62, y1: 400 }, tamanho, limites, 'esquerda');
+    expect(p.x).toBeGreaterThanOrEqual(62);
+    expect(dentro(p)).toBe(true);
+  });
+
   it('inverte para a esquerda perto da borda direita', () => {
     const p = posicionarDica({ x0: 900, y0: 300, x1: 912, y1: 400 }, tamanho, limites);
     expect(p.x + tamanho.largura).toBeLessThanOrEqual(900);
