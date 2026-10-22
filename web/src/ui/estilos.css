@@ -1,7 +1,7 @@
 /* Cores vêm das variáveis de tema.ts (claro por padrão, escuro por prefers-color-scheme). */
 :root {
   --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --painel-altura: 236px;
+  --painel-altura: 264px;
 }
 
 * {
@@ -175,10 +175,9 @@ h1 .ano {
   background: var(--painel);
   font-size: 0.875rem;
 }
-@media (max-width: 700px) {
-  .formato-celular .painel {
-    --painel-altura: 380px;
-  }
+/* Desenho do celular: altura automática (o desenho fica parado; rodapé e tabela descem só depois de uma ação) */
+.formato-celular .painel {
+  height: auto;
 }
 .painel:focus-visible {
   outline: 2px solid var(--receita);
@@ -238,6 +237,22 @@ h1 .ano {
   color: var(--secundario);
   font-size: 1.4rem;
   cursor: pointer;
+}
+.ver-no-desenho {
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0 0 8px;
+  padding: 0 12px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--fundo);
+  color: var(--texto);
+  font: inherit;
+  cursor: pointer;
+}
+.ver-no-desenho:focus-visible {
+  outline: 2px solid var(--receita);
+  outline-offset: 2px;
 }
 .fechar:focus-visible {
   outline: 2px solid var(--receita);

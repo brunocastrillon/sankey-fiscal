@@ -8,13 +8,15 @@ interface Props {
   grafo: Grafo;
   no: No | null;
   aoFechar: () => void;
+  /** Volta ao nó no desenho (foco e rolagem), com o painel ainda aberto. */
+  aoVerNoDesenho?: () => void;
   ref?: Ref<HTMLElement>;
 }
 
 const LISTA_LONGA = 3;
 
 /** Painel de detalhes com altura reservada: vazio, mostra o convite; nunca muda a posição do desenho. */
-export function Painel({ grafo, no, aoFechar, ref }: Props) {
+export function Painel({ grafo, no, aoFechar, aoVerNoDesenho, ref }: Props) {
   if (!no) {
     return (
       <section className="painel" data-testid="painel" ref={ref} tabIndex={-1} aria-live="polite">
@@ -52,6 +54,11 @@ export function Painel({ grafo, no, aoFechar, ref }: Props) {
               </li>
             ))}
       </ul>
+      {aoVerNoDesenho && (
+        <button type="button" className="ver-no-desenho" onClick={aoVerNoDesenho}>
+          {TEXTOS.verNoDesenho}
+        </button>
+      )}
       <p className="secundario painel-nota">
         {TEXTOS.registro} {TEXTOS.precos} {formatarMesBase(grafo.mesBase)} {TEXTOS.deflator}.
       </p>

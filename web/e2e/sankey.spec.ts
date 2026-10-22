@@ -64,6 +64,25 @@ async function acionar(page: Page, id: string, toque: boolean) {
   else await g.click({ position });
 }
 
+async function esperarRolagemParar(page: Page) {
+  let anterior = -1;
+  for (let i = 0; i < 40; i++) {
+    const y = await page.evaluate(() => scrollY);
+    if (y === anterior) return;
+    anterior = y;
+    await page.waitForTimeout(100);
+  }
+}
+
+/** Caixas da barra e do rótulo do nó na tela (coordenadas da janela). */
+const caixasNaTela = (page: Page, id: string) =>
+  page.locator(`g.no[data-id="${id}"]`).evaluate((g) =>
+    [g.querySelector('rect.barra')!, g.querySelector('text.rotulo')!].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+    }),
+  );
+
 async function idsDosNos(page: Page) {
   return page.locator('g.no').evaluateAll((gs) => gs.map((g) => (g as SVGGElement).dataset.id!));
 }
@@ -91,12 +110,14 @@ for (const tela of TELAS)
           const svg = page.getByTestId('svg-sankey');
           const rodape = page.getByTestId('rodape');
           const painel = page.getByTestId('painel');
+          // no desenho do celular o painel tem altura automática: só o SVG fica parado; no desktop, também o rodapé
+          const celular = await page.getByTestId('cartao').evaluate((el) => el.classList.contains('formato-celular'));
           const antes = { svg: await caixaDoc(svg), rodape: await caixaDoc(rodape) };
           for (const id of await idsDosNos(page)) {
             await acionar(page, id, tela.toque);
             await expect(painel.locator('.painel-titulo')).toBeVisible();
             igual(await caixaDoc(svg), antes.svg, ['y0', 'y1']);
-            igual(await caixaDoc(rodape), antes.rodape);
+            if (!celular) igual(await caixaDoc(rodape), antes.rodape);
             expect(await painel.evaluate((el) => el.scrollHeight <= el.clientHeight + 1), `painel de ${id} transborda`).toBe(true);
             const caixaPainel = await caixaDoc(painel);
             const textos = await page.locator('svg.sankey text.rotulo').evaluateAll((ts) =>
@@ -112,6 +133,46 @@ for (const tela of TELAS)
           igual(await caixaDoc(svg), antes.svg, ['y0', 'y1']);
           igual(await caixaDoc(rodape), antes.rodape);
         });
+
+        if (tela.toque)
+          test('toque: o nó continua na tela, 120 px do painel entram, o SVG não se move; "ver no desenho" volta ao nó', async ({ page }) => {
+            await abrir(page, ano);
+            const svg = page.getByTestId('svg-sankey');
+            const painel = page.getByTestId('painel');
+            for (const id of ['imposto_renda', 'discricionarias']) {
+              await page.evaluate(() => scrollTo(0, 0));
+              const svgAntes = await caixaDoc(svg);
+              await acionar(page, id, true);
+              await expect(painel.locator('.painel-titulo')).toBeVisible();
+              await esperarRolagemParar(page);
+              const altura = tela.viewport.height;
+              for (const c of await caixasNaTela(page, id)) {
+                expect(c.top, `${id}: topo na tela`).toBeGreaterThanOrEqual(0);
+                expect(c.bottom, `${id}: fundo na tela`).toBeLessThanOrEqual(altura);
+              }
+              // regra: nó a ≥ 16 px do topo e ≥ 120 px do painel; se não cabem juntos, o nó vence e o painel mostra o máximo possível
+              const p = (await painel.boundingBox())!;
+              const [barraAberta, rotuloAberto] = await caixasNaTela(page, id);
+              const topoNo = Math.min(barraAberta.top, rotuloAberto.top);
+              const cabemJuntos = p.y - topoNo <= altura - 120 - 16;
+              const visivel = Math.min(p.y + p.height, altura) - Math.max(p.y, 0);
+              if (cabemJuntos) expect(visivel, `${id}: painel visível`).toBeGreaterThanOrEqual(120);
+              else {
+                expect(topoNo, `${id}: nó a 16 px do topo (prioridade)`).toBeCloseTo(16, 0);
+                test.info().annotations.push({ type: `${ano} ${id}`, description: `não cabem juntos: ${(p.y - topoNo).toFixed(0)} px entre nó e painel; painel visível ${visivel.toFixed(0)} px` });
+              }
+              igual(await caixaDoc(svg), svgAntes, ['y0', 'y1']);
+              await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+              await page.getByRole('button', { name: TEXTOS.verNoDesenho }).tap();
+              await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.id)).toBe(id);
+              await esperarRolagemParar(page);
+              const [barra] = await caixasNaTela(page, id);
+              expect(barra.top).toBeGreaterThanOrEqual(0);
+              expect(barra.bottom).toBeLessThanOrEqual(altura);
+              expect(barra.left).toBeGreaterThanOrEqual(0);
+              expect(barra.right).toBeLessThanOrEqual(tela.viewport.width);
+            }
+          });
 
         if (tela.toque)
           test('paradas: rolagem encaixa nas duas paradas e nenhum rótulo é cortado nas bordas', async ({ page }) => {

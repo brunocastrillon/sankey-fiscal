@@ -26,6 +26,7 @@ export const TEXTOS = {
   deflator: '(IPCA)',
   fonte: 'Fonte: Tesouro Nacional, Resultado do Tesouro Nacional',
   fechar: 'Fechar detalhes',
+  verNoDesenho: '↑ ver no desenho',
   ariaRolagem: 'Diagrama de Sankey, mais largo que a tela. Role para a direita para ver os destinos do gasto.',
   erroCarga: 'Não foi possível carregar os dados. Tente recarregar a página.',
   tabela: 'Ver os valores em tabela',

@@ -8,9 +8,36 @@ import { Dica } from './Dica';
 import { escolherFormato } from './formato';
 import { Painel } from './Painel';
 import { Rolagem } from './Rolagem';
+import { rolagemMinima } from './rolagemMinima';
 import { Sankey } from './Sankey';
 import { TabelaValores } from './TabelaValores';
 import { useMedidor } from './useMedidor';
+
+/**
+ * Rola o mínimo para o nó ficar inteiro na tela, a 16 px do topo, e (se dado) o começo do painel entrar; no celular,
+ * também rola o contêiner na horizontal até a barra (o scroll-snap leva à parada que a contém).
+ */
+function rolarAte(g: SVGGElement, painelTopo: number | null) {
+  const barra = g.querySelector('rect.barra');
+  const rolagem = g.closest('.rolagem');
+  if (barra && rolagem) {
+    const b = barra.getBoundingClientRect();
+    const r = rolagem.getBoundingClientRect();
+    if (b.left < r.left || b.right > r.right) rolagem.scrollTo({ left: rolagem.scrollLeft + b.left - r.left - 16, behavior: 'smooth' });
+  }
+  const caixas = [barra, g.querySelector('text.rotulo')].filter((x): x is Element => !!x).map((el) => el.getBoundingClientRect());
+  if (!caixas.length) return;
+  const topo = window.scrollY;
+  const no = { topo: Math.min(...caixas.map((c) => c.top)) + topo, fundo: Math.max(...caixas.map((c) => c.bottom)) + topo };
+  const alvo = rolagemMinima({
+    atual: topo,
+    alturaTela: window.innerHeight,
+    maxRolagem: document.documentElement.scrollHeight - window.innerHeight,
+    no,
+    painelTopo: painelTopo ?? no.topo,
+  });
+  if (Math.abs(alvo - topo) > 0.5) window.scrollTo({ top: alvo, behavior: 'smooth' });
+}
 
 export function Cartao({ grafo }: { grafo: Grafo }) {
   const idSvg = useId().replace(/[^a-zA-Z0-9_-]/g, '');
@@ -39,19 +66,29 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
       : calcularLayout(grafo, formato, medidor, { largura: Math.min(largura, LARGURA_MAX_DESKTOP) });
   }, [grafo, formato, medidor, largura]);
 
-  const focarNo = (id: string) => refArea.current?.querySelector<SVGGElement>(`g.no[data-id="${id}"]`)?.focus();
+  const noNoDesenho = (id: string) => refArea.current?.querySelector<SVGGElement>(`g.no[data-id="${id}"]`) ?? null;
+  const focarNo = (id: string) => noNoDesenho(id)?.focus();
   const escolher = useCallback((id: string) => {
     setEscolhido(id);
     setDica(null);
     requestAnimationFrame(() => {
-      refPainel.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      refPainel.current?.focus({ preventScroll: true });
+      // rola o mínimo: o nó continua na tela e o começo do painel entra; o desenho não se move
+      const g = noNoDesenho(id);
+      const painel = refPainel.current;
+      if (g && painel) rolarAte(g, painel.getBoundingClientRect().top + window.scrollY);
+      painel?.focus({ preventScroll: true });
     });
   }, []);
   const fechar = useCallback(() => {
     const origem = escolhido;
     setEscolhido(null);
     if (origem) requestAnimationFrame(() => focarNo(origem));
+  }, [escolhido]);
+  const verNoDesenho = useCallback(() => {
+    const g = escolhido ? noNoDesenho(escolhido) : null;
+    if (!g) return;
+    g.focus({ preventScroll: true });
+    rolarAte(g, null);
   }, [escolhido]);
   const teclas = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && escolhido) {
@@ -83,7 +120,7 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
       <div className="area" ref={refArea} style={{ minHeight: formato.alturaSvg }}>
         {layout && (formato.vaos ? <Rolagem layout={layout}>{sankey}</Rolagem> : sankey)}
       </div>
-      <Painel grafo={grafo} no={noVisivel} aoFechar={fechar} ref={refPainel} />
+      <Painel grafo={grafo} no={noVisivel} aoFechar={fechar} aoVerNoDesenho={verNoDesenho} ref={refPainel} />
       <footer className="rodape" data-testid="rodape">
         <span>{TEXTOS.rodape}</span> <span>{TEXTOS.fonte} ({grafo.versaoDados}).</span>{' '}
         <span>
