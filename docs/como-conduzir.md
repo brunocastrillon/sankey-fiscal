@@ -93,6 +93,8 @@ do repositório como *Root Directory*. Tudo o que o build precisa está no `verc
 - `installCommand` e `buildCommand` entram em `web/` e rodam `npm ci` e `npm run build`; o `prebuild` copia `dados/` para
   `web/public/dados/`, então os JSON publicados são os versionados no repositório.
 - `outputDirectory` é `web/dist`.
+- `framework` é `null` (preset *Other*): o `requirements.txt` e o `pipeline.py` na raiz fariam a Vercel detectar o projeto
+  como Python.
 - O build usa `base: '/sankey-fiscal/'`, mas os arquivos ficam na raiz de `web/dist`; a reescrita
   `/sankey-fiscal/:path*` → `/:path*` liga uma coisa à outra.
 - Cache: `assets/` (nomes com hash) é imutável por um ano; `dados/` é sempre revalidado pelo navegador e guardado 5 minutos na
