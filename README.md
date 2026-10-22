@@ -3,10 +3,12 @@
 > **Visualização independente, baseada em dados do Tesouro Nacional.** Não é um produto oficial do governo.
 
 Sankey interativo de como o Governo Central arrecada e gasta, de 2015 a 2025, com linha do tempo. Cada nó mostra de quais
-linhas do RTN ele vem e quais metodologias foram usadas. Destino: `castrillon.dev/sankey-fiscal`.
+linhas do RTN ele vem e quais metodologias foram usadas.
 
-**Estado:** fase 1 (dados) e fase 2 (o Sankey de 2025, em `web/`: React + layout próprio em SVG) concluídas. Próximas: a
-publicação na Vercel e a fase 3 (linha do tempo).
+**Site:** <https://castrillon.dev/sankey-fiscal/>
+
+**Estado:** fase 1 (dados) e fase 2 (o Sankey de 2025, em `web/`: React + layout próprio em SVG) concluídas e publicadas em
+<https://castrillon.dev/sankey-fiscal/>. Próxima: a fase 3 (linha do tempo).
 
 ## Começando
 
