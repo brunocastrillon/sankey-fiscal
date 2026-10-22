@@ -36,6 +36,8 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci --prefer-offline
+      - name: Dependências de produção sem vulnerabilidade alta (as de desenvolvimento ficam de fora)
+        run: npm audit --omit=dev --audit-level=high
       - run: npm test
       - run: npm run build
       - name: Caminhos sob /sankey-fiscal/ e build de produção sem o parâmetro de teste

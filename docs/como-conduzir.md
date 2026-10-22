@@ -100,6 +100,10 @@ do repositório como *Root Directory*. Tudo o que o build precisa está no `verc
   `/sankey-fiscal/:path*` → `/:path*`. O teste de `web/test/publicacao.test.ts` confere isso com o conversor da Vercel.
 - Cache: `assets/` (nomes com hash) é imutável por um ano; `dados/` é sempre revalidado pelo navegador e guardado 5 minutos na
   CDN; a página é sempre revalidada.
+- Título, descrição e Open Graph entram no `index.html` pelo plugin `sankey-metadados` do `vite.config.ts` (textos de
+  `src/textos.ts`, mês-base de `dados/indice.json`). A imagem `web/public/og-image.png` (1200 × 630, menos de 400 KB) é um print
+  do nosso gráfico: `npm run gerar-og` a regenera (tema claro, último ano, desktop); versione o PNG quando o desenho mudar.
+- O job `site` do CI roda `npm audit --omit=dev --audit-level=high`: só as dependências de produção barram o merge.
 
 **Node.** O CI usa o Node 24 e `web/package.json` declara `"engines": { "node": "24.x" }`. A Vercel lê o `engines` do
 `package.json` da *Root Directory*, e a raiz deste repositório não tem `package.json`; por isso a versão também fica fixada em

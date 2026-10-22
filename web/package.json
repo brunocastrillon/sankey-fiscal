@@ -16,7 +16,8 @@
     "build:teste": "vite build --mode teste --outDir dist-teste",
     "preview": "vite preview",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "gerar-og": "npm run build && node scripts/gerar-og.mjs"
   },
   "dependencies": {
     "react": "19.3.1",

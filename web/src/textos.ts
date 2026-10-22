@@ -2,6 +2,8 @@
 
 export const TEXTOS = {
   titulo: 'Receitas e despesas do Governo Central',
+  produto: 'Sankey fiscal',
+  descricao: 'de onde vêm e para onde vão as receitas e despesas primárias do Governo Central',
   tituloSvg: 'Diagrama de Sankey: de onde vem e para onde vai o dinheiro do Governo Central',
   aviso: 'Visualização independente, baseada em dados do Tesouro Nacional.',
   naoIncluiJuros: 'não inclui juros',
