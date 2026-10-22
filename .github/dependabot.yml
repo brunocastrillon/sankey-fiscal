@@ -1,0 +1,47 @@
+# Atualizações de versão: mensais, agrupadas por ecossistema, só para versões publicadas há 14 dias ou mais (cooldown).
+# As atualizações de segurança não seguem o cooldown nem o agrupamento daqui; o ignore vale também para elas.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 14
+    groups:
+      npm:
+        patterns: ["*"]
+    ignore:
+      # o pacote e a imagem mcr.microsoft.com/playwright do workflow sobem juntos, à mão; ver docs/como-conduzir.md
+      - dependency-name: "@playwright/test"
+      - dependency-name: "playwright"
+      - dependency-name: "playwright-core"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 14
+    groups:
+      pip:
+        patterns: ["*"]
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 14
+    groups:
+      github-actions:
+        patterns: ["*"]
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"

@@ -132,3 +132,15 @@ O CI do GitHub continua sendo a barreira: só se faz merge na `main` com os trê
 - A landing **não** tem integração com o Git: todo deploy dela sai de `site/` com `vercel --prod` e deve ser seguido de
   `curl.exe -sI https://castrillon.dev/sankey-fiscal/` (esperado: 200, `text/html`).
 - Atenção: se a landing ganhar uma CSP, ela vale para este caminho e precisa permitir os estilos inline do Sankey.
+
+## 10. Manutenção
+
+- **Dependabot** (`.github/dependabot.yml`): `npm` em `web/`, `pip` e `github-actions`, uma vez por mês, um PR agrupado por
+  ecossistema (no máximo 3 abertos cada), commits com `chore(deps):`. As atualizações de versão só consideram versões
+  publicadas há 14 dias ou mais (`cooldown`). As atualizações de **segurança** ignoram o cooldown e o mês: saem assim que o
+  alerta aparece. Cada PR passa pelos três checks como qualquer outro.
+- **Playwright** fica fora do Dependabot (`@playwright/test`, `playwright` e `playwright-core` no `ignore`, que vale também
+  para as atualizações de segurança): o pacote e a imagem do job `site-navegador` sobem juntos, à mão, no mesmo PR.
+  1. `cd web && npm install -D --save-exact @playwright/test@<versão>`.
+  2. No `.github/workflows/testes.yml`, `image: mcr.microsoft.com/playwright:v<versão>-noble`, a mesma versão.
+  3. `npm run e2e` local e os três checks no PR. Com versões diferentes, o Playwright não encontra o navegador da imagem.
