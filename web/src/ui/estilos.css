@@ -1,7 +1,7 @@
 /* Cores vêm das variáveis de tema.ts (claro por padrão, escuro por prefers-color-scheme). */
 :root {
   --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --painel-altura: 16.5rem; /* 264 px na fonte padrão; cresce com a fonte do navegador */
+  --painel-altura: 18rem; /* 288 px na fonte padrão; cresce com a fonte do navegador */
 }
 
 * {

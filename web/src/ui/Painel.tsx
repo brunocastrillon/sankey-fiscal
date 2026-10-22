@@ -60,7 +60,7 @@ export function Painel({ grafo, no, aoFechar, aoVerNoDesenho, ref }: Props) {
         </button>
       )}
       <p className="secundario painel-nota">
-        {TEXTOS.registro} {TEXTOS.precos} {formatarMesBase(grafo.mesBase)} {TEXTOS.deflator}.
+        {TEXTOS.registro} {TEXTOS.precos} {formatarMesBase(grafo.mesBase)} {TEXTOS.deflator}. {TEXTOS.fonte} ({grafo.versaoDados}).
       </p>
     </section>
   );

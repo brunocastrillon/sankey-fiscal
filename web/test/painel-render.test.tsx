@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { montarGrafo } from '../src/grafo/grafo';
+import { formatarMesBase } from '../src/formatar';
 import { TEXTOS } from '../src/textos';
 import { Painel } from '../src/ui/Painel';
 import { lerAno } from './apoio/dados';
@@ -36,6 +37,14 @@ describe('painel de detalhes (2025)', () => {
     expect(obrig).toContain(TEXTOS.obrigatoriasDescricao);
     for (const id of g.obrigatorias) expect(obrig).toContain(g.nos.find((n) => n.id === id)!.rotulo.replace(/\(/g, '('));
     expect(render(null)).toContain(TEXTOS.convitePainel);
+  });
+
+  it('todo nó mostra o boletim de origem (versao_dados) e o mês-base', () => {
+    for (const n of g.nos) {
+      const html = render(n.id);
+      expect(html, n.id).toContain(g.versaoDados);
+      expect(html, n.id).toContain(formatarMesBase(g.mesBase));
+    }
   });
 
   it('o botão de fechar tem nome acessível', () => {
