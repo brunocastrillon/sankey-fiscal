@@ -4,7 +4,10 @@
   "installCommand": "cd web && npm ci --prefer-offline",
   "buildCommand": "cd web && npm run build",
   "outputDirectory": "web/dist",
-  "rewrites": [{ "source": "/sankey-fiscal/:path*", "destination": "/:path*" }],
+  "rewrites": [
+    { "source": "/sankey-fiscal/", "destination": "/index.html" },
+    { "source": "/sankey-fiscal/:path*", "destination": "/:path*" }
+  ],
   "headers": [
     {
       "source": "/sankey-fiscal/assets/(.*)",

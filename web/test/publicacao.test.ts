@@ -1,6 +1,7 @@
 // Publicação na Vercel: vercel.json na raiz do repositório e o canonical no index.html construído.
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { getTransformedRoutes } from '@vercel/routing-utils';
 import { build, type Rollup } from 'vite';
 import { describe, expect, it } from 'vitest';
 
@@ -43,8 +44,11 @@ describe('vercel.json', () => {
     expect(config.outputDirectory).toBe('web/dist');
   });
 
-  it('reescreve /sankey-fiscal/* para a raiz do build', () => {
-    expect(lerConfig().rewrites).toContainEqual({ source: '/sankey-fiscal/:path*', destination: '/:path*' });
+  it('reescreve /sankey-fiscal/ para o index.html e /sankey-fiscal/* para a raiz do build, nessa ordem', () => {
+    expect(lerConfig().rewrites).toEqual([
+      { source: '/sankey-fiscal/', destination: '/index.html' },
+      { source: '/sankey-fiscal/:path*', destination: '/:path*' },
+    ]);
   });
 
   it('define o cache dos arquivos com hash, dos dados e da página', () => {
@@ -56,6 +60,32 @@ describe('vercel.json', () => {
     expect(cacheDe('/sankey-fiscal/assets/(.*)')).toBe('public, max-age=31536000, immutable');
     expect(cacheDe('/sankey-fiscal/dados/(.*)')).toBe('public, max-age=0, s-maxage=300, must-revalidate');
     expect(cacheDe('/sankey-fiscal/')).toBe('public, max-age=0, must-revalidate');
+  });
+});
+
+// As reescritas convertidas pelo mesmo conversor da Vercel; prova a regra, não o deploy.
+describe('rotas do vercel.json', () => {
+  const casaReescrita = (endereco: string): boolean => {
+    const { routes, error } = getTransformedRoutes({ rewrites: lerConfig().rewrites });
+    if (error || !routes) throw new Error(`vercel.json inválido para a Vercel: ${error?.message}`);
+    const { pathname } = new URL(endereco, 'https://exemplo.invalid');
+    return routes.some(
+      (r) => 'src' in r && r.src !== undefined && r.dest !== undefined && new RegExp(r.src).test(pathname),
+    );
+  };
+
+  it.each([
+    '/sankey-fiscal/',
+    '/sankey-fiscal',
+    '/sankey-fiscal/dados/2025.json',
+    '/sankey-fiscal/assets/x.js',
+    '/sankey-fiscal/?ano=2020',
+  ])('%s casa com uma reescrita', (endereco) => {
+    expect(casaReescrita(endereco)).toBe(true);
+  });
+
+  it('/outra-coisa não casa com nenhuma reescrita', () => {
+    expect(casaReescrita('/outra-coisa')).toBe(false);
   });
 });
 
