@@ -39,3 +39,24 @@ jobs:
       - run: npm run build
       - name: Caminhos sob /sankey-fiscal/ e build de produção sem o parâmetro de teste
         run: node scripts/conferir-bundle.mjs dist
+
+  site-navegador:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      - name: Testes de navegador (Playwright, build de teste)
+        run: npm run e2e
