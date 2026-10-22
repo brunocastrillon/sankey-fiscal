@@ -1,12 +1,18 @@
-// Publicação na Vercel: vercel.json na raiz do repositório e o canonical no index.html construído.
-import { existsSync, readFileSync } from 'node:fs';
+// Publicação na Vercel: vercel.json na raiz do repositório; canonical, metadados e imagem de compartilhamento no build.
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getTransformedRoutes } from '@vercel/routing-utils';
-import { build, type Rollup } from 'vite';
-import { describe, expect, it } from 'vitest';
+import { build } from 'vite';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { formatarMesBase } from '../src/formatar';
+import { TEXTOS } from '../src/textos';
 
 const PASTA_WEB = fileURLToPath(new URL('../', import.meta.url));
 const VERCEL_JSON = fileURLToPath(new URL('../../vercel.json', import.meta.url));
+const INDICE_JSON = fileURLToPath(new URL('../../dados/indice.json', import.meta.url));
+const MES_BASE = (JSON.parse(readFileSync(INDICE_JSON, 'utf8')) as { mes_base: string }).mes_base;
 const CANONICAL = '<link rel="canonical" href="https://castrillon.dev/sankey-fiscal/">';
 
 interface Cabecalho {
@@ -89,16 +95,64 @@ describe('rotas do vercel.json', () => {
   });
 });
 
-describe('index.html construído', () => {
-  it('aponta o canonical para castrillon.dev/sankey-fiscal/', { timeout: 60_000 }, async () => {
-    const saida = (await build({
+describe('build de produção', () => {
+  let pasta = '';
+  let html = '';
+  const meta = (atributo: 'name' | 'property', chave: string) =>
+    html.match(new RegExp(`<meta ${atributo}="${chave}" content="([^"]*)"`))?.[1];
+
+  beforeAll(async () => {
+    pasta = mkdtempSync(join(tmpdir(), 'sankey-build-'));
+    await build({
       root: PASTA_WEB,
       configFile: `${PASTA_WEB}vite.config.ts`,
       logLevel: 'silent',
-      build: { write: false, copyPublicDir: false },
-    })) as Rollup.RollupOutput;
-    const html = saida.output.find((o) => o.fileName === 'index.html');
-    expect(html?.type).toBe('asset');
-    expect(String((html as Rollup.OutputAsset).source)).toContain(CANONICAL);
+      build: { outDir: pasta, emptyOutDir: true },
+    });
+    html = readFileSync(join(pasta, 'index.html'), 'utf8');
+  }, 60_000);
+  afterAll(() => rmSync(pasta, { recursive: true, force: true }));
+
+  it('aponta o canonical para castrillon.dev/sankey-fiscal/', () => {
+    expect(html).toContain(CANONICAL);
+  });
+
+  it('declara a página em português do Brasil, com o charset antes do título e dos metadados', () => {
+    expect(html).toMatch(/<html lang="pt-BR">/);
+    expect(html.indexOf('<meta charset="UTF-8"')).toBeGreaterThan(-1);
+    expect(html.indexOf('<meta charset="UTF-8"')).toBeLessThan(html.indexOf('<title>'));
+  });
+
+  it('tem título e descrição montados de textos.ts e do mês-base dos dados', () => {
+    const titulo = 'Receitas e despesas do Governo Central · Sankey fiscal';
+    const descricao =
+      'Visualização independente, baseada em dados do Tesouro Nacional: de onde vêm e para onde vão as receitas e ' +
+      `despesas primárias do Governo Central, em R$ constantes de ${formatarMesBase(MES_BASE)}.`;
+    expect(html.match(/<title>([^<]*)<\/title>/g)).toEqual([`<title>${titulo}</title>`]);
+    expect(meta('name', 'description')).toBe(descricao);
+    expect(meta('property', 'og:title')).toBe(titulo);
+    expect(meta('property', 'og:description')).toBe(descricao);
+  });
+
+  it('tem o Open Graph e o cartão grande do Twitter', () => {
+    expect(meta('property', 'og:type')).toBe('website');
+    expect(meta('property', 'og:url')).toBe('https://castrillon.dev/sankey-fiscal/');
+    expect(meta('property', 'og:locale')).toBe('pt_BR');
+    expect(meta('property', 'og:image')).toBe('https://castrillon.dev/sankey-fiscal/og-image.png');
+    expect(meta('property', 'og:image:width')).toBe('1200');
+    expect(meta('property', 'og:image:height')).toBe('630');
+    expect(meta('property', 'og:image:alt')).toBe(TEXTOS.tituloSvg);
+    expect(meta('name', 'twitter:card')).toBe('summary_large_image');
+  });
+
+  it('publica og-image.png: PNG de exatamente 1200 × 630 e menos de 400 KB', () => {
+    const arquivo = join(pasta, 'og-image.png');
+    expect(existsSync(arquivo)).toBe(true);
+    const png = readFileSync(arquivo);
+    // Assinatura PNG; o primeiro bloco é o IHDR, com largura e altura em big-endian nos bytes 16–23.
+    expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect(png.subarray(12, 16).toString('ascii')).toBe('IHDR');
+    expect({ largura: png.readUInt32BE(16), altura: png.readUInt32BE(20) }).toEqual({ largura: 1200, altura: 630 });
+    expect(statSync(arquivo).size).toBeLessThan(400 * 1024);
   });
 });
