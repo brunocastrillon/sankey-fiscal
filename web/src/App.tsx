@@ -5,6 +5,7 @@ import { montarGrafo } from './grafo/grafo';
 import type { Grafo } from './grafo/tipos';
 import { TEXTOS } from './textos';
 import { Cartao } from './ui/Cartao';
+import { Protecao } from './ui/Protecao';
 
 async function carregarGrafo(): Promise<Grafo> {
   const indice = await carregarIndice();
@@ -38,7 +39,11 @@ export function App() {
           {TEXTOS.erroCarga}
         </p>
       )}
-      {grafo && <Cartao grafo={grafo} />}
+      {grafo && (
+        <Protecao>
+          <Cartao grafo={grafo} />
+        </Protecao>
+      )}
     </main>
   );
 }

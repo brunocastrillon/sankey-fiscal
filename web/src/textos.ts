@@ -29,6 +29,7 @@ export const TEXTOS = {
   verNoDesenho: '↑ ver no desenho',
   ariaRolagem: 'Diagrama de Sankey, mais largo que a tela. Role para a direita para ver os destinos do gasto.',
   erroCarga: 'Não foi possível carregar os dados. Tente recarregar a página.',
+  erroDesenho: 'Não foi possível desenhar o diagrama. Tente recarregar a página.',
   tabela: 'Ver os valores em tabela',
   colunasTabela: { no: 'Nó', valor: 'Valor', participacao: 'Participação' },
   meses: ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'],

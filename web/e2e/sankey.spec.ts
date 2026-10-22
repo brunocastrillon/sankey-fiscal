@@ -316,6 +316,18 @@ test.describe('foco da revisão', () => {
     await expect(page.getByTestId('erro')).toHaveText(TEXTOS.erroCarga);
   });
 
+  test('erro ao desenhar (dados corrompidos): mensagem em texto, não página em branco', async ({ page }) => {
+    await page.route('**/dados/2025.json', async (r) => {
+      const d = await (await r.fetch()).json();
+      d.estrutura.obrigatorias = [...d.estrutura.obrigatorias, 'no_inexistente'];
+      d.real.nos.no_inexistente = 1;
+      await r.fulfill({ json: d });
+    });
+    await page.goto('./?ano=2025');
+    await expect(page.getByTestId('erro')).toHaveText(TEXTOS.erroDesenho);
+    await expect(page.locator('h1')).toBeVisible();
+  });
+
   test('320 px: só o contêiner rola; a página não ganha rolagem horizontal', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await abrir(page, 2025);
