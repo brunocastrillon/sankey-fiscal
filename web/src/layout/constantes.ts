@@ -27,7 +27,7 @@ export interface ConfigFormato {
 export const DESKTOP: ConfigFormato = {
   nome: 'desktop',
   fonte: 13,
-  alturaSvg: 733,
+  alturaSvg: 738,
   alturaBarras: 600,
   larguraNo: 12,
   espacoEntreNos: 14,
@@ -50,7 +50,7 @@ export const DESKTOP: ConfigFormato = {
 export const CELULAR: ConfigFormato = {
   nome: 'celular',
   fonte: 11,
-  alturaSvg: 722,
+  alturaSvg: 727,
   alturaBarras: 540,
   larguraNo: 10,
   espacoEntreNos: 12,
@@ -75,3 +75,7 @@ export const LARGURA_MAX_DESKTOP = 1200;
 export const FOLGA_ROTULOS = 3;
 export const OPACIDADE_FLUXO = 0.36;
 export const ALTURA_LINHA = 1.27; // em múltiplos do tamanho da fonte
+// Extremos da caixa do texto (getBBox) em relação à linha de base, em múltiplos da fonte. Medido: Segoe UI 1,094 e 0,27;
+// Roboto, SF e Arial ficam abaixo. Valores conservadores para a caixa modelada nunca ser menor que a real.
+export const ASCENDENTE = 1.1;
+export const DESCENDENTE = 0.3;

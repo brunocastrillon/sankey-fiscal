@@ -2,7 +2,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { montarGrafo } from '../src/grafo/grafo';
-import { CELULAR, DESKTOP } from '../src/layout/constantes';
+import { ASCENDENTE, CELULAR, DESKTOP, DESCENDENTE } from '../src/layout/constantes';
 import { calcularLayout } from '../src/layout/layout';
 import { Sankey } from '../src/ui/Sankey';
 import { lerAno } from './apoio/dados';
@@ -14,11 +14,12 @@ const nada = () => {};
 describe.each([
   ['desktop', DESKTOP, { largura: 1200 }],
   ['celular', CELULAR, { larguraVisivel: 390 }],
-] as const)('Sankey de 2025 renderizado (%s)', (_, cfg, opcoes) => {
-  const g = montarGrafo(lerAno(2025));
+  ['celular 2020', CELULAR, { larguraVisivel: 390 }],
+] as const)('Sankey renderizado (%s)', (nome, cfg, opcoes) => {
+  const g = montarGrafo(lerAno(nome.includes('2020') ? 2020 : 2025));
   const L = calcularLayout(g, cfg, medidorDeterministico(), opcoes);
   const html = renderToStaticMarkup(
-    <Sankey grafo={g} layout={L} idSvg="t" aoPassarMouse={nada} aoFocar={nada} aoEscolher={nada} aoSair={nada} />,
+    <Sankey grafo={g} layout={L} idSvg="t" aoPassarMouse={nada} aoEscolher={nada} aoSair={nada} />,
   );
   const fluxos = [...html.matchAll(/<path[^>]*class="fluxo"[^>]*>/g)].map((m) => m[0]);
   const attr = (tag: string, nome: string) => tag.match(new RegExp(`${nome}="([^"]*)"`))?.[1] ?? '';
@@ -35,6 +36,18 @@ describe.each([
       const esperada = f.valor * L.escala;
       expect(Math.abs(e.saida / esperada - 1)).toBeLessThan(0.01);
       expect(Math.abs(e.entrada / esperada - 1)).toBeLessThan(0.01);
+    }
+  });
+
+  it('cada rótulo é desenhado dentro da caixa que o layout testou', () => {
+    const textos = [...html.matchAll(/<text[^>]*class="rotulo[^"]*"[^>]*data-id="([^"]+)"[^>]*>(.*?)<\/text>/g)];
+    expect(textos).toHaveLength(L.rotulos.length);
+    for (const [, id, corpo] of textos) {
+      const r = L.rotulos.find((x) => x.id === id)!;
+      const ys = [...corpo.matchAll(/<tspan[^>]* y="([^"]+)"/g)].map((m) => Number(m[1]));
+      expect(ys).toHaveLength(r.linhas.length);
+      expect(ys[0] - ASCENDENTE * L.fonte, `${id}: topo da primeira linha`).toBeCloseTo(r.caixa.y0, 6);
+      expect(ys[ys.length - 1] + DESCENDENTE * L.fonte, `${id}: fundo da última linha`).toBeCloseTo(r.caixa.y1, 6);
     }
   });
 

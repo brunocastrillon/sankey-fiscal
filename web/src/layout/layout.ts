@@ -1,7 +1,7 @@
 import { formatarBi } from '../formatar';
 import type { Grafo, No } from '../grafo/tipos';
 import { TEXTOS } from '../textos';
-import { ALTURA_LINHA, FOLGA_ROTULOS, LARGURA_MAX_DESKTOP, type ConfigFormato, type IdMeio, type PosicaoMeio } from './constantes';
+import { ALTURA_LINHA, ASCENDENTE, DESCENDENTE, FOLGA_ROTULOS, LARGURA_MAX_DESKTOP, type ConfigFormato, type IdMeio, type PosicaoMeio } from './constantes';
 import type { EstiloTexto, MedirTexto } from './medir';
 import { quebrarPorLargura, resolverFila } from './rotulos';
 
@@ -188,7 +188,9 @@ export function calcularLayout(
       ...(deficit ? [{ texto: TEXTOS.naoIncluiJuros, negrito: false, secundario: true }] : []),
     ];
     const largura = Math.max(...linhas.map((l) => medir(l.texto, l.negrito ? negrito : normal)));
-    textos.set(n.id, { linhas, largura, altura: linhas.length * alturaLinha, lado, posicao });
+    // altura da caixa real do texto: da ascendente da primeira linha à descendente da última
+    const altura = (linhas.length - 1) * alturaLinha + (ASCENDENTE + DESCENDENTE) * cfg.fonte;
+    textos.set(n.id, { linhas, largura, altura, lado, posicao });
   }
   const maiorLargura = (c: No[]) => Math.max(0, ...c.map((n) => textos.get(n.id)!.largura));
 

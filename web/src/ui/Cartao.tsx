@@ -20,7 +20,6 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
   const refCartao = useRef<HTMLElement>(null);
   const medidor = useMedidor(refAmostra);
   const [largura, setLargura] = useState(0);
-  const [apontado, setApontado] = useState<string | null>(null);
   const [escolhido, setEscolhido] = useState<string | null>(null);
   const [dica, setDica] = useState<{ id: string; barra: Element } | null>(null);
 
@@ -43,7 +42,6 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
   const focarNo = (id: string) => refArea.current?.querySelector<SVGGElement>(`g.no[data-id="${id}"]`)?.focus();
   const escolher = useCallback((id: string) => {
     setEscolhido(id);
-    setApontado(null);
     setDica(null);
     requestAnimationFrame(() => {
       refPainel.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -53,7 +51,6 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
   const fechar = useCallback(() => {
     const origem = escolhido;
     setEscolhido(null);
-    setApontado(null);
     if (origem) requestAnimationFrame(() => focarNo(origem));
   }, [escolhido]);
   const teclas = (e: KeyboardEvent) => {
@@ -63,20 +60,15 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
     }
   };
 
-  const idVisivel = apontado ?? escolhido;
-  const noVisivel = idVisivel ? grafo.nos.find((n) => n.id === idVisivel) ?? null : null;
+  const noVisivel = escolhido ? grafo.nos.find((n) => n.id === escolhido) ?? null : null;
   const sankey = layout && (
     <Sankey
       grafo={grafo}
       layout={layout}
       idSvg={idSvg}
       aoPassarMouse={(id, barra) => setDica({ id, barra })}
-      aoFocar={setApontado}
       aoEscolher={escolher}
-      aoSair={() => {
-        setApontado(null);
-        setDica(null);
-      }}
+      aoSair={() => setDica(null)}
     />
   );
 

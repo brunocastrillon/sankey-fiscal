@@ -1,7 +1,7 @@
 import type { KeyboardEvent } from 'react';
 import { formatarBi } from '../formatar';
 import type { Grafo } from '../grafo/tipos';
-import { OPACIDADE_FLUXO } from '../layout/constantes';
+import { ASCENDENTE, OPACIDADE_FLUXO } from '../layout/constantes';
 import { caminhoFaixa } from '../layout/geometria';
 import type { Layout } from '../layout/layout';
 import { TEXTOS } from '../textos';
@@ -13,15 +13,13 @@ interface Props {
   idSvg: string;
   /** Mouse sobre o nó (só pointerType 'mouse'): dica flutuante perto da barra, sem mover o foco. */
   aoPassarMouse: (id: string, barra: Element) => void;
-  /** Foco por teclado: mostra o nó no painel sem mover o foco. */
-  aoFocar: (id: string) => void;
   /** Clique, toque ou Enter: mostra o painel e leva o foco a ele. */
   aoEscolher: (id: string) => void;
   aoSair: () => void;
 }
 
 /** Desenha a geometria já calculada. Sem estado: tudo vem do layout e do grafo. */
-export function Sankey({ grafo, layout: L, idSvg, aoPassarMouse, aoFocar, aoEscolher, aoSair }: Props) {
+export function Sankey({ grafo, layout: L, idSvg, aoPassarMouse, aoEscolher, aoSair }: Props) {
   const porId = new Map(grafo.nos.map((n) => [n.id, n]));
   const hachura = `${idSvg}-hachura`;
   const ehDeficit = (id: string) => porId.get(id)?.cor === 'deficit';
@@ -88,7 +86,6 @@ export function Sankey({ grafo, layout: L, idSvg, aoPassarMouse, aoFocar, aoEsco
               if (e.pointerType === 'mouse' && barra) aoPassarMouse(nl.id, barra);
             }}
             onPointerLeave={(e) => e.pointerType === 'mouse' && aoSair()}
-            onFocus={() => aoFocar(nl.id)}
             onClick={() => aoEscolher(nl.id)}
             onKeyDown={teclado(nl.id)}
           >
@@ -115,7 +112,7 @@ export function Sankey({ grafo, layout: L, idSvg, aoPassarMouse, aoFocar, aoEsco
                   <tspan
                     key={i}
                     x={r.x}
-                    y={r.topo + r.alturaLinha * (i + 0.8)}
+                    y={r.topo + ASCENDENTE * L.fonte + r.alturaLinha * i}
                     className={l.negrito ? 'valor' : l.secundario ? 'secundario' : undefined}
                   >
                     {l.texto}
