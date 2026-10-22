@@ -4,6 +4,7 @@ import type { Grafo } from '../grafo/tipos';
 import { LARGURA_MAX_DESKTOP } from '../layout/constantes';
 import { calcularLayout } from '../layout/layout';
 import { TEXTOS } from '../textos';
+import { Dica } from './Dica';
 import { escolherFormato } from './formato';
 import { Painel } from './Painel';
 import { Rolagem } from './Rolagem';
@@ -16,10 +17,12 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
   const refArea = useRef<HTMLDivElement>(null);
   const refAmostra = useRef<SVGTextElement>(null);
   const refPainel = useRef<HTMLElement>(null);
+  const refCartao = useRef<HTMLElement>(null);
   const medidor = useMedidor(refAmostra);
   const [largura, setLargura] = useState(0);
   const [apontado, setApontado] = useState<string | null>(null);
   const [escolhido, setEscolhido] = useState<string | null>(null);
+  const [dica, setDica] = useState<{ id: string; barra: Element } | null>(null);
 
   useEffect(() => {
     const area = refArea.current;
@@ -41,7 +44,11 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
   const escolher = useCallback((id: string) => {
     setEscolhido(id);
     setApontado(null);
-    requestAnimationFrame(() => refPainel.current?.focus());
+    setDica(null);
+    requestAnimationFrame(() => {
+      refPainel.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      refPainel.current?.focus({ preventScroll: true });
+    });
   }, []);
   const fechar = useCallback(() => {
     const origem = escolhido;
@@ -63,14 +70,18 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
       grafo={grafo}
       layout={layout}
       idSvg={idSvg}
-      aoApontar={setApontado}
+      aoPassarMouse={(id, barra) => setDica({ id, barra })}
+      aoFocar={setApontado}
       aoEscolher={escolher}
-      aoSair={() => setApontado(null)}
+      aoSair={() => {
+        setApontado(null);
+        setDica(null);
+      }}
     />
   );
 
   return (
-    <article className={`cartao formato-${formato.nome}`} data-testid="cartao" onKeyDown={teclas}>
+    <article className={`cartao formato-${formato.nome}`} data-testid="cartao" onKeyDown={teclas} ref={refCartao}>
       <p className="aviso">{TEXTOS.aviso}</p>
       <svg className="amostra" aria-hidden="true" width="0" height="0">
         <text ref={refAmostra} className="rotulo">
@@ -88,6 +99,9 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
         </span>
       </footer>
       <TabelaValores grafo={grafo} />
+      {dica && refCartao.current && (
+        <Dica grafo={grafo} no={grafo.nos.find((n) => n.id === dica.id)!} barra={dica.barra} cartao={refCartao.current} />
+      )}
     </article>
   );
 }

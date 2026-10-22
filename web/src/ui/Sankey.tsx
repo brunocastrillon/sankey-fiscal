@@ -11,15 +11,17 @@ interface Props {
   layout: Layout;
   /** Prefixo único dos ids internos do SVG (título e hachura). */
   idSvg: string;
-  /** Hover ou foco: mostra o painel sem mover o foco. */
-  aoApontar: (id: string) => void;
+  /** Mouse sobre o nó (só pointerType 'mouse'): dica flutuante perto da barra, sem mover o foco. */
+  aoPassarMouse: (id: string, barra: Element) => void;
+  /** Foco por teclado: mostra o nó no painel sem mover o foco. */
+  aoFocar: (id: string) => void;
   /** Clique, toque ou Enter: mostra o painel e leva o foco a ele. */
   aoEscolher: (id: string) => void;
   aoSair: () => void;
 }
 
 /** Desenha a geometria já calculada. Sem estado: tudo vem do layout e do grafo. */
-export function Sankey({ grafo, layout: L, idSvg, aoApontar, aoEscolher, aoSair }: Props) {
+export function Sankey({ grafo, layout: L, idSvg, aoPassarMouse, aoFocar, aoEscolher, aoSair }: Props) {
   const porId = new Map(grafo.nos.map((n) => [n.id, n]));
   const hachura = `${idSvg}-hachura`;
   const ehDeficit = (id: string) => porId.get(id)?.cor === 'deficit';
@@ -39,7 +41,7 @@ export function Sankey({ grafo, layout: L, idSvg, aoApontar, aoEscolher, aoSair 
       viewBox={`0 0 ${L.largura} ${L.altura}`}
       role="group"
       aria-labelledby={`${idSvg}-titulo`}
-      onMouseLeave={aoSair}
+      onPointerLeave={aoSair}
     >
       <title id={`${idSvg}-titulo`}>{`${TEXTOS.tituloSvg}, ${grafo.ano}`}</title>
       <defs>
@@ -81,8 +83,12 @@ export function Sankey({ grafo, layout: L, idSvg, aoApontar, aoEscolher, aoSair 
             role="button"
             tabIndex={0}
             aria-label={`${n.rotulo}: ${formatarBi(n.valor)}`}
-            onMouseEnter={() => aoApontar(nl.id)}
-            onFocus={() => aoApontar(nl.id)}
+            onPointerEnter={(e) => {
+              const barra = e.currentTarget.querySelector('rect.barra');
+              if (e.pointerType === 'mouse' && barra) aoPassarMouse(nl.id, barra);
+            }}
+            onPointerLeave={(e) => e.pointerType === 'mouse' && aoSair()}
+            onFocus={() => aoFocar(nl.id)}
             onClick={() => aoEscolher(nl.id)}
             onKeyDown={teclado(nl.id)}
           >

@@ -38,6 +38,7 @@ h1 .ano {
 }
 
 .cartao {
+  position: relative;
   border: 1px solid var(--borda);
   border-radius: 10px;
   background: var(--fundo);
@@ -288,4 +289,25 @@ h1 .ano {
     border-left: 0;
     border-right: 0;
   }
+}
+
+/* Dica de hover do desktop: flutuante, fora do fluxo do layout */
+.dica-no {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 280px;
+  padding: 8px 10px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--painel);
+  color: var(--texto);
+  font-size: 0.8125rem;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+  pointer-events: none;
+}
+.dica-valor {
+  font-weight: 700;
 }

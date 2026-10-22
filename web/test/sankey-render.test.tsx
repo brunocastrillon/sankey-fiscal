@@ -18,7 +18,7 @@ describe.each([
   const g = montarGrafo(lerAno(2025));
   const L = calcularLayout(g, cfg, medidorDeterministico(), opcoes);
   const html = renderToStaticMarkup(
-    <Sankey grafo={g} layout={L} idSvg="t" aoApontar={nada} aoEscolher={nada} aoSair={nada} />,
+    <Sankey grafo={g} layout={L} idSvg="t" aoPassarMouse={nada} aoFocar={nada} aoEscolher={nada} aoSair={nada} />,
   );
   const fluxos = [...html.matchAll(/<path[^>]*class="fluxo"[^>]*>/g)].map((m) => m[0]);
   const attr = (tag: string, nome: string) => tag.match(new RegExp(`${nome}="([^"]*)"`))?.[1] ?? '';
