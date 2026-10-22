@@ -1,9 +1,10 @@
-// Confere o build: caminhos sob /sankey-fiscal/ e o parâmetro ?ano= só no build de teste.
+// Confere o build: caminhos sob /sankey-fiscal/ (fora o canonical absoluto) e o parâmetro ?ano= só no build de teste.
 // Uso: node scripts/conferir-bundle.mjs <pasta> [--teste]
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BASE = '/sankey-fiscal/';
+const CANONICAL = 'https://castrillon.dev/sankey-fiscal/';
 const SENTINELA = 'PARAM_ANO_SO_TESTE';
 
 const [pasta, modo] = process.argv.slice(2);
@@ -12,7 +13,7 @@ const erros = [];
 
 const html = readFileSync(join(pasta, 'index.html'), 'utf8');
 for (const [, url] of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
-  if (!url.startsWith('data:') && !url.startsWith(BASE)) erros.push(`index.html referencia ${url}, fora de ${BASE}`);
+  if (!url.startsWith('data:') && !url.startsWith(BASE) && url !== CANONICAL) erros.push(`index.html referencia ${url}, fora de ${BASE}`);
 }
 
 const arquivosJs = [];

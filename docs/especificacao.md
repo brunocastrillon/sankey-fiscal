@@ -202,7 +202,7 @@ descobrir isso antes de construir a linha do tempo. **Estado:** a fase 1 está c
 
 **Decisões**
 
-- **Onde vive a ferramenta.** Decidido: dentro do site pessoal, em castrillon.dev/sankey-fiscal. Os caminhos do JSON e dos arquivos do site precisam funcionar a partir desse subcaminho.
+- **Onde vive a ferramenta.** Decidido: dentro do site pessoal, em castrillon.dev/sankey-fiscal. O site é publicado num projeto próprio na Vercel (configurado por `vercel.json` na raiz do repositório) e servido em castrillon.dev/sankey-fiscal pela reescrita da landing, que encaminha esse subcaminho ao domínio de produção do projeto. Os caminhos do JSON e dos arquivos do site precisam funcionar a partir desse subcaminho.
 - **Nome do produto.** Decidido: `sankey-fiscal` (nome do repositório e da URL). Sem a marca gov.br e sem sugerir origem oficial.
 - **Fonte e versão do PIB.** Decidido: IBGE, Contas Nacionais Trimestrais, valores correntes (R$ 12,7 trilhões em 2025), guardando a data de divulgação de cada valor. Enquanto a série do IBGE não é carregada, o pipeline usa o PIB implícito nas abas anuais do RTN (R$ 12,739 tri em 2025). Teste de âncora: R$ 61,7 bi sobre esse PIB dá 0,48%, o valor do RTN.
 - **Abrir "Bolsa Família, saúde e outros".** Confirmado: abrir em Bolsa Família, Saúde e Demais já na versão 1.

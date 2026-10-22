@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd web && npm ci --prefer-offline",
+  "buildCommand": "cd web && npm run build",
+  "outputDirectory": "web/dist",
+  "rewrites": [{ "source": "/sankey-fiscal/:path*", "destination": "/:path*" }],
+  "headers": [
+    {
+      "source": "/sankey-fiscal/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/sankey-fiscal/dados/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, must-revalidate" }]
+    },
+    {
+      "source": "/sankey-fiscal/",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    }
+  ]
+}
