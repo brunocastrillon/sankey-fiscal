@@ -4,8 +4,7 @@ Posição de 22/10/2026, ao fim do brainstorming (telas T1 a T6). Complementa `d
 fonte de verdade de produto e metodologia; as mudanças que este documento faz na especificação estão listadas em
 "Mudanças na especificação e no CLAUDE.md" e entram nos commits indicados.
 
-Marcas: **[decidido]** veio do Bruno; **[minha decisão]** é escolha do implementador, revisável na leitura deste documento;
-**[aberto]** espera decisão do Bruno antes da sub-fase indicada.
+Marcas: **[decidido]** veio do Bruno; **[minha decisão]** é escolha do implementador, revisável na leitura deste documento.
 
 Os esboços ficaram fora do repositório. Foram feitos com uma cópia do layout da fase 2, os números de `dados/*.json` e o
 medidor determinístico dos testes (fatores 0,85, 1,00 e 1,25); as subcontas, com as funções do pipeline sobre a série
@@ -41,15 +40,23 @@ interpolado escrito na tela; animação ao carregar a página.
 
 ## Sub-fases, branches e critérios de saída
 
+**Estrutura dos PRs [decidido]:** o PR #17 (`fase-3-linha-do-tempo`) fica só com documentação (este design e o plano) e é
+mesclado primeiro. Depois, **um PR por sub-fase**, cada um aberto a partir da `main` atualizada, com revisor independente e o
+seu próprio CI (`validacoes`, `site`, `site-navegador`).
+
 | Sub-fase | Conteúdo | Branch e PR | Critério de saída |
 | --- | --- | --- | --- |
-| **3a · Dados** | PIB do IBGE, subcontas, notas | `fase-3a-dados`, PR próprio a partir da `main` [decidido] | `pytest` verde; prova de escopo (JSON antigos e novos, sem as chaves novas, idênticos); âncoras do PIB; CI verde; mesclado na `main` |
-| **3b · Layout** | escala compartilhada, superávit, modos, seleção de ano por hash, sem animação | `fase-3-linha-do-tempo` (PR #17), rebaseada na `main` depois da 3a | Vitest verde com a tabela de métricas por ano e a escala nova; Playwright com a fonte real em 2020, 2022 e 2025, desktop e celular, claro e escuro |
-| **3c · Linha do tempo** | controle de ano, play, transição entre anos e entre modos | PR #17 | M1–M8 e o orçamento de desempenho verdes; quadros da transição 2019→2020 e 2021→2022 conferidos |
-| **3d · Painel e pendências** | painel com subcontas e notas, pendências da fase 2 | PR #17 | testes do painel; pendências fechadas; revisão final; CI abaixo de 3 minutos |
+| **0 · Documentação** | design e plano | `fase-3-linha-do-tempo`, PR #17 | aprovação do Bruno; CI verde; mesclado na `main` |
+| **3a · Dados** | PIB do IBGE, subcontas, notas | `fase-3a-dados`, PR próprio | `pytest` verde; prova de escopo (JSON antigos e novos, sem as chaves novas, idênticos); âncoras do PIB; revisão independente; CI verde; mesclado |
+| **3b · Layout** | escala compartilhada, superávit, modos, seleção de ano e modo pelo hash, sem animação | `fase-3b-layout`, PR próprio | Vitest verde com a tabela de métricas por ano e a escala nova; Playwright com a fonte real em 2020, 2022 e 2025, desktop e celular, claro e escuro; tempo do job `site-navegador` medido; revisão independente; mesclado |
+| **3c · Linha do tempo** | controle de ano, play, transição entre anos e entre modos | `fase-3c-linha-do-tempo`, PR próprio | M1–M8 (anos e modos) e o orçamento de desempenho verdes; quadros das transições 2019→2020 e 2021→2022 conferidos; revisão independente; mesclado |
+| **3d · Painel e pendências** | painel com subcontas e notas, pendências da fase 2 | `fase-3d-painel`, PR próprio | testes do painel; pendências fechadas; revisão final; CI abaixo de 3 minutos (ou proposta de paralelismo); mesclado |
 
 Pontos de parada [decidido]: fim da 3a; fim da 3b (com a tabela de métricas por ano); fim da 3c (com quadros e métricas);
 revisão final. Cada sub-fase começa com os testes que falham.
+
+**Tempo do CI [decidido]:** o tempo do job `site-navegador` é medido em cada PR desde a 3b. Se passar de 3 minutos, a proposta
+vem antes do merge: mais `workers` do Playwright ou fatiamento (`--shard`) em jobs paralelos.
 
 ## 3a · Dados
 
@@ -63,10 +70,17 @@ revisão final. Cada sub-fase começa com os testes que falham.
   `pib: { "valor_nominal": …, "fonte": "IBGE, Contas Nacionais Trimestrais, tabela 1846", "trimestres": 4, "ultimo_trimestre": … }`.
 - **Medido em 22/10/2026 (API do SIDRA, só leitura):** a soma dos trimestres é igual ao PIB implícito no RTN nos 11 anos
   (diferença de 0,000%); déficit/PIB de 2025 = 0,484% pelas duas fontes.
-- **Âncoras [minha decisão: tolerâncias]:** em cada um dos 11 anos, resultado primário / PIB do IBGE difere do % do PIB
-  publicado na aba 2.2-A do RTN em no máximo **0,01 ponto percentual**; o PIB do IBGE difere do implícito no RTN em no máximo
-  **0,5%** (folga para revisões do IBGE entre o boletim e a carga). A A3 (déficit de 2025 = 0,48%) continua.
-- **Mutação:** trocar o PIB de um ano pelo do ano anterior derruba a âncora.
+- **Âncoras [decidido]:** em cada um dos 11 anos:
+  - resultado primário / PIB do IBGE difere do % do PIB publicado na aba 2.2-A do RTN em no máximo
+    **0,005 × |percentual| + 0,001 ponto percentual**. A tolerância é relativa porque uma diferença de 0,5% no PIB vira
+    diferenças diferentes em pontos percentuais: em 2020 (déficit de 9,77% do PIB) equivale a 0,05 p.p.; em 2025 (0,48%), a
+    0,0024 p.p.; o termo fixo de 0,001 p.p. cobre o arredondamento;
+  - o PIB do IBGE difere do implícito no RTN em no máximo **0,5%** (folga para revisões do IBGE entre o boletim e a carga).
+  - A A3 (déficit de 2025 = 0,48%) continua.
+- **Mutação:** trocar o PIB de 2020 pelo de 2019 derruba as duas âncoras (déficit de 2020 iria a 10,06% do PIB, 0,29 p.p. acima;
+  o PIB, 2,9% abaixo).
+- **`entrada/LEIAME.md`** registra a data do download do CSV e a revisão do IBGE a que ele corresponde (a divulgação das Contas
+  Nacionais Trimestrais mais recente incluída).
 
 ### Subcontas [decidido]
 
@@ -75,11 +89,12 @@ revisão final. Cada sub-fase começa com os testes que falham.
   site mostra **as 5 maiores do ano + "Demais (n linhas)"**, e, se n = 1, mostra a própria linha. [minha decisão: o JSON leva
   todas, o corte em 5 é do site]
 - **Formato:** `subcontas: { "<id do nó>": [ { "codigo", "nome", "real", "nominal" }, … ] }`, só para nós com duas ou mais
-  subcontas. Hoje são 9 dos 15 nós: Imposto de Renda (3), Contribuição ao INSS (2), Cofins e PIS (2), IOF/IPI/importação (7),
+  subcontas. Hoje são 10 dos 15 nós: Imposto de Renda (3), Contribuição ao INSS (2), Cofins e PIS (2), IOF/IPI/importação (7),
   Royalties, dividendos e outras (12), Repasse (6), Aposentadorias e pensões (2), Demais com controle de fluxo (3), Fundeb,
   seguro-desemprego e outras (19), Discricionárias (9). [minha decisão: todos os nós com subcontas, não só os dois prioritários]
 - **Nomes:** os da aba 1.2, normalizados como as `linhas` (fase 2).
-- **Teste:** a soma das subcontas fecha com o nó (0,01 milhão) nos 11 anos, em R$ constantes e em nominal; todo código existe
+- **Teste:** a soma das subcontas fecha com o nó (tolerância de **0,02 milhão**: cada valor é gravado com 3 casas, erro de até
+  0,0005 por subconta, e 19 subcontas somam até 0,0095) nos 11 anos, em R$ constantes e em nominal; todo código existe
   na aba 1.2; nenhum código de `subtrai` aparece. **Mutação:** incluir a 4.3.05 no Fundeb derruba o teste.
 - Medido (2020, R$ constantes de dez/2025): o Fundeb soma R$ 906,9 bi, dos quais R$ 591,9 bi em 4.3.07 Créditos
   Extraordinários e R$ 108,1 bi em 4.3.03 Apoio Fin. EE/MM.
@@ -102,13 +117,22 @@ revisão final. Cada sub-fase começa com os testes que falham.
     somam {soma de 4.3.10 e 4.3.01}." Fonte: série histórica do RTN, aba 1.2, linhas 4.3.07, 4.3.03, 4.3.01 e 4.3.10.
   - Bolsa Família: "Em {ano}, a linha {codigo:4.4.1.2} somou {soma:4.4.1.2:04-08} entre abril e agosto, contra
     {mes:4.4.1.2:03} só em março." (R$ 0,6 bi contra R$ 3,6 bi.) Fonte: aba 1.2, linha 4.4.1.2, mensal.
-- **Nota de contexto de 2020 (Auxílio Emergencial) [aberto]:** só depois que o Bruno informar o caminho do PDF do boletim do
-  RTN de dezembro de 2020 (baixado no navegador, fora do repositório). Extrai-se o texto (pdftotext ou pypdf, fora do
-  repositório) e procura-se "Auxílio Emergencial", "Bolsa Família" e "Créditos Extraordinários"; cada afirmação vem com página e
-  trecho; o que o PDF não cobrir, a nota não diz. A série histórica não nomeia o Auxílio Emergencial em nenhuma das 27 abas; a
-  aba 2.5 tem "m.2.8 Discricionárias – Assistência Social (Créditos Extraordinários)", R$ 295,9 bi correntes em 2020. Pistas
-  que não são fonte do Tesouro: relatório do TCU de 2021 que cita o RTN de dez/2020; imprensa sobre os R$ 326 bi do auxílio e
-  do BEm.
+- **Notas de contexto de 2020 [decidido; tarefa A3b]:** escritas a partir do PDF do boletim do RTN de dezembro de 2020
+  (Tesouro Nacional; o Bruno baixa no navegador e informa o caminho, fora do repositório). O texto é extraído fora do
+  repositório (pdftotext ou pypdf). Regras:
+  - base nas **Notas 16, 18 e 21** do boletim; cada afirmação com a **página confirmada** no PDF e um trecho curto;
+  - **qualitativas**: nenhum número do Tesouro digitado; valores, se houver, só por marcadores sobre a série do RTN;
+  - **fonte completa**: publicação, página, endereço e data de verificação;
+  - distinguem o **auxílio a pessoas** (Auxílio Emergencial) do **auxílio aos Estados e Municípios** (apoio financeiro);
+  - o que o PDF não cobrir, a nota não diz.
+- **Composição de 2020 (valores correntes; nó "Fundeb, seguro-desemprego e outras" = R$ 657,8 bi):**
+  - créditos extraordinários (4.3.07, série histórica do RTN): ~65% (R$ 429,6 bi);
+  - **auxílio a pessoas (Auxílio Emergencial): ~45%**, pela **Nota 18 do boletim do RTN de dezembro de 2020** (R$ 293,1 bi
+    correntes, informado pelo Bruno; a página é registrada na tarefa A3b). Conferência cruzada, que não é a fonte: a linha
+    "m.2.8 Discricionárias – Assistência Social (Créditos Extraordinários)" da aba 2.5 dá R$ 295,9 bi (~45%), mas a planilha não
+    nomeia essa linha como Auxílio Emergencial;
+  - apoio financeiro a Estados e Municípios (4.3.03, série histórica): ~12%.
+  - Corrige o texto do plano da fase 2 que dizia "a maior parte devida ao Auxílio Emergencial".
 
 ### Prova de escopo da 3a
 
@@ -184,8 +208,10 @@ série de `TEMAS`** (inclusive o superávit); mutação: uma cor de série com c
   medida: 41,5 px). Mutações: fonte 40 px maior; 60 px mais alto. Entra na trava do `gerar-og.mjs`.
 - **Comportamento:**
   1. "Ano: 2020" em texto visível na barra.
-  2. `#ano`: só anos de `dados/indice.json`; inválido volta ao último ano sem erro; `history.replaceState` ao trocar; `hashchange`
-     tratado. O `?ano=` do build de teste sai (ajustar `conferir-bundle` e a sentinela).
+  2. **Endereço com ano e modo [decidido]:** `#2020` (R$ constantes), `#2020/despesa` e `#2020/pib`; o ano só entre os de
+     `dados/indice.json`; lido sem `URLSearchParams`; qualquer hash inválido (ano fora do índice, modo desconhecido, lixo) volta
+     ao padrão (último ano, R$) sem erro; `history.replaceState` ao trocar de ano ou de modo; `hashchange` tratado. O `?ano=` do
+     build de teste sai (ajustar `conferir-bundle` e a sentinela).
   3. Play: nunca sozinho; para em 2025; em 2025 recomeça de 2015; interação manual pausa; pausa com a aba oculta; com
      `prefers-reduced-motion`, troca sem interpolar. Botão próprio de 44 px; barra de espaço só no botão focado; no deslizante,
      setas, Home/End e PageUp/PageDown.
@@ -200,9 +226,14 @@ série de `TEMAS`** (inclusive o superávit); mutação: uma cor de série com c
 
 - **Rótulos no modo (b) [decidido]:** acompanham a geometria, com a fila recalculada a cada quadro; o valor escrito é o do ano
   mais próximo (troca em t = 0,5), nunca um valor interpolado.
-- **Movimento [decidido]:** 700 ms; suavização seno (sem ultrapassagem); 1,3 s de pausa por ano no play; interpolam-se os
-  valores (o resultado **com sinal**) e o layout é recalculado em cada quadro, com escala e âncora fixas. A animação é **por
-  tempo** (`performance.now()`), não por contagem de quadros.
+- **Movimento [decidido]:** 700 ms; suavização seno (sem ultrapassagem); 1,3 s de pausa por ano no play; o layout é
+  recalculado em cada quadro, com escala e âncora fixas. A animação é **por tempo** (`performance.now()`), não por contagem de
+  quadros.
+- **Interpola-se a grandeza desenhada [decidido]:** monta-se o grafo de cada ano no modo escolhido (valores já em R$, em % da
+  despesa ou em % do PIB, com o resultado **com sinal**) e interpolam-se linearmente os valores desses grafos. **Nunca** se
+  interpolam os blocos `real`/`nominal`/`pib` para dividir depois: a razão de duas retas não é uma reta. Medido nas bordas e
+  cantos, em px, com a suavização seno: interpolando os blocos, o passo relativo chega a 1,31× em "% da despesa" (2019→2020 e
+  2020→2021) e a 1,18× em "% do PIB" (2020→2021); interpolando a grandeza desenhada, 1,000 nos três modos.
 - **Limite de 6 px por quadro (a 60 quadros/s) [decidido]:** pico de velocidade = (π/2) × deslocamento ÷ quadros; com 42
   quadros, cobre ~160 px em 700 ms; o maior deslocamento medido é ~124 px (4,64 px/quadro). Se um ano futuro exigir mais,
   **aumenta-se a duração, não o limite**.
@@ -210,7 +241,9 @@ série de `TEMAS`** (inclusive o superávit); mutação: uma cor de série com c
   ano de destino; nenhum anúncio por quadro; o foco é preservado.
 - **Histerese do rótulo do resultado [decidido]:** aparece com ≥ `ESPESSURA_MINIMA` (3 px) e some abaixo de
   `ESPESSURA_MINIMA − 1` (2 px); uma só constante para a regra estática e para a histerese.
-- **Troca de modo:** a mesma transição, interpolando em pixels (valor × escala de cada modo).
+- **Troca de modo:** a mesma transição, interpolando a grandeza desenhada em pixels (valor do modo × escala do modo; a âncora
+  de cada modo também é interpolada). As métricas da troca de modo cobrem 11 anos × 6 pares ordenados de modo × 2 formatos.
+  Se alguma troca de modo passar de 6 px/quadro, **aumenta-se a duração dessa transição**, não o limite.
 
 ### Métricas (10 pares × 2 formatos × 3 modos)
 
@@ -230,31 +263,47 @@ série de `TEMAS`** (inclusive o superávit); mutação: uma cor de série com c
 
 - **M2 por trechos:** nos pares com troca de sinal (2021→2022, 2022→2023), o par é cortado onde o resultado vale zero (lá,
   max(0, ±r) e min(receita líquida, despesa) dobram); M2(a) e M2(c) valem em cada trecho. Sem o corte, 328 falhas falsas.
+- **Trocas de modo:** 11 anos × 6 pares ordenados de modo × 2 formatos, com M1, M2(b), M2(c), M3, M6, M7 e M8; o relatório traz
+  uma tabela com o maior passo (px/quadro) de cada par de modos.
 - **Mutações:** suavização que ultrapassa o destino (easeOutBack: 58.389 ultrapassagens, 13,46 px/quadro); interpolar déficit e
-  superávit separadamente (derruba M5); fila de rótulos desligada nos quadros intermediários (colisão em 2.460 de 2.580).
-- M2(a), M2(c) e M3 passam por construção com valores interpolados e layout recalculado; ficam como proteção contra troca da
-  suavização, suavização diferente entre nó e fluxo e ordenação recalculada por quadro. M5–M8 não passam por construção.
+  superávit separadamente (derruba M5); fila de rótulos desligada nos quadros intermediários (colisão em 2.460 de 2.580);
+  interpolar os blocos e dividir depois (derruba M2(a) em "% da despesa": 1,31×).
+- **O que passa por construção:** no modo R$, com os valores interpolados e o layout recalculado, cada coordenada é afim no
+  progresso dentro de cada trecho e a ordem de empilhamento não muda, então M2(a), M2(c) e M3 passam por construção. **Nos
+  modos percentuais, só passam com a interpolação da grandeza desenhada**; com os blocos interpolados, M2(a) cai. As três ficam
+  como proteção contra troca da suavização, suavização diferente entre nó e fluxo, ordenação recalculada por quadro e a
+  interpolação errada nos percentuais. M5–M8 não passam por construção.
 
 ### Orçamento de desempenho
 
-Meta [decidido]: **p95 ≤ 8 ms por quadro** (cálculo + pintura) com CPU limitada em 4×; 6× reportado. A meta não é relaxada.
+**Critério [decidido]:** **p95 do tempo de CPU da thread principal por quadro, medido pelo trace do Chrome a 1×, ≤ 2,0 ms**
+(a meta de 8 ms com CPU 4× mais lenta, dividida por 4). A medida de parede a 4× é conferência: **p50 ≤ 16,7 ms** (um quadro a
+60 por segundo). O quadro vazio mostra o ruído do emulador: p95 de parede de 6,9–8,3 ms com 0,35 ms de CPU. A meta não é
+relaxada.
 
-| Estratégia por quadro (esboço, 2019→2020) | 1× · p95 de CPU da thread (trace) | × 4 | 4× emulada · p50 / p95 de parede |
+| Estratégia por quadro (esboço, 2019→2020) | 1× · p95 de CPU da thread (trace) | Cumpre 2,0 ms? | 4× emulada · p50 / p95 de parede |
 | --- | --- | --- | --- |
-| Quadro vazio | 0,21 ms | 0,8 | 0,8 / 6,9–8,3 ms |
-| SVG com atributos atualizados | 2,32 desktop · 2,74 celular | 9,3 · 11,0 | 11,6 / 39 · 11,9 / 55 |
-| SVG com atributos, quadros pré-calculados | — | — | 10–11 / 29–31 |
-| Canvas | 1,00 · 1,32 | 4,0 · 5,3 | 4,8 / 22 · 3,7 / 9 |
-| Canvas, quadros pré-calculados | 0,74 · 0,70 | 3,0 · 2,8 | 3,5 / 22 · 2,8 / 17 |
+| Quadro vazio | 0,21 ms | — | 0,8 / 6,9–8,3 ms |
+| SVG com atributos atualizados | 2,32 desktop · 2,74 celular | não | 11,6 / 39 · 11,9 / 55 |
+| SVG com atributos, quadros pré-calculados | — (não medido por trace) | — | 10–11 / 29–31 |
+| Canvas | 1,00 · 1,32 | sim | 4,8 / 22 · 3,7 / 9 |
+| Canvas, quadros pré-calculados | 0,74 · 0,70 | sim | 3,5 / 22 · 2,8 / 17 |
 
-- O cálculo não é o gargalo; o custo está em estilo, layout e pintura do SVG, e pré-calcular não basta no SVG.
-- O p95 de parede com CPU emulada mede o emulador (quadro vazio: p95 de 6,9–8,3 ms com 0,35 ms de CPU).
-- **[aberto, antes da 3c] Critério de medição:** proposta de p95 do tempo de CPU da thread principal por quadro (trace a 1×),
-  multiplicado pela taxa, com o p50 de parede a 4× como conferência.
-- **[aberto, antes da 3c] Estratégia:** proposta de desenhar os quadros intermediários num `<canvas>` sobreposto (`aria-hidden`,
-  sem eventos de ponteiro, mesmas cores, padrões e rótulos), com os quadros calculados uma vez no início; o SVG do ano de
-  partida fica no DOM por baixo (o foco não se perde) e é trocado pelo de destino no último quadro. A medir na 3c: densidade de
-  pixels 2× e 3×, o quadro final de troca para o SVG e a fonte real no canvas.
+- O cálculo não é o gargalo; o custo está em estilo, layout e pintura do SVG. No esboço, pré-calcular não bastou porque o SVG
+  era remontado ou reconciliado a cada quadro.
+- **Medição [decidido]:** por tabela, com o tempo de CPU por quadro pelo trace a 1× (o critério) e a parede a 4× e 6×
+  (conferência), para três estratégias: o SVG atual (React reconciliando a cada quadro), o **SVG imperativo** (quadros
+  pré-calculados e um laço que só atualiza atributos dos elementos que já existem) e o canvas. A tabela traz o quadro vazio como
+  linha de base e diz, por estratégia, se cumpre os 2,0 ms.
+- **Ordem [decidido]:** primeiro o **SVG imperativo** (tarefa C5a), medido (C6). O **canvas** (C5b) só entra se o SVG imperativo
+  não cumprir. Se entrar, a captura em t = 0 e em t = 1 é comparada com a do SVG estático por **dois critérios**:
+  - **barras e fluxos**, comparados por pixel **fora das caixas de texto** (ampliadas em 2 px), com tolerância apertada [minha
+    decisão: diferença ≤ 8 níveis por canal em todo pixel, exceto numa faixa de 1 px nas bordas das formas, por causa do
+    antisserrilhado];
+  - **rótulos**, conferidos pela **posição da caixa** (a caixa medida no canvas contra o `getBBox` do SVG, ≤ 1 px por lado),
+    não por pixel;
+  - o DOM acessível continua no SVG (o canvas é `aria-hidden` e sem eventos de ponteiro; o foco não sai do SVG);
+  - a medir: densidade de pixels 2× e 3×, o quadro final de troca para o SVG e a fonte real no canvas.
 
 ## T5 · Modos percentuais
 
@@ -291,11 +340,20 @@ Meta [decidido]: **p95 ≤ 8 ms por quadro** (cálculo + pintura) com CPU limita
   algo recolher, chevron visível e foco por teclado.
 - **Tabela de subcontas:** cabeçalho com "Código", "Linha do RTN", "Valor" e "% do nó"; a do Fundeb diz que exclui a 4.3.05;
   "Demais (n linhas)"; "Soma das subcontas … (fecha com o nó)". Ordem: valor decrescente no ano.
+- **Glossário curto [decidido]:** abreviações dos nomes oficiais do RTN explicadas por `TEXTOS.glossario` (começa com "EE/MM":
+  "Estados e Municípios"), mostradas abaixo da tabela quando um nome da tabela contém a abreviação.
+- **Nota visível fora do painel [decidido]:** quando o nó tem nota no ano, a dica de hover ganha a linha "Há uma nota sobre
+  este ano" (`TEXTOS`), e o nome acessível do nó termina com "com nota".
+- **"↑ ver no desenho" [decidido]:** a seta aparecia como emoji (laranja) nas capturas. Usar um ícone SVG inline (preferido) ou
+  a seta seguida de U+FE0E (apresentação de texto). Conferir no Chrome (desktop), no Chrome do Android e no Safari do iOS, com
+  as capturas no PR.
 - **Testes:**
   - SVG e título parados (coordenadas da página) ao abrir, trocar de nó e fechar, nos 11 anos.
   - O painel nunca tem rolagem interna (`scrollHeight ≤ clientHeight`) com fonte a 100%, 125% e 200%.
   - Depois de abrir, o título e o valor do painel ficam dentro da janela a 1280 × 720 (`scrollIntoView({ block: 'nearest' })`).
   - Mutação: limitar a altura do painel derruba o teste.
+  - Subcontas testadas em três nós: Fundeb e Royalties (os prioritários) e **Imposto de Renda**, com as três linhas do RTN
+    (1.1.03.1 "I.R. - Pessoa Física", 1.1.03.2 "I.R. - Pessoa Jurídica", 1.1.03.3 "I.R. - Retido na fonte").
 
 ## Pendências da fase 2 [decidido: entram na fase 3]
 
@@ -325,16 +383,18 @@ Meta [decidido]: **p95 ≤ 8 ms por quadro** (cálculo + pintura) com CPU limita
 
 ## Decisões em aberto
 
-1. **Antes da 3c:** critério de medição do orçamento de desempenho e canvas durante a transição (propostas acima).
-2. **Na 3a ou depois:** nota de contexto de 2020, que depende do PDF do boletim de dez/2020 (caminho a informar pelo Bruno).
-3. **Antes da 3a:** o CSV da tabela 1846 em `entrada/` (o Bruno baixa).
+Nenhuma decisão de desenho em aberto. Faltam dois arquivos, que o Bruno baixa:
+
+1. **Antes da 3a:** o CSV da tabela 1846 em `entrada/`, com a data do download e a revisão do IBGE anotadas no `LEIAME.md`.
+2. **Antes da tarefa A3b:** o caminho do PDF do boletim do RTN de dezembro de 2020 (fora do repositório).
 
 ## Outras escolhas [minha decisão]
 
-- **Padrões ao carregar:** último ano do índice e modo R$ constantes. O modo não vai para o endereço (só `#ano`).
+- **Padrões ao carregar:** último ano do índice e modo R$ constantes (o endereço pode pedir outro; ver T3).
 - **Tabela de valores** (abaixo do cartão): valor em R$ constantes e a participação no modo atual, com a base escrita; o nó de
   valor zero não aparece.
-- **Notas:** aparecem só no painel do nó e do ano a que se referem; o desenho não ganha marcador.
+- **Notas:** o texto aparece no painel do nó e do ano a que se referem; o desenho não ganha marcador (a dica de hover e o nome
+  acessível avisam que há nota; ver T6).
 - **Imagem de compartilhamento (`gerar-og.mjs`):** último ano, modo R$, tema claro, com o ano em destaque dentro da trava.
 - **Esboços como referência:** os números deste documento vêm dos esboços; os testes da implementação medem de novo e
   substituem estes números no relatório de cada sub-fase.
