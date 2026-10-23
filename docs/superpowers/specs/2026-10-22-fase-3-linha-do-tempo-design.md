@@ -55,6 +55,8 @@ conteúdo sobe acima do topo da terceira coluna no pior ano, mais a margem). [mi
 | Desktop 1200 | 736 / 736 / 736 | **746** | 738 |
 | Celular 390 | 703 / 714 / 730 | **740** | 727 |
 
+**Emendado na T5:** 752 px no desktop e 744 no celular, para caber o modo "% do PIB" com 10 px de folga.
+
 - A folga mínima é de 10 px nos dois formatos, porque na fase 2 a caixa real do texto, na fonte real, saiu maior que a
   modelada. Com a escala compartilhada, a constante 727 do celular não bastaria no fator ×1,25.
 - **O que passa por construção:** as barras sempre cabem em `alturaBarras`, porque a escala sai dela. Esse teste sozinho
@@ -284,10 +286,72 @@ real.
   - a medir na 3c: densidade de pixels 2× e 3× (o canvas pinta de 4 a 9 vezes mais pixels), o quadro final de troca para o SVG
     (um quadro longo de SVG) e a fonte real no canvas.
 
+## T5 · Modos percentuais
+
+### Bases [decidido]
+
+- **"% da despesa":** sobre os valores em **R$ constantes** de dez/2025, os mesmos do painel. Dividir os números da tela
+  reproduz o rótulo, com diferença só de arredondamento.
+- **"% do PIB":** valores correntes sobre o PIB corrente (âncora A3: déficit de 2025 = 0,48%). O PIB vem do IBGE (3a).
+- Cada legenda diz a sua base. O painel mostra o valor em R$ constantes, a participação no modo atual com a base escrita e a
+  participação padrão. Os textos vêm de `TEXTOS`, sem dígitos (o mês-base vem de `mes_base` do JSON).
+- **Teste (11 anos × todos os nós):** em "% da despesa", rótulo × despesa total ≈ valor do nó em R$ constantes, tolerância de
+  0,05 ponto percentual. Medido: maior diferença de 0,050 p.p. (resultado de 2024: 1,9497%, rótulo "1,9%"; só arredondamento).
+  **Mutação:** nominal sobre nominal derruba o teste (0,418 p.p. na receita total de 2015, 107,23% contra 107,62%; no déficit
+  de 2020, 38,16% contra 38,32%). A âncora A3 continua valendo para "% do PIB".
+
+### Escalas e altura [decidido]
+
+- **"% da despesa" com escala fixa:** 100% tem a mesma altura em todos os anos (415 px no desktop, 376 no celular). O modo
+  separa composição de tamanho; com a escala por ano, os mesmos 100% iriam de 415 a 488 px. Muda a especificação, que dizia
+  "escala própria por ano nos modos percentuais".
+- **"% do PIB" com escala fixa entre anos** (o Gasto total vai de 342 a 488 px; 2020 aparece maior que 2025).
+- **Altura do SVG: 752 px no desktop e 744 no celular** (emenda a T1, que tinha 746/740). A altura não muda ao trocar de modo,
+  e "% do PIB" com escala fixa precisa de 742/734; a constante é o pior modo + 10 px.
+
+| Modo (escala fixa) | Altura necessária (3 fatores) | Nó mais fino | Colisões e fora da margem | Folga do ano em destaque |
+| --- | --- | --- | --- | --- |
+| R$ constantes | 736 / 730 | 4,69 / 4,24 px | 0 | 47,1 / 112,3 px |
+| % da despesa | 702 / 715 | 4,02 / 3,64 px | 0 | 47,1 / 106,1 px |
+| % do PIB | 742 / 734 | 4,77 / 4,34 px | 0 | 137,8 / 193,0 px |
+
+(desktop / celular; 11 anos × 3 fatores; alturas de 752/744)
+
+- **As colunas não mudam de lugar entre modos** (medido: mesmas posições x nos três modos). A largura reservada aos rótulos
+  laterais é a maior entre os três modos e os 11 anos, como guarda.
+
+### Rótulos e textos [decidido]
+
+- Valores em porcentagem no lugar de "R$ … bi". **"% da despesa" com uma casa decimal; "% do PIB" com duas casas** em todos os
+  rótulos do modo.
+  - Teste: o rótulo do déficit de 2025 mostra 0,48% e o do superávit de 2022, 0,46%; os dois diferem.
+  - Mutação: uma casa decimal derruba o teste (os dois viram "0,5%").
+- **Receita acima do gasto, nos dois modos percentuais:** "A receita total inclui o repasse a estados e municípios, que não é
+  despesa do Governo Central; por isso pode passar do gasto total." (`TEXTOS`). Em "% da despesa", a receita total vai de 75,2%
+  (2020) a 128,0% (2022); em "% do PIB", a de 2025 (22,78%) é maior que o gasto total (18,80%).
+- **Troca de modo animada:** a mesma transição de 700 ms, com os rótulos no modo (b), interpolando em pixels (valor × escala
+  de cada modo). Com `prefers-reduced-motion`, troca direta.
+
+### Seletor e barra [decidido]
+
+- Grupo de três botões de rádio ("R$ constantes", "% da despesa", "% do PIB"), cada um com 44 px de altura, depois dos
+  controles de ano.
+  - **Desktop:** a legenda longa fica na linha de legenda da barra.
+  - **Celular:** o seletor ocupa uma linha, com os nomes completos (13 px; nenhum nome cortado; usar rótulos curtos só se a
+    fonte ficasse abaixo de 11 px). Na barra fica só uma frase curta; a legenda longa vai para baixo do desenho. Fontes da
+    frase curta e da legenda: 12 px (≥ 11).
+- Medido no celular de 390 × 844 (2020):
+
+| Barra do celular | Altura da barra | Desenho visível na primeira tela |
+| --- | --- | --- |
+| T3 (sem seletor) | 153 px | 546 de 740 px |
+| T5, com a frase curta | 201 px | 498 de 744 px |
+| T5, sem a frase curta | 178 px | 522 de 744 px |
+
 ## Em aberto
 
 - T4: critério de medição do orçamento e canvas durante a transição (propostas acima).
-- T5: modos percentuais; altura final da barra do celular com o seletor de modo.
+- T5: manter ou tirar a frase curta da barra do celular (201 px com ela, 178 px sem ela).
 - T6: painel com subcontas e a nota de 2020.
 - Dados (3a): PIB do IBGE, subcontas, notas de contexto.
 - Sub-fases, critérios de saída e plano.
