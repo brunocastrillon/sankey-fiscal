@@ -94,13 +94,24 @@ conteúdo sobe acima do topo da terceira coluna no pior ano, mais a margem). [mi
 - Medido com A (11 anos, 3 fatores): cabe em 746/740 px; zero colisões; maior passo de uma barra 0,71 px por quadro a 60
   quadros por transição.
 
-### Posição do rótulo do superávit [proposta, aguardando o Bruno]
+### Posição do rótulo do superávit [decidido: A′ nos dois formatos]
 
-- **Desktop:** à esquerda do nó do superávit, sob o fluxo ameixa (no recorte em tamanho real, longe do fluxo verde das
-  Discricionárias).
-- **Celular:** no lugar do rótulo do déficit, logo abaixo da Receita líquida, onde o fluxo do superávit nasce. Junto do nó, o
-  rótulo caía em cima do fluxo verde das Discricionárias e parecia pertencer a ele. Medido: cabe em 740 px, zero colisões nos
-  11 anos e 3 fatores.
+- O rótulo do superávit fica **no lugar do rótulo do déficit**, sob a Receita líquida (desktop: à esquerda, como o do déficit;
+  celular: abaixo, como o do déficit), **nos dois formatos**. Motivo: um só lugar para o rótulo do resultado nos 11 anos (o nó
+  tem id neutro; só o texto e o sinal mudam), nenhum salto de rótulo na transição 2021→2022 e um só caminho de código.
+  Substitui a posição "à esquerda do nó" que o desktop teria. No celular, junto do nó, o rótulo caía em cima do fluxo verde
+  das Discricionárias e parecia pertencer a ele.
+- **Guia por regra de distância:** se a caixa do rótulo fica a mais de 12 px do segmento onde o fluxo do superávit nasce
+  (borda direita da Receita líquida), o rótulo ganha guia até o nó do superávit (quarta coluna), em L: do meio da base do nó,
+  desce até a linha do rótulo e vai até a borda dele. A 12 px ou menos, a guia é opcional. Valem os testes de guia existentes
+  (mesmo id, sem cruzar outra barra ou rótulo, ≥ 3 px de guias de outros nós).
+- Medido em 2022 (×0,85, ×1,00 e ×1,25): distância de 22,8 px no desktop e 25,2 px no celular → guia nos dois formatos.
+- **Teste:** em 2022, nos 3 fatores e nos 2 formatos, o rótulo do superávit não colide com nenhum rótulo, guia, barra nem com o
+  fluxo verde (faixa do fluxo amostrada ao longo da curva). Nos outros anos, o rótulo do déficit fica onde está hoje
+  (deslocamento 0 px com e sem a emenda; no esboço passa por construção, porque a emenda só toca no superávit, e fica como
+  guarda contra um caminho de código único que mova os dois).
+- **Mutação:** levar o rótulo do superávit para a posição A (junto do nó) no celular derruba o teste nos 3 fatores (rótulo sobre
+  o fluxo verde).
 
 ### Texto [decidido]
 
@@ -176,8 +187,8 @@ não passam por construção.
 
 ## Em aberto
 
-- T2: posição do rótulo do superávit no celular (proposta acima).
-- T3: controle de ano e play, em desktop e celular; primeira parada do celular.
+- T3: controle de ano e play. Protótipo apresentado (A barra acima do desenho, B barra fixa, C linha do tempo com o resultado
+  de cada ano; e o ano em destaque no vão sob as origens); escolha pendente.
 - T4: transição 2019→2020, rótulos durante a animação, duração e N.
 - T5: modos percentuais.
 - T6: painel com subcontas e a nota de 2020.
