@@ -1,0 +1,25 @@
+﻿"Tabela 1846 - Valores a preços correntes"
+"Variável - Valores a preços correntes (Milhões de Reais)"
+"";"Trimestre x Setores e subsetores"
+"";"1º trimestre 2015";"2º trimestre 2015";"3º trimestre 2015";"4º trimestre 2015";"1º trimestre 2016";"2º trimestre 2016";"3º trimestre 2016";"4º trimestre 2016";"1º trimestre 2017";"2º trimestre 2017";"3º trimestre 2017";"4º trimestre 2017";"1º trimestre 2018";"2º trimestre 2018";"3º trimestre 2018";"4º trimestre 2018";"1º trimestre 2019";"2º trimestre 2019";"3º trimestre 2019";"4º trimestre 2019";"1º trimestre 2020";"2º trimestre 2020";"3º trimestre 2020";"4º trimestre 2020";"1º trimestre 2021";"2º trimestre 2021";"3º trimestre 2021";"4º trimestre 2021";"1º trimestre 2022";"2º trimestre 2022";"3º trimestre 2022";"4º trimestre 2022";"1º trimestre 2023";"2º trimestre 2023";"3º trimestre 2023";"4º trimestre 2023";"1º trimestre 2024";"2º trimestre 2024";"3º trimestre 2024";"4º trimestre 2024";"1º trimestre 2025";"2º trimestre 2025";"3º trimestre 2025";"4º trimestre 2025";"1º trimestre 2026";"2º trimestre 2026"
+"";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado";"PIB a preços de mercado"
+"Brasil";"1456659";"1479970";"1508228";"1550930";"1500299";"1559050";"1577170";"1632808";"1585673";"1630730";"1648635";"1720441";"1682083";"1734099";"1767856";"1820103";"1757554";"1826761";"1880610";"1924206";"1868095";"1752724";"1929323";"2059455";"2156670";"2203639";"2295851";"2355982";"2319528";"2517481";"2601182";"2641485";"2581018";"2727580";"2769445";"2865301";"2764833";"2934759";"3015936";"3063723";"3024723";"3200345";"3235708";"3277790";"3250979";"3425728"
+"Fonte: IBGE - Contas Nacionais Trimestrais"
+
+""
+"Legenda"
+"Símbolo";"Significado"
+"-";"Zero absoluto, não resultante de um cálculo ou arredondamento.
+Ex: Em determinado município não existem pessoas de 14 anos de idade sem instrução."
+"0";"Zero resultante de um cálculo ou arredondamento.
+Ex: A inflação do feijão em determinada Região Metropolitana foi 0.
+Determinado município produziu 400 kg de sementes de girassol e os dados da tabela são expressos em toneladas."
+"X";"Valor inibido para não identificar o informante.
+Ex: Determinado município só possui uma empresa produtora de cimento, logo o valor de sua produção deve ser inibido."
+"..";"Valor não se aplica.
+Ex: Não se pode obter o total da produção agrícola em determinado município quando os produtos agrícolas são contabilizados com unidades de medida distintas."
+"...";"Valor não disponível.
+Ex: A produção de feijão em determinado município não foi pesquisada ou determinado município não existia no ano da pesquisa."
+"A a Z
+(exceto X)";"Significa uma faixa de valores. Varia em função da tabela (se for o caso).
+Ex: O nível de precisão da produção estimada de combustíveis está na faixa A (95 a 100%)"
