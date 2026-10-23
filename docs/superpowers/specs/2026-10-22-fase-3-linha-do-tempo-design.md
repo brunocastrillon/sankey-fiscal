@@ -155,42 +155,139 @@ formatos; mutação: desenhar o rótulo do nó zero derruba o teste.
   por zero).
 - Na T4: limiar para o rótulo do resultado aparecer e sumir durante a transição, **com histerese**, para não piscar.
 
-## Métricas da animação (proposta; duração e N fecham na T4)
+## T3 · Controle de ano e play
 
-Sobre os quadros de cada transição: 10 pares de anos vizinhos, dois formatos, três modos.
+### Posição [decidido: A, com o ano em destaque]
 
-- **M1 · Ancoragem fluxo–nó, em todo quadro.** Em cada nó, as faixas de saída cobrem a barra de ponta a ponta, contíguas, sem
-  vão nem sobreposição: |Σ espessuras − altura da barra| ≤ 0,5 px, e cada faixa começa onde a anterior termina (±0,5 px). O
-  mesmo vale para as entradas.
-- **M2 · Continuidade dos fluxos entre quadros.** Para cada fluxo, cada um dos quatro cantos (saída topo e base, entrada topo e
-  base): (a) o deslocamento entre quadros consecutivos é ≤ (deslocamento total do canto no par) / N × (1 + ε); (b) é ≤ um limite
-  em px por quadro, a 60 quadros/s, com a duração definida na T4; (c) não há ultrapassagem: o canto nunca sai do intervalo entre
-  o valor inicial e o final.
-- **M3 · Ordem estável.** A ordem das faixas em cada lado de cada nó é a mesma em todos os quadros (nenhum fluxo cruza outro do
-  mesmo nó).
-- **M4 · Bordas das barras.** O mesmo critério de M2 para y0 e y1 de cada barra.
-- **M5 · Troca déficit ↔ superávit (2021→2022→2023).** O fluxo do déficit e o do superávit nunca têm espessura > 0 no mesmo
-  quadro; a espessura de cada um vai monotonicamente até zero e a partir de zero.
-- **M6 · Rótulos.** Nenhuma colisão em nenhum quadro (depende da alternativa escolhida na T4).
-- **M7 · Extremos iguais ao estático.** O quadro 0 e o quadro final de cada transição são idênticos ao layout estático de cada
-  ano (erro ≤ 0,01 px em toda coordenada).
-- **M8 · Interrupção.** Ao trocar de ano no meio de uma transição, o primeiro quadro novo coincide com o último desenhado
-  (erro ≤ 0,5 px).
-- **Movimento reduzido.** Com `prefers-reduced-motion: reduce`, nenhuma interpolação: a troca de ano desenha direto o layout do
-  ano novo. Há teste para isso.
+- **A:** barra acima do desenho, entre o aviso e o SVG, **não fixa** (nunca cobre o desenho). Tem botão play/pausa, deslizante
+  de 2015 a 2025, "Ano: 2020" em texto visível e setas de ano anterior e próximo. Medido no protótipo: barra de 76 px no
+  desktop e 153 px no celular. Na primeira tela de um notebook de 1280 × 800 entram 617 dos 746 px do desenho; num celular de
+  390 × 844, 546 dos 740.
+- **B (barra fixa no topo da janela): vetada**, porque cobre o desenho ao rolar (153 px no celular).
+- **C (linha do tempo com o resultado de cada ano como trilho): registrada para a fase 5.**
+- **A altura da barra do celular não é reduzida agora:** o seletor de modo da T5 vai nela; a altura final se decide na T5.
 
-**Por que M2 e M3 ficam, embora passem por construção.** Com interpolação linear da geometria, a ordem de empilhamento é a
-mesma nos dois anos e cada coordenada anda em linha reta. Então M2(a), M2(c) e M3 passam por construção. Elas continuam para
-proteger contra uma troca futura da função de suavização (por exemplo, uma que ultrapassa o destino e volta), contra easing
-diferente entre nó e fluxo, e contra ordenação recalculada por quadro. Cada métrica tem uma mutação que a derruba. M5, M7 e M8
-não passam por construção.
+### Ano em destaque no vão sob as origens [decidido]
+
+- O ano em texto grande no canto inferior esquerdo do desenho, onde sobra espaço com o alinhamento no topo (T1): **56 px no
+  desktop e 44 px no celular**, negrito, na cor do texto, sobre o fundo. No celular, fica na primeira parada e ocupa a faixa
+  vazia pendente da fase 2.
+- É decorativo (`aria-hidden`). O ano acessível está na barra ("Ano: 2020", texto visível), no deslizante, no `h1` e no
+  `document.title`.
+- **Folga ≥ 8 px** de qualquer barra, rótulo, guia ou alvo de toque, nos 11 anos × 3 fatores do medidor × 2 formatos. Medido:
+  menor folga de 41,5 px (desktop, ×1,25, 2025); no celular, 108,3 px. **Mutações:** fonte 40 px maior, ou o destaque 60 px mais
+  alto, derrubam o teste (folga 0 px no desktop).
+- Entra na trava do `gerar-og.mjs`: o destaque é mais uma caixa medida, dentro do recorte com a margem e a 8 px dos rótulos;
+  senão o script sai com erro e não grava a imagem.
+
+### Comportamento [decidido]
+
+1. **Ano em texto** visível na barra ("Ano: 2020"); o destaque do desenho é `aria-hidden`.
+2. **Folga do destaque**, como acima, com mutação, e na trava do `gerar-og.mjs`.
+3. **Barra do celular** com a altura de hoje até a T5.
+4. **`#ano`:** só anos de `dados/indice.json`. Valor inválido volta ao padrão (último ano) sem erro. `history.replaceState` ao
+   trocar de ano (sem encher o histórico); `hashchange` tratado. O `?ano=` do build de teste sai (ajustar `conferir-bundle` e
+   a sentinela).
+5. **Play:**
+   - nunca começa sozinho; para em 2025; em 2025, recomeça de 2015;
+   - qualquer interação manual (deslizante, setas, link) pausa; pausa também quando a aba fica oculta (`visibilitychange`);
+   - com `prefers-reduced-motion`, troca de ano sem interpolar;
+   - botão separado do deslizante, com 44 px; a barra de espaço só aciona o botão quando ele tem o foco;
+   - no deslizante valem setas, Home/End e PageUp/PageDown.
+6. **Painel aberto + troca de ano:** continua no mesmo nó e atualiza os valores. Se o nó passa a valer zero (o resultado que
+   troca de sinal), o painel fecha e o foco volta ao deslizante.
+7. **`aria-valuetext`** do deslizante com o ano e o resultado, lidos do JSON ("Ano: 2020, déficit R$ 1.027,4 bi"); nenhum
+   anúncio a cada passo do play.
+8. **`h1` e `document.title`** acompanham o ano.
+
+## T4 · Transição entre anos
+
+### Decisões [decidido]
+
+- **Rótulos: modo (b)**, acompanham a geometria, com a fila de rótulos recalculada a cada quadro. O valor escrito é o do ano
+  mais próximo (troca em t = 0,5), **nunca um valor interpolado**, que seria um número fora dos dados. Alternativas medidas:
+  (a) somem e voltam (sem nomes durante ~470 ms dos 700); (c) congelados (rótulo sobre outra barra em 76 quadros no desktop e 56
+  no celular, até 152 px longe da própria barra).
+- **Duração de 700 ms**, suavização seno de entrada e saída (sem ultrapassagem), **1,3 s de pausa** em cada ano no play.
+- **Geometria:** interpolam-se os valores (o resultado com sinal) e o layout é recalculado em cada quadro, com a escala e a
+  âncora fixas da T1.
+- **A animação é por tempo** (`performance.now()`), não por contagem de quadros: t = (agora − início) / duração. Quadros que o
+  navegador pula não atrasam nem aceleram a animação; o número de quadros (42, a 60 por segundo) é nominal.
+- **Limite de 6 px por quadro (a 60 quadros/s) para M2(b) e M4.**
+  - Justificativa: com a suavização seno, o pico de velocidade é (π/2) × deslocamento ÷ quadros; com 42 quadros, 6 px/quadro
+    cobre deslocamentos de até ~160 px em 700 ms.
+  - O maior deslocamento medido nos 10 pares é ~124 px (4,64 px/quadro, folha "Fundeb…" no desktop, 2019→2020).
+  - **Se um ano futuro exigir mais, aumenta-se a duração, não o limite.**
+- **Acessibilidade:** o nome acessível dos nós e o `aria-valuetext` mudam **uma vez**, no início da transição, para o ano de
+  destino. Nenhum anúncio por quadro. O foco é preservado durante a transição (o nó focado continua focado).
+- **Histerese do rótulo do resultado, com uma só fonte:** o rótulo aparece quando a barra tem ≥ `ESPESSURA_MINIMA` (3 px, a
+  mesma constante da espessura mínima estática da T1) e some abaixo de `ESPESSURA_MINIMA − 1` (2 px). Medido: uma troca por
+  rótulo e por transição, sem piscar.
+
+### Métricas (10 pares × 2 formatos, 43 quadros por transição)
+
+| Métrica | Critério | Medido |
+| --- | --- | --- |
+| M1 ancoragem fluxo–nó | ≤ 0,5 px em todo quadro | 2·10⁻⁷ px |
+| M2(a) passo relativo | ≤ inclinação do trecho × passo da suavização | 1,000 (no limite) |
+| M2(b) passo absoluto | ≤ 6 px/quadro | 4,64 px/quadro |
+| M2(c) ultrapassagem | nenhuma coordenada fora do trecho | 0 |
+| M3 ordem das faixas | igual à do quadro 0 | 0 quadros diferentes |
+| M4 bordas das barras | como M2 | 4,64 px/quadro; 0 ultrapassagens |
+| M5 déficit e superávit juntos | 0 quadros | 0 |
+| M6 rótulos sem colisão (modo b) | 0 quadros com colisão, 3 fatores | 0 de 2.580 |
+| M7 extremos = estático | ≤ 0,01 px | 0 |
+| M8 interrupção | ≤ 0,5 px | 0 |
+| Movimento reduzido | troca sem interpolar | conferido no protótipo |
+
+- **Correção da M2 (por trechos).** Nos pares em que o resultado troca de sinal (2021→2022 e 2022→2023), três grandezas dobram
+  no instante em que o resultado vale zero: déficit = max(0, −r), superávit = max(0, r) e Receita líquida → Gasto total =
+  min(receita líquida, despesa total). Em 2022→2023 esse fluxo sobe a 387 px e volta a 380,6 px. É contínuo e sem salto, mas
+  não é monotônico: a M2 como escrita antes ("nunca sai do intervalo entre início e fim") dava 328 falhas falsas. **O par é
+  cortado onde o resultado vale zero, e M2(a) e M2(c) valem dentro de cada trecho**, onde toda coordenada é afim no progresso.
+- **Mutação da suavização:** trocar o seno por uma suavização que ultrapassa o destino (easeOutBack) dá 58.389 ultrapassagens e
+  13,46 px/quadro, e derruba M2(b) e M2(c).
+- **Mutação da M6:** desligar a fila de rótulos nos quadros intermediários (rótulos laterais no centro da própria barra) dá
+  colisão em 2.460 de 2.580 quadros.
+- **Por que M2(a), M2(c) e M3 ficam, embora passem por construção.** Com os valores interpolados e o layout recalculado, cada
+  coordenada é afim no progresso dentro de cada trecho, e a ordem de empilhamento não muda. As métricas continuam para proteger
+  contra uma troca da suavização (a mutação acima), contra suavização diferente entre nó e fluxo e contra ordenação
+  recalculada por quadro. M5, M6, M7 e M8 não passam por construção.
+
+### Orçamento de desempenho [meta decidida; critério de medição e estratégia aguardando o Bruno]
+
+Meta: **p95 ≤ 8 ms por quadro** (cálculo + pintura) no Chromium com CPU limitada em 4×; 6× é reportado. A meta não é relaxada.
+
+Medido no protótipo, transição 2019→2020, modo (b), numa página com um só desenho. A 3c repete a medição sobre o componente
+real.
+
+| Estratégia por quadro | 1× · p95 de CPU da thread (trace) | × 4 | 4× emulada · p50 / p95 de parede |
+| --- | --- | --- | --- |
+| Quadro vazio (só agendar e pintar) | 0,21 ms | 0,8 ms | 0,8 / 6,9–8,3 ms |
+| SVG remontado (`innerHTML`) | — | — | 15–18 / 44–53 ms |
+| SVG com atributos atualizados no lugar | 2,32 desktop · 2,74 celular | **9,3 · 11,0** | 11,6 / 39 desktop · 11,9 / 55 celular |
+| SVG com atributos e quadros pré-calculados | — | — | 10–11 / 29–31 ms (cálculo ≈ 0) |
+| Canvas durante a transição | 1,00 · 1,32 | **4,0 · 5,3** | 4,8 / 22 · 3,7 / 9 |
+| Canvas com quadros pré-calculados | 0,74 · 0,70 | **3,0 · 2,8** | 3,5 / 22 · 2,8 / 17 |
+
+- **O cálculo não é o gargalo** (layout + rótulos: p95 ≤ 4,4 ms a 4×). O custo está no navegador: estilo, layout e montagem da
+  pintura do SVG. Por isso **pré-calcular os quadros não basta no SVG** (p95 de 29–31 ms a 4×).
+- **O p95 de parede com CPU emulada mede o emulador:** um quadro vazio já dá p95 de 6,9–8,3 ms a 4×, com 0,35 ms de CPU. O
+  Chrome emula a CPU lenta pausando a thread, e os eventos que caem sobre uma pausa inflam na cauda.
+- **Proposta de critério:** p95 do tempo de CPU da thread principal por quadro, medido pelo trace a 1× e multiplicado pela taxa
+  (4×: ≤ 8 ms; 6× reportado), com o p50 de parede a 4× como conferência.
+- **Proposta de estratégia:** desenhar os quadros intermediários num `<canvas>` sobreposto, com os quadros calculados uma vez no
+  início da transição:
+  - mesmas cores, padrões, contornos e rótulos; `aria-hidden`; sem eventos de ponteiro;
+  - o SVG do ano de partida fica no DOM por baixo (o foco não se perde) e é trocado pelo do ano de destino no último quadro;
+  - pelo critério proposto, cumpre com folga (3,0 e 2,8 ms);
+  - a medir na 3c: densidade de pixels 2× e 3× (o canvas pinta de 4 a 9 vezes mais pixels), o quadro final de troca para o SVG
+    (um quadro longo de SVG) e a fonte real no canvas.
 
 ## Em aberto
 
-- T3: controle de ano e play. Protótipo apresentado (A barra acima do desenho, B barra fixa, C linha do tempo com o resultado
-  de cada ano; e o ano em destaque no vão sob as origens); escolha pendente.
-- T4: transição 2019→2020, rótulos durante a animação, duração e N.
-- T5: modos percentuais.
+- T4: critério de medição do orçamento e canvas durante a transição (propostas acima).
+- T5: modos percentuais; altura final da barra do celular com o seletor de modo.
 - T6: painel com subcontas e a nota de 2020.
 - Dados (3a): PIB do IBGE, subcontas, notas de contexto.
 - Sub-fases, critérios de saída e plano.
