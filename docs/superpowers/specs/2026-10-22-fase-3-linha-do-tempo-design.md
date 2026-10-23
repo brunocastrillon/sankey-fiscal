@@ -78,6 +78,72 @@ conteúdo sobe acima do topo da terceira coluna no pior ano, mais a margem). [mi
 | 1,3 | 3,60 px | 3,26 px | passa |
 | 1,5 | 3,12 px | 2,83 px | falha (no celular) |
 
+## T2 · Superávit primário (2022)
+
+### Posição [decidido: A]
+
+- O superávit é um destino: sai da base da Receita líquida e termina num nó na quarta coluna, logo abaixo do Gasto total. O
+  déficit continua origem na terceira coluna, abaixo da Receita líquida.
+- **Os dois nós existem em todos os anos**, cada um no seu lugar fixo; o que não se aplica vale zero. Nenhum nó muda de
+  coluna nem de ordem entre anos.
+- Fluxos: Receita líquida → Gasto total = min(receita líquida, despesa total); Déficit → Gasto total = max(0, −resultado);
+  Receita líquida → Superávit = max(0, resultado). A conservação por nó continua valendo em todos os anos, sem exceção.
+- Alternativas medidas e descartadas: B (fim da linha, abaixo das Discricionárias: fluxo mais longo para o menor valor; o
+  rótulo entrando e saindo da fila da direita faz os vizinhos pularem de 7 a 14 px num quadro) e C (parte de baixo da barra da
+  Receita líquida, sem fluxo: quebra a conservação por nó).
+- Medido com A (11 anos, 3 fatores): cabe em 746/740 px; zero colisões; maior passo de uma barra 0,71 px por quadro a 60
+  quadros por transição.
+
+### Posição do rótulo do superávit [proposta, aguardando o Bruno]
+
+- **Desktop:** à esquerda do nó do superávit, sob o fluxo ameixa (no recorte em tamanho real, longe do fluxo verde das
+  Discricionárias).
+- **Celular:** no lugar do rótulo do déficit, logo abaixo da Receita líquida, onde o fluxo do superávit nasce. Junto do nó, o
+  rótulo caía em cima do fluxo verde das Discricionárias e parecia pertencer a ele. Medido: cabe em 740 px, zero colisões nos
+  11 anos e 3 fatores.
+
+### Texto [decidido]
+
+- Rótulo "Superávit primário", de `TEXTOS.rotulos.superavit`, sem "financiado com dívida", com o valor e a linha secundária
+  "não inclui juros" (`TEXTOS.naoIncluiJuros`), como no déficit. Motivo: em 2022 o resultado nominal, com juros, foi negativo;
+  sem a linha, o leitor pode entender que "sobrou dinheiro".
+- Os testes de guarda de texto continuam: nenhum rótulo com "dívida nova" nem "gov.br"; `textos.ts` sem dígitos.
+
+### Cor e padrão [decidido]
+
+| Papel | Claro | Escuro |
+| --- | --- | --- |
+| Superávit (pontos no nó e no fluxo) | `#a03c9a` | `#b04aa9` |
+| Texto secundário **e guias** (token alterado) | `#4e4d4a` (era `#52514e`) | `#c3c2b7` (sem mudança) |
+
+- Nó: cor cheia com pontos da cor do fundo (85%). Fluxo: a cor a 36% com pontos da cor cheia. O déficit continua vermelho com
+  listras diagonais. Nos dois, a cor nunca é o único sinal: padrão, posição e rótulo também mudam.
+- Validador de cor, todos os pares, contra as quatro cores de série da fase 2: passa nos dois temas, sem aviso novo; o pior par
+  continua o da fase 2.
+- Contraste: barra × fundo 5,7:1 (claro) e 3,6:1 (escuro); texto × fluxo do superávit 11,0:1 e 10,2:1; texto secundário ×
+  fluxo do superávit 4,74:1 e 6,5:1 (com o token antigo dava 4,45:1 no claro, abaixo do mínimo; pela regra da fase 2,
+  escureceu-se o texto, não a cor). Guia de 1,25 px × fundo: 8,2:1 (claro) e 9,7:1 (escuro).
+- **Teste de contraste:** percorre a lista EXATA de cores de série que o site usa (lida de `TEMAS`, inclusive o superávit), não
+  uma lista escrita à mão. Mutação: acrescentar a `TEMAS` uma cor de série com contraste baixo derruba o teste. O token do texto
+  secundário vale também para as guias, e o teste confere a guia contra o fundo nos dois temas.
+
+### Nó com valor zero [decidido]
+
+Em cada ano e formato, o nó de resultado que vale 0 (o superávit em ano de déficit; o déficit em ano de superávit) **não tem**
+rótulo, guia, alvo de toque, parada no Tab nem linha na tabela de valores; também não entra na fila de rótulos (no esboço, um
+rótulo invisível empurrava o visível em até 120 px). Teste por ano (2021, 2022 e 2023 primeiro, depois os 11), nos dois
+formatos; mutação: desenhar o rótulo do nó zero derruba o teste.
+
+### Interpolação do resultado e M5 [decidido]
+
+- A animação interpola o resultado **com sinal** (de −46 para +56 em 2021→2022, em R$ bi constantes): o déficit encolhe até zero e
+  só então o superávit nasce do zero. Por isso a M5 dá zero quadros com os dois ao mesmo tempo.
+- **Mutação da M5:** interpolar os dois nós separadamente (déficit de 46 a 0 e superávit de 0 a 56, no mesmo t) faz os dois
+  aparecerem juntos nos quadros do meio e derruba o teste.
+- Espessura mínima de 3 px: vale nos layouts **estáticos** de cada ano, não nos quadros da animação (onde o resultado passa
+  por zero).
+- Na T4: limiar para o rótulo do resultado aparecer e sumir durante a transição, **com histerese**, para não piscar.
+
 ## Métricas da animação (proposta; duração e N fecham na T4)
 
 Sobre os quadros de cada transição: 10 pares de anos vizinhos, dois formatos, três modos.
@@ -110,7 +176,7 @@ não passam por construção.
 
 ## Em aberto
 
-- T2: superávit de 2022 (posição, rótulo, cor e padrão, transição).
+- T2: posição do rótulo do superávit no celular (proposta acima).
 - T3: controle de ano e play, em desktop e celular; primeira parada do celular.
 - T4: transição 2019→2020, rótulos durante a animação, duração e N.
 - T5: modos percentuais.
