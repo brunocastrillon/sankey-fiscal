@@ -63,3 +63,25 @@ def test_trimestre_duplicado_levanta(tmp_path):
     csv = _copia(tmp_path, '"2º trimestre 2015"', '"1º trimestre 2015"')
     with pytest.raises(ValueError, match="duplicado"):
         P.ler_pib_trimestral(csv)
+
+
+def _sem_trimestre(tmp_path, rotulo):
+    """Cópia do CSV sem a coluna de um trimestre (cabeçalho, categoria e valor)."""
+    linhas = Path(PIB).read_text(encoding="utf-8-sig").splitlines()
+    i = next(k for k, l in enumerate(linhas) if f'"{rotulo}"' in l)
+    col = linhas[i].split(";").index(f'"{rotulo}"')
+    for k in (i, i + 1, i + 2):
+        campos = linhas[k].split(";")
+        linhas[k] = ";".join(campos[:col] + campos[col + 1:])
+    destino = tmp_path / "tabela1846.csv"
+    destino.write_text("\n".join(linhas) + "\n", encoding="utf-8-sig")
+    return str(destino)
+
+
+def test_a4_pulada_quando_o_t13_falha(tmp_path):
+    import testes as T
+    csv = _sem_trimestre(tmp_path, "3º trimestre 2020")
+    ok13, det13 = T.t13_pib_ibge(csv)
+    assert not ok13 and "2020: 3" in det13
+    ok, detalhe = T.a4_pib_ancora(T.contexto(RTN, IPCA), RTN, csv)
+    assert not ok and detalhe.startswith("pulado: T13 falhou")

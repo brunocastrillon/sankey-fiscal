@@ -199,6 +199,9 @@ def t13_pib_ibge(pib_csv):
 
 
 def a4_pib_ancora(c, rtn, pib_csv):
+    ok13, det13 = t13_pib_ibge(pib_csv)
+    if not ok13:
+        return False, f"pulado: T13 falhou ({det13})"
     mapa, M, nos, totais, _ = c
     anos = range(mapa["anos"][0], mapa["anos"][1] + 1)
     pib = P.ler_pib_ibge(pib_csv)[0]
@@ -712,7 +715,10 @@ def main():
     testes = lista_testes(c, a.rtn, a.ipca, a.pib)
     falhas = 0
     for nome, fn in testes:
-        ok, det = fn()
+        try:
+            ok, det = fn()
+        except Exception as e:  # um teste que quebra conta como falha, e a bateria segue
+            ok, det = False, f"exceção {type(e).__name__}: {e}"
         falhas += (not ok)
         print(f"[{'OK ' if ok else 'FALHOU'}] {nome}\n         {det}")
     print(f"\n{len(testes) - falhas}/{len(testes)} testes passaram")

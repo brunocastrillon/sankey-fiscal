@@ -11,30 +11,34 @@ import pipeline as P  # noqa: E402
 import testes as T  # noqa: E402
 
 RTN, IPCA, PIB = P.entradas_padrao()
-SAIDA, _ = P.montar_anos(RTN, IPCA, PIB)
 
 
-def _nota(ano, no, classe="fatos"):
-    (n,) = [n for n in SAIDA[ano]["notas"] if n["no"] == no and n["classe"] == classe]
+@pytest.fixture(scope="module")
+def saida():
+    return P.montar_anos(RTN, IPCA, PIB)[0]
+
+
+def _nota(saida, ano, no, classe="fatos"):
+    (n,) = [n for n in saida[ano]["notas"] if n["no"] == no and n["classe"] == classe]
     return n
 
 
-def test_notas_de_2020_com_os_valores_da_serie():
-    fundeb = _nota(2020, "fundeb_seguro_desemprego_outras")["texto"]
+def test_notas_de_2020_com_os_valores_da_serie(saida):
+    fundeb = _nota(saida, 2020, "fundeb_seguro_desemprego_outras")["texto"]
     for trecho in ("R$ 591,9 bi", "R$ 906,9 bi", "R$ 108,1 bi", "4.3.07", "Créditos Extraordinários", "4.3.03"):
         assert trecho in fundeb
-    bolsa = _nota(2020, "bolsa_familia")["texto"]
+    bolsa = _nota(saida, 2020, "bolsa_familia")["texto"]
     for trecho in ("R$ 0,6 bi", "R$ 3,6 bi", "4.4.1.2"):
         assert trecho in bolsa
     assert "{" not in fundeb + bolsa
 
 
-def test_notas_no_json_e_lista_vazia_nos_outros_anos():
-    for ano, d in SAIDA.items():
+def test_notas_no_json_e_lista_vazia_nos_outros_anos(saida):
+    for ano, d in saida.items():
         assert isinstance(d["notas"], list)
         for n in d["notas"]:
             assert set(n) == {"no", "classe", "texto", "fonte"}
-    assert {ano for ano, d in SAIDA.items() if d["notas"]} == {n["ano"] for n in P.carregar_notas()}
+    assert {ano for ano, d in saida.items() if d["notas"]} == {n["ano"] for n in P.carregar_notas()}
 
 
 def test_marcador_desconhecido_levanta():
