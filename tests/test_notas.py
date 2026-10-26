@@ -8,6 +8,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 import pipeline as P  # noqa: E402
+import testes as T  # noqa: E402
 
 RTN, IPCA, PIB = P.entradas_padrao()
 SAIDA, _ = P.montar_anos(RTN, IPCA, PIB)
@@ -46,3 +47,9 @@ def test_formato_bi():
     assert P.formatar_bi(1027412.3) == "R$ 1.027,4 bi"
     assert P.formatar_bi(591910.668) == "R$ 591,9 bi"
     assert P.formatar_bi(-61694.3) == "R$ -61,7 bi"
+
+
+def test_termos_com_digito_e_lista_fechada_so_com_covid():
+    assert T.TERMOS_COM_DIGITO == ("Covid-19",)
+    ok, detalhe = T.t16_notas_sem_digitos()
+    assert ok and "lista fechada: True" in detalhe

@@ -365,8 +365,11 @@ def _reais(c):
     return M * fator, {k: v * fator for k, v in nos.items()}
 
 
-# Nomes próprios com dígito que não são números fiscais; saem do texto antes da procura por dígitos
+# Lista FECHADA de nomes próprios com dígito que não são números fiscais. Cada termo sai do texto, exatamente como escrito,
+# antes da procura por dígitos; qualquer outro dígito numa nota derruba o T16. Hoje só "Covid-19" (notas de contexto de
+# 2020, aprovadas pelo Bruno em 26/10/2026). Acrescentar um termo exige mudar TERMOS_COM_DIGITO_APROVADOS junto, de propósito.
 TERMOS_COM_DIGITO = ("Covid-19",)
+TERMOS_COM_DIGITO_APROVADOS = ("Covid-19",)
 
 
 def _sem_marcadores(texto):
@@ -380,7 +383,10 @@ def t16_notas_sem_digitos():
     notas = P.carregar_notas()
     com_digito = [f"{n['ano']} {n['no']}: {_sem_marcadores(n['texto'])!r}" for n in notas
                   if re.search(r"\d", _sem_marcadores(n["texto"]))]
-    return bool(notas) and not com_digito, f"{len(notas)} notas; com dígito fora dos marcadores: {com_digito or 'nenhuma'}"
+    lista_fechada = TERMOS_COM_DIGITO == TERMOS_COM_DIGITO_APROVADOS
+    return bool(notas) and not com_digito and lista_fechada, (
+        f"{len(notas)} notas; com dígito fora dos marcadores: {com_digito or 'nenhuma'}; termos com dígito aceitos: "
+        f"{list(TERMOS_COM_DIGITO)} (lista fechada: {lista_fechada})")
 
 
 def t17_notas_comparacoes(c, rtn):
