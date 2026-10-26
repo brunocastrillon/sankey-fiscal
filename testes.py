@@ -485,7 +485,13 @@ ENDERECO_RTN_2020 = "https://www.tesourotransparente.gov.br/publicacoes/boletim-
 NOTAS_CONTEXTO_2020 = {("fundeb_seguro_desemprego_outras", ("Nota 18",)),
                        ("fundeb_seguro_desemprego_outras", ("Nota 16", "Nota 18")),
                        ("bolsa_familia", ("Nota 21",))}
-CAMPOS_FONTE_T19 = ("publicacao", "boletim", "pagina", "nota", "endereco", "verificado_em", "trecho", "linha_rtn", "menciona")
+CAMPOS_FONTE_T19 = ("publicacao", "boletim", "pagina", "nota", "nota_na_tabela", "observacao", "endereco", "verificado_em",
+                    "arquivo_sha256", "trecho", "linha_rtn", "menciona")
+# O texto das Notas Explicativas (p. 9) e a tabela do resultado acumulado (p. 7) numeram as notas de jeitos diferentes
+NOTA_NA_TABELA = {"Nota 16": 15, "Nota 18": 17, "Nota 21": 20}
+OBSERVACAO_NUMERACAO = "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente"
+# SHA256 do PDF do boletim baixado pelo Bruno (Get-FileHash), o mesmo de referencias/boletim-dez-2020.json
+SHA256_PDF_RTN_2020 = "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef"
 # Nota 21 do boletim: queda real do Bolsa Família de 2019 para 2020, em % (preços de dez/2020; a nossa série usa dez/2025,
 # mas a variação real entre dois anos não depende do mês-base)
 QUEDA_REAL_BOLSA_FAMILIA_NOTA_21 = -44.3
@@ -518,6 +524,12 @@ def t19_notas_contexto(c):
                 erros.append(f"{quem}: trecho longo")
             if f["publicacao"] != PUBLICACAO_RTN_2020 or f["endereco"] != ENDERECO_RTN_2020:
                 erros.append(f"{quem}: publicação ou endereço")
+            if f["nota_na_tabela"] != NOTA_NA_TABELA.get(f["nota"].split(" das ")[0]):
+                erros.append(f"{quem}: nota_na_tabela {f['nota_na_tabela']}")
+            if f["observacao"] != OBSERVACAO_NUMERACAO:
+                erros.append(f"{quem}: observação da numeração")
+            if f["arquivo_sha256"] != SHA256_PDF_RTN_2020 or f["arquivo_sha256"] != _ler_json(BOLETIM_2020)["fonte"]["arquivo_sha256"]:
+                erros.append(f"{quem}: arquivo_sha256")
             if f["linha_rtn"] not in nomes or f["menciona"] not in nomes:
                 erros.append(f"{quem}: linha_rtn ou menciona fora da aba 1.2")
             elif no_da_linha(mapa, f["menciona"]) != n["no"]:

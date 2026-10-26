@@ -20,3 +20,12 @@ soma os quatro trimestres de cada ano, ignora um ano com menos de quatro (o de 2
 último trimestre do arquivo (`pib_ultimo_trimestre`), que identifica a versão da série. Ao atualizar, baixe de novo o período
 inteiro, não só o trimestre novo, anote aqui a data do download e rode `python pipeline.py` e `pytest` (a âncora A4 confere o PIB
 contra o implícito no RTN).
+
+**Boletim do RTN de dezembro de 2020 (fora do repositório).** As notas de contexto de 2020 (`notas.json`) e os valores de
+`referencias/boletim-dez-2020.json` vêm do PDF *Resultado do Tesouro Nacional, dezembro de 2020* (v. 26, n. 12), baixado
+pelo Bruno a partir de <https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12>.
+O PDF não é versionado. SHA256 do arquivo conferido (`Get-FileHash`):
+`1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef`. Texto conferido em 26/10/2026 (data do download não
+registrada). Páginas usadas: 7 (tabela do resultado acumulado), 9 (texto das Notas Explicativas) e 15 (Tabela 2.3). A
+numeração das notas segue o texto da p. 9; a tabela da p. 7 numera diferente (Nota 16 do texto = 15 da tabela; 18 = 17;
+21 = 20).
