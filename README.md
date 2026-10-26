@@ -63,7 +63,7 @@ build. Cada merge na `main` vira produção; cada PR ganha uma prévia, protegid
 ## Formato de cada AAAA.json
 
 Um arquivo por ano em `dados/`, gerado pelo pipeline (não edite à mão), mais `dados/indice.json` com o intervalo de anos, o
-mês-base e o último mês publicado.
+mês-base, o último mês publicado e o último trimestre do CSV do PIB (`pib_ultimo_trimestre`, que identifica a versão da série do IBGE).
 
 | Campo | Conteúdo |
 | --- | --- |
@@ -77,7 +77,7 @@ mês-base e o último mês publicado.
 | `linhas` | Id do nó ou do total → linhas do RTN que o formam, na ordem do mapeamento |
 | `estrutura` | Papéis e ordem de desenho: `receita` (origens), `repasse`, `obrigatorias` (ordem fixa de `mapeamento.json → desenho`) e `discricionarias` |
 | `nominal`, `real` | Valores do ano em R$ correntes e em R$ constantes do mês-base: `nos`, `totais` e `financiamento` |
-| `pib` | PIB nominal do ano (R$ milhões correntes, soma dos 4 trimestres do IBGE): `valor_nominal`, `fonte`, `trimestres` e `ultimo_trimestre` (o último trimestre do CSV do IBGE, por exemplo `2026T2`, que identifica a versão da série) |
+| `pib` | PIB nominal do ano (R$ milhões correntes, soma dos 4 trimestres do IBGE): `valor_nominal`, `fonte`, `trimestres` e `ultimo_trimestre` (o último trimestre somado no ano, por exemplo `2025T4`) |
 | `subcontas` | Id do nó → linhas filhas diretas (aba 1.2) das linhas que o formam, menos as que subtraem, na ordem da aba: `codigo`, `nome`, `real` e `nominal` (R$ milhões); só nós com duas ou mais |
 | `notas` | Notas do ano (lista vazia se não há): `no`, `classe` (`fatos`, derivada da série do RTN; `contexto`, de uma publicação do Tesouro, com publicação, página, endereço e data de verificação), `texto` com os marcadores de `notas.json` já substituídos (valores em R$ constantes, "R$ x,y bi") e `fonte` |
 

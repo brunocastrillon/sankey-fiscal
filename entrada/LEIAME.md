@@ -16,7 +16,7 @@ Depois rode `python pipeline.py` e `pytest` e versione os JSON gerados em `dados
 
 **PIB.** O IBGE revisa a série do PIB: a cada divulgação das Contas Nacionais Trimestrais, trimestres já publicados podem mudar.
 O arquivo atual vai até o 2º trimestre de 2026, portanto inclui a divulgação desse trimestre (a mais recente incluída). O pipeline
-soma os quatro trimestres de cada ano, ignora um ano com menos de quatro (o de 2026, por ora) e grava em cada `AAAA.json` o
-último trimestre do arquivo (`pib.ultimo_trimestre`), que identifica a versão da série. Ao atualizar, baixe de novo o período
+soma os quatro trimestres de cada ano, ignora um ano com menos de quatro (o de 2026, por ora) e grava em `dados/indice.json` o
+último trimestre do arquivo (`pib_ultimo_trimestre`), que identifica a versão da série. Ao atualizar, baixe de novo o período
 inteiro, não só o trimestre novo, anote aqui a data do download e rode `python pipeline.py` e `pytest` (a âncora A4 confere o PIB
 contra o implícito no RTN).

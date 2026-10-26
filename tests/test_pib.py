@@ -47,9 +47,13 @@ def test_categoria_errada_levanta(tmp_path):
         P.ler_pib_trimestral(csv)
 
 
-def test_bloco_pib_no_json():
-    saida, _ = P.montar_anos(RTN, IPCA, PIB)
+def test_bloco_pib_no_json_e_ultimo_trimestre_do_arquivo_no_indice():
+    saida, indice = P.montar_anos(RTN, IPCA, PIB)
     anual, ultimo = P.ler_pib_ibge(PIB)
+    tri = P.ler_pib_trimestral(PIB)
     for ano, d in saida.items():
+        ultimo_do_ano = P.rotulo_trimestre(tri.index[tri.index.year == ano].max())
         assert d["pib"] == {"valor_nominal": round(float(anual[ano]), 1), "fonte": FONTE,
-                            "trimestres": 4, "ultimo_trimestre": ultimo}
+                            "trimestres": 4, "ultimo_trimestre": ultimo_do_ano}
+        assert ultimo_do_ano == f"{ano}T4"
+    assert indice["pib_ultimo_trimestre"] == ultimo == P.rotulo_trimestre(tri.index.max())

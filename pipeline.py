@@ -337,7 +337,7 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
 
     nos, totais = calcular_nos(M, mapa)
     fin = {k: M.loc[c] for k, c in mapa["financiamento"].items()}
-    pib, ultimo_trimestre = ler_pib_ibge(pib_csv)
+    pib, ultimo_trimestre_arquivo = ler_pib_ibge(pib_csv)
     faltam = [a for a in range(ano0, ano1 + 1) if a not in pib.index]
     if faltam:
         raise ValueError(f"PIB do IBGE sem os 4 trimestres de: {faltam}")
@@ -384,12 +384,13 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
                 "valor_nominal": round(float(pib[ano]), 1),
                 "fonte": FONTE_PIB,
                 "trimestres": 4,
-                "ultimo_trimestre": ultimo_trimestre,
+                "ultimo_trimestre": rotulo_trimestre(pd.Period(year=ano, quarter=4, freq="Q")),
             },
             "subcontas": subcontas[ano],
             "notas": aplicar_notas(notas, ano, R, nomes, nos_reais),
         }
-    return saida, {"ultimo_mes_publicado": f"{ultimo:%Y-%m}", "mes_base": base, "anos": [ano0, ano1]}
+    return saida, {"ultimo_mes_publicado": f"{ultimo:%Y-%m}", "mes_base": base, "anos": [ano0, ano1],
+                   "pib_ultimo_trimestre": ultimo_trimestre_arquivo}
 
 
 def gravar(saida, indice, pasta):
