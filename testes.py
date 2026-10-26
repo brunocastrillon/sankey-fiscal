@@ -296,6 +296,8 @@ TOL_SUBCONTAS = 0.02  # R$ milhões: 3 casas por valor, até 0,0005 por subconta
 #   arredondamento); em mai/2015 = −0,0001.
 # Um mês com resíduo fora desta lista derruba o T14 de propósito: é uma revisão da série a conferir antes de publicar.
 RESIDUOS_FONTE = {("aposentadorias_pensoes", "2015-05"), ("aposentadorias_pensoes", "2016-08")}
+# A folga pelo resíduo vale só nestes nós e anos; em qualquer outro, |Σ subcontas − nó| ≤ TOL_SUBCONTAS, sem folga.
+FOLGA_RESIDUO = {("aposentadorias_pensoes", 2015), ("aposentadorias_pensoes", 2016)}
 
 
 def _subcontas(c, rtn):
@@ -307,7 +309,13 @@ def _subcontas(c, rtn):
 def t14_subcontas_fecham(c, rtn):
     mapa, M, nos, totais, _ = c
     sub, fator = _subcontas(c, rtn)
-    pior, onde, pior_arred = 0.0, None, 0.0
+    residuos, residuo_mes = {}, {}
+    for no, itens in sub.get(mapa["anos"][1], {}).items():
+        r = nos[no] - sum(M.loc[i["codigo"]] for i in itens)
+        for m, v in r[r.abs() > 1e-6].items():
+            residuos[(no, f"{m:%Y-%m}")] = float(v)
+            residuo_mes[(no, m)] = float(v)
+    pior, onde, pior_arred, excedeu = 0.0, None, 0.0, []
     for ano, por_no in sub.items():
         for no, itens in por_no.items():
             for chave, f in (("real", fator), ("nominal", 1.0)):
@@ -315,13 +323,14 @@ def t14_subcontas_fecham(c, rtn):
                 bruto = sum(float(P.por_ano(M.loc[i["codigo"]] * f)[ano]) for i in itens)
                 pior_arred = max(pior_arred, abs(arred - bruto))
                 dif = abs(arred - float(P.por_ano(nos[no] * f)[ano]))
+                folga = TOL_SUBCONTAS
+                if (no, ano) in FOLGA_RESIDUO:
+                    folga += sum(abs(v) * (float(fator[m]) if chave == "real" else 1.0)
+                                 for (n2, m), v in residuo_mes.items() if n2 == no and m.year == ano)
+                if dif > folga:
+                    excedeu.append(f"{no} {ano} {chave}: {dif:.4f} > {folga:.4f}")
                 if dif > pior:
                     pior, onde = dif, f"{no} {ano} {chave}"
-    residuos = {}
-    for no, itens in sub.get(mapa["anos"][1], {}).items():
-        r = nos[no] - sum(M.loc[i["codigo"]] for i in itens)
-        for m, v in r[r.abs() > 1e-6].items():
-            residuos[(no, f"{m:%Y-%m}")] = float(v)
     anos = list(range(mapa["anos"][0], mapa["anos"][1] + 1))
     contagens = {ano: {no: len(v) for no, v in por_no.items()} for ano, por_no in sub.items()}
     fundeb = [i["codigo"] for i in sub[2025]["fundeb_seguro_desemprego_outras"]] if 2025 in sub else []
@@ -333,14 +342,15 @@ def t14_subcontas_fecham(c, rtn):
         "Imposto de Renda = 1.1.03.1, 1.1.03.2, 1.1.03.3": ir == ["1.1.03.1", "1.1.03.2", "1.1.03.3"],
         f"arredondamento das subcontas ≤ {TOL_SUBCONTAS}": pior_arred <= TOL_SUBCONTAS,
         "resíduo da aba 1.2 só nos meses conhecidos": set(residuos) <= RESIDUOS_FONTE,
-        f"somas fecham com o nó (≤ {TOL_SUBCONTAS} + resíduo da fonte)": pior <= TOL_SUBCONTAS + sum(
-            abs(v) for v in residuos.values()) * float(fator.max()),
+        "meses conhecidos só nos nós e anos com folga": all((no, int(m[:4])) in FOLGA_RESIDUO for no, m in RESIDUOS_FONTE),
+        f"somas fecham com o nó (≤ {TOL_SUBCONTAS}; + o resíduo do mês só em {sorted(FOLGA_RESIDUO)})": not excedeu,
     }
     falhas = [k for k, ok in checagens.items() if not ok]
     det_res = "; ".join(f"{no} {m}: {v:+.4f}" for (no, m), v in sorted(residuos.items())) or "nenhum"
     return not falhas, (f"{sum(len(v) for v in sub.get(2025, {}).values())} subcontas em {len(sub.get(2025, {}))} nós; "
                         f"maior |Σ subcontas − nó| R$ {pior:.4f} mi ({onde}); arredondamento até R$ {pior_arred:.4f} mi; "
-                        f"resíduo mensal da aba 1.2 (R$ mi correntes): {det_res}; falharam: {falhas or 'nenhuma'}")
+                        f"resíduo mensal da aba 1.2 (R$ mi correntes): {det_res}; acima da folga: {excedeu[:4] or 'nenhum'}; "
+                        f"falharam: {falhas or 'nenhuma'}")
 
 
 def t15_subcontas_codigos(c, rtn):
