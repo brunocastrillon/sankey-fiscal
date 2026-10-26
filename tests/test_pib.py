@@ -1,0 +1,55 @@
+"""Leitura do PIB do IBGE (SIDRA 1846): layout do CSV, anos incompletos e valores nulos não passam em silêncio."""
+import sys
+from pathlib import Path
+
+import pytest
+
+RAIZ = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(RAIZ))
+
+import pipeline as P  # noqa: E402
+
+RTN, IPCA, PIB = P.entradas_padrao()
+FONTE = "IBGE, Contas Nacionais Trimestrais, tabela 1846"
+
+
+def _copia(tmp_path, de, para):
+    texto = Path(PIB).read_text(encoding="utf-8-sig")
+    assert de in texto
+    destino = tmp_path / "tabela1846.csv"
+    destino.write_text(texto.replace(de, para), encoding="utf-8-sig")
+    return str(destino)
+
+
+def test_ano_incompleto_fica_fora_e_ultimo_trimestre_e_o_do_arquivo():
+    anual, ultimo = P.ler_pib_ibge(PIB)
+    tri = P.ler_pib_trimestral(PIB)
+    ultimo_ano = tri.index.max().year
+    assert ultimo == P.rotulo_trimestre(tri.index.max())
+    completos = [a for a in sorted(set(tri.index.year)) if (tri.index.year == a).sum() == 4]
+    assert list(anual.index) == completos
+    if (tri.index.year == ultimo_ano).sum() < 4:
+        assert ultimo_ano not in anual.index
+
+
+def test_valor_nulo_tira_o_ano_e_o_pipeline_falha(tmp_path):
+    tri = P.ler_pib_trimestral(PIB)
+    valor = f'"{int(tri[P.pd.Period("2020Q4")])}"'
+    csv = _copia(tmp_path, valor, '"..."')
+    assert 2020 not in P.ler_pib_ibge(csv)[0].index
+    with pytest.raises(ValueError, match="2020"):
+        P.montar_anos(RTN, IPCA, csv)
+
+
+def test_categoria_errada_levanta(tmp_path):
+    csv = _copia(tmp_path, '"PIB a preços de mercado"', '"Agropecuária - total"')
+    with pytest.raises(ValueError, match="PIB a preços de mercado"):
+        P.ler_pib_trimestral(csv)
+
+
+def test_bloco_pib_no_json():
+    saida, _ = P.montar_anos(RTN, IPCA, PIB)
+    anual, ultimo = P.ler_pib_ibge(PIB)
+    for ano, d in saida.items():
+        assert d["pib"] == {"valor_nominal": round(float(anual[ano]), 1), "fonte": FONTE,
+                            "trimestres": 4, "ultimo_trimestre": ultimo}

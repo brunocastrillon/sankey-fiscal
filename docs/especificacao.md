@@ -135,7 +135,7 @@ A validação é a única etapa que barra a publicação: se qualquer teste falh
 
 ## Validações automáticas
 
-O pipeline roda os testes T1–T8 a cada carga e não publica nada se algum falhar. Além deles, três âncoras (A1–A3) conferem a série
+O pipeline roda os testes T1–T8 a cada carga e não publica nada se algum falhar. Além deles, quatro âncoras (A1–A4) conferem a série
 contra fontes externas. Implementação em `testes.py`; os mesmos casos rodam sob `pytest`.
 
 | Teste | O que verifica | Valor-âncora 2025 (R$ milhões correntes) |
@@ -150,7 +150,8 @@ contra fontes externas. Implementação em `testes.py`; os mesmos casos rodam so
 | T8 Regressão | 2025 em preços de dez/2025 difere do gráfico original em até R$ 2 bi por nó | maior diferença atual R$ 0,6 bi |
 | A1 Boletim | 2025 nominal contra o boletim de dez/2025, com tolerância de R$ 5 mi para revisões | primário: −61.691,2 no boletim, −61.694,3 hoje |
 | A2 Financiamento | 5+6+7=8 e 8+9=10; primário abaixo da linha de 2025 igual ao do Banco Central | −58.687,1 |
-| A3 PIB | PIB implícito de 2025 ≈ R$ 12,7 tri e déficit/PIB arredondando para 0,48% | 0,484% |
+| A3 PIB | PIB do IBGE de 2025 ≈ R$ 12,7 tri e déficit/PIB arredondando para 0,48% | 0,484% |
+| A4 PIB × RTN | Em cada ano, primário/PIB do IBGE contra o % do PIB da aba 2.2-A (até 0,005 × \|percentual\| + 0,001 p.p.) e PIB do IBGE contra o implícito no RTN (até 0,5%) | diferença 0,000% |
 
 ## Módulo de financiamento
 
@@ -204,7 +205,7 @@ descobrir isso antes de construir a linha do tempo. **Estado:** a fase 1 está c
 
 - **Onde vive a ferramenta.** Decidido: dentro do site pessoal, em castrillon.dev/sankey-fiscal. O site é publicado num projeto próprio na Vercel (configurado por `vercel.json` na raiz do repositório) e servido em castrillon.dev/sankey-fiscal pela reescrita da landing, que encaminha esse subcaminho ao domínio de produção do projeto. Os caminhos do JSON e dos arquivos do site precisam funcionar a partir desse subcaminho.
 - **Nome do produto.** Decidido: `sankey-fiscal` (nome do repositório e da URL). Sem a marca gov.br e sem sugerir origem oficial.
-- **Fonte e versão do PIB.** Decidido: IBGE, Contas Nacionais Trimestrais, valores correntes (R$ 12,7 trilhões em 2025), guardando a data de divulgação de cada valor. Enquanto a série do IBGE não é carregada, o pipeline usa o PIB implícito nas abas anuais do RTN (R$ 12,739 tri em 2025). Teste de âncora: R$ 61,7 bi sobre esse PIB dá 0,48%, o valor do RTN.
+- **Fonte e versão do PIB.** Decidido e carregado (fase 3a): IBGE, Contas Nacionais Trimestrais, SIDRA tabela 1846, PIB a preços de mercado, valores correntes (R$ 12,7 trilhões em 2025); o PIB do ano é a soma dos quatro trimestres. O CSV fica em `entrada/tabela1846.csv`, com a data do download em `entrada/LEIAME.md`, e cada `AAAA.json` guarda o último trimestre do arquivo como versão da série. O PIB implícito nas abas anuais do RTN continua como conferência (âncora A4). Teste de âncora: R$ 61,7 bi sobre o PIB do IBGE dá 0,48%, o valor do RTN.
 - **Abrir "Bolsa Família, saúde e outros".** Confirmado: abrir em Bolsa Família, Saúde e Demais já na versão 1.
 - **Escala em 2020.** Confirmado: escala compartilhada entre anos no modo R$ constantes, com aviso na tela.
 - **Juros e resultado nominal do Governo Central.** Resolvido: os valores vêm da série histórica do RTN.
@@ -230,3 +231,4 @@ descobrir isso antes de construir a linha do tempo. **Estado:** a fase 1 está c
 - [Mais Retorno, Governo Central em 2021](https://maisretorno.com/portal/governo-central-tem-em-2021-deficit-de-r-35-bi-melhor-resultado-das-contas-desde-2014): déficit de R$ 743,255 bi em 2020.
 - Tesouro Transparente, Resultado do Tesouro Nacional, séries históricas (arquivo de jul/2026, em `entrada/`).
 - [IBGE SIDRA, tabela 1737](https://sidra.ibge.gov.br/tabela/1737): IPCA, número-índice (dez/1993 = 100).
+- [IBGE SIDRA, tabela 1846](https://sidra.ibge.gov.br/tabela/1846): PIB a preços de mercado, valores correntes, trimestral (arquivo em `entrada/`).

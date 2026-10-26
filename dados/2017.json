@@ -307,6 +307,8 @@
   },
   "pib": {
     "valor_nominal": 6585479.0,
-    "fonte": "implícito nas abas 2.2 e 2.2-A do RTN (provisório até carregar a série do IBGE)"
+    "fonte": "IBGE, Contas Nacionais Trimestrais, tabela 1846",
+    "trimestres": 4,
+    "ultimo_trimestre": "2026T2"
   }
 }

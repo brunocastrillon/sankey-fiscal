@@ -1,12 +1,12 @@
 """Pipeline do Sankey fiscal do Governo Central.
 
-Lê a série histórica do RTN (Tesouro Transparente) e o IPCA (SIDRA, tabela 1737),
+Lê a série histórica do RTN (Tesouro Transparente), o IPCA (SIDRA, tabela 1737) e o PIB (SIDRA, tabela 1846),
 aplica o mapeamento de mapeamento.json, deflaciona mês a mês e grava um JSON por ano.
 
 Uso (com os arquivos em entrada/):
     python pipeline.py
     python pipeline.py --base 2025-12      # mês-base da deflação (padrão do mapeamento)
-    python pipeline.py --rtn outro.xlsx --ipca outro.csv --saida dados
+    python pipeline.py --rtn outro.xlsx --ipca outro.csv --pib outro.csv --saida dados
 """
 import argparse
 import json
@@ -20,13 +20,16 @@ MESES = {
     "janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4, "maio": 5, "junho": 6,
     "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12,
 }
+SIMBOLOS_SIDRA = {"-", "..", "...", "X"}  # valor ausente, inibido ou que não se aplica (legenda do SIDRA)
+CATEGORIA_PIB = "PIB a preços de mercado"
+FONTE_PIB = "IBGE, Contas Nacionais Trimestrais, tabela 1846"
 
 
 def entradas_padrao():
-    """Arquivos de entrada em entrada/: a série histórica mais recente (por nome) e o CSV do IPCA."""
+    """Arquivos de entrada em entrada/: a série histórica mais recente (por nome), o CSV do IPCA e o do PIB."""
     pasta = AQUI / "entrada"
     rtn = sorted(pasta.glob("seriehistorica*.xlsx"))
-    return (str(rtn[-1]) if rtn else None), str(pasta / "tabela1737.csv")
+    return (str(rtn[-1]) if rtn else None), str(pasta / "tabela1737.csv"), str(pasta / "tabela1846.csv")
 
 
 def carregar_mapeamento(caminho=None):
@@ -137,6 +140,43 @@ def ler_ipca(csv):
     return pd.Series(serie).sort_index()
 
 
+def rotulo_trimestre(t):
+    """pd.Period('2025Q4') -> '2025T4'."""
+    return f"{t.year}T{t.quarter}"
+
+
+def ler_pib_trimestral(csv):
+    """PIB a preços de mercado, valores correntes (R$ milhões), do SIDRA, tabela 1846, em CSV com ';'. Série por trimestre.
+
+    Confere o layout: linha de trimestres ('1º trimestre 2015', ...), linha da categoria (só "PIB a preços de mercado")
+    e linha de valores do Brasil. Símbolos do SIDRA (valor ausente ou inibido) viram nulos.
+    """
+    linhas = [[c.strip('"') for c in l.split(";")] for l in open(csv, encoding="utf-8-sig").read().splitlines()]
+    trimestre = re.compile(r"^([1-4])º trimestre (\d{4})$")
+    i = next((k for k, l in enumerate(linhas) if len(l) > 2 and trimestre.match(l[1])), None)
+    if i is None:
+        raise ValueError(f"{csv}: linha de trimestres do SIDRA não encontrada")
+    cab, categorias, valores = linhas[i][1:], linhas[i + 1][1:], linhas[i + 2]
+    if any(not trimestre.match(q) for q in cab) or set(categorias) != {CATEGORIA_PIB} or len(categorias) != len(cab):
+        raise ValueError(f"{csv}: esperada só a categoria {CATEGORIA_PIB!r}, um trimestre por coluna")
+    if valores[0] != "Brasil" or len(valores) - 1 != len(cab):
+        raise ValueError(f"{csv}: esperada uma linha 'Brasil' com {len(cab)} valores")
+    serie = {}
+    for q, v in zip(cab, valores[1:]):
+        n, ano = trimestre.match(q).groups()
+        serie[pd.Period(year=int(ano), quarter=int(n), freq="Q")] = (float("nan") if v in SIMBOLOS_SIDRA
+                                                                    else float(v.replace(".", "").replace(",", ".")))
+    return pd.Series(serie).sort_index()
+
+
+def ler_pib_ibge(csv):
+    """PIB anual (R$ milhões correntes): soma dos 4 trimestres, só nos anos completos; e o último trimestre do arquivo."""
+    tri = ler_pib_trimestral(csv).dropna()
+    n = tri.groupby(tri.index.year).size()
+    anual = tri.groupby(tri.index.year).sum()
+    return anual[n == 4], rotulo_trimestre(tri.index.max())
+
+
 def fator_deflacao(ipca, meses, base):
     """Fator que leva um valor do mês m para preços do mês-base: IPCA[base] / IPCA[m]."""
     base = pd.Timestamp(base)
@@ -177,7 +217,7 @@ def pib_implicito(xlsx):
     return v / p
 
 
-def montar_anos(xlsx, ipca_csv, base=None, mapa=None):
+def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
     mapa = mapa or carregar_mapeamento()
     base = base or mapa["mes_base_padrao"]
     ano0, ano1 = mapa["anos"]
@@ -188,7 +228,10 @@ def montar_anos(xlsx, ipca_csv, base=None, mapa=None):
 
     nos, totais = calcular_nos(M, mapa)
     fin = {k: M.loc[c] for k, c in mapa["financiamento"].items()}
-    pib = pib_implicito(xlsx)
+    pib, ultimo_trimestre = ler_pib_ibge(pib_csv)
+    faltam = [a for a in range(ano0, ano1 + 1) if a not in pib.index]
+    if faltam:
+        raise ValueError(f"PIB do IBGE sem os 4 trimestres de: {faltam}")
 
     def pacote(f):
         return {
@@ -227,7 +270,9 @@ def montar_anos(xlsx, ipca_csv, base=None, mapa=None):
             "real": fatia(real),
             "pib": {
                 "valor_nominal": round(float(pib[ano]), 1),
-                "fonte": "implícito nas abas 2.2 e 2.2-A do RTN (provisório até carregar a série do IBGE)",
+                "fonte": FONTE_PIB,
+                "trimestres": 4,
+                "ultimo_trimestre": ultimo_trimestre,
             },
         }
     return saida, {"ultimo_mes_publicado": f"{ultimo:%Y-%m}", "mes_base": base, "anos": [ano0, ano1]}
@@ -245,14 +290,15 @@ def gravar(saida, indice, pasta):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    rtn0, ipca0 = entradas_padrao()
+    rtn0, ipca0, pib0 = entradas_padrao()
     ap.add_argument("--rtn", default=rtn0, help="série histórica do RTN (xlsx); padrão: entrada/seriehistorica*.xlsx")
     ap.add_argument("--ipca", default=ipca0, help="IPCA do SIDRA 1737 (csv); padrão: entrada/tabela1737.csv")
+    ap.add_argument("--pib", default=pib0, help="PIB do SIDRA 1846 (csv); padrão: entrada/tabela1846.csv")
     ap.add_argument("--saida", default=str(AQUI / "dados"))
     ap.add_argument("--base", default=None)
     a = ap.parse_args()
     if not a.rtn:
         ap.error("nenhum arquivo entrada/seriehistorica*.xlsx encontrado; passe --rtn")
-    s, idx = montar_anos(a.rtn, a.ipca, a.base)
+    s, idx = montar_anos(a.rtn, a.ipca, a.pib, a.base)
     gravar(s, idx, a.saida)
     print(f"{len(s)} anos gravados em {a.saida}/ (mês-base {idx['mes_base']}, dados até {idx['ultimo_mes_publicado']})")

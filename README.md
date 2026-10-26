@@ -15,7 +15,7 @@ linhas do RTN ele vem e quais metodologias foram usadas.
 ```bash
 pip install -r requirements.txt
 python pipeline.py     # lê entrada/ e grava dados/AAAA.json
-pytest -q              # 18 testes de validação
+pytest -q              # testes de validação
 ```
 
 O site (Node 24):
@@ -54,7 +54,7 @@ build. Cada merge na `main` vira produção; cada PR ganha uma prévia, protegid
 | `pipeline.py` | Leitura do RTN e do IPCA, mapeamento, deflação, JSON por ano |
 | `testes.py`, `tests/` | Testes de validação (identidades contábeis, deflação, regressão contra o gráfico original) |
 | `referencias/` | Valores impressos no gráfico original (2025), usados pelos testes do pipeline e do site |
-| `entrada/` | Arquivos públicos de entrada (RTN e IPCA) e a fonte de cada um |
+| `entrada/` | Arquivos públicos de entrada (RTN, IPCA e PIB) e a fonte de cada um |
 | `dados/` | JSON gerados, um por ano, com valores nominais e em R$ constantes |
 | `web/` | O site: grafo, layout próprio em SVG e interface React, com testes (Vitest e Playwright) |
 | `vercel.json` | Publicação na Vercel: comandos de build, reescrita do subcaminho e cache |
@@ -76,7 +76,7 @@ mês-base e o último mês publicado.
 | `linhas` | Id do nó ou do total → linhas do RTN que o formam, na ordem do mapeamento |
 | `estrutura` | Papéis e ordem de desenho: `receita` (origens), `repasse`, `obrigatorias` (ordem fixa de `mapeamento.json → desenho`) e `discricionarias` |
 | `nominal`, `real` | Valores do ano em R$ correntes e em R$ constantes do mês-base: `nos`, `totais` e `financiamento` |
-| `pib` | PIB nominal do ano e a fonte |
+| `pib` | PIB nominal do ano (R$ milhões correntes, soma dos 4 trimestres do IBGE): `valor_nominal`, `fonte`, `trimestres` e `ultimo_trimestre` (o último trimestre do CSV do IBGE, por exemplo `2026T2`, que identifica a versão da série) |
 
 Cada item de `linhas` traz o código da aba 1.2 da série histórica, o nome oficial da linha (sem o código, sem marcadores de
 nota) e se ela soma ou subtrai no nó:
@@ -96,5 +96,5 @@ valores constantes do próprio Tesouro.
 
 ## Fontes e licença
 
-Dados: Secretaria do Tesouro Nacional (Resultado do Tesouro Nacional) e IBGE (IPCA, SIDRA 1737). Veja `entrada/LEIAME.md`.
+Dados: Secretaria do Tesouro Nacional (Resultado do Tesouro Nacional) e IBGE (IPCA, SIDRA 1737; PIB, SIDRA 1846). Veja `entrada/LEIAME.md`.
 Código: licença MIT (`LICENSE`).

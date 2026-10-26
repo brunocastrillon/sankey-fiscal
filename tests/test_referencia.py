@@ -8,7 +8,7 @@ sys.path.insert(0, str(RAIZ))
 import pipeline as P  # noqa: E402
 import testes as T  # noqa: E402
 
-RTN, IPCA = P.entradas_padrao()
+RTN, IPCA, _ = P.entradas_padrao()
 CTX = T.contexto(RTN, IPCA)
 
 

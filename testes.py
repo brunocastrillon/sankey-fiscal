@@ -2,7 +2,7 @@
 
 Uso (com os arquivos em entrada/):
     python testes.py
-    python testes.py --rtn outro.xlsx --ipca outro.csv
+    python testes.py --rtn outro.xlsx --ipca outro.csv --pib outro.csv
 Sai com código 1 se qualquer teste falhar (o pipeline não deve publicar nesse caso).
 """
 import argparse
@@ -173,13 +173,48 @@ def a2_financiamento(c, rtn):
                 f"juros 2025 = {a(fin['juros_nominais']):,.1f}; resultado nominal 2025 = {a(fin['resultado_nominal']):,.1f}")
 
 
-def a3_pib(c, rtn):
+def a3_pib(c, pib_csv):
     _, M, nos, totais, _ = c
-    pib = P.pib_implicito(rtn)[2025]
+    pib = P.ler_pib_ibge(pib_csv)[0][2025]
     deficit = -float(totais["primario_acima"].groupby(totais["primario_acima"].index.year).sum()[2025])
     pct = 100 * deficit / pib
     ok = abs(pib / 1e6 - 12.7) < 0.1 and round(pct, 2) == 0.48
-    return ok, f"PIB implícito 2025 = R$ {pib/1e6:.3f} tri (IBGE: R$ 12,7 tri); déficit/PIB = {pct:.3f}% (RTN: 0,48%)"
+    return ok, f"PIB do IBGE 2025 = R$ {pib/1e6:.3f} tri (IBGE: R$ 12,7 tri); déficit/PIB = {pct:.3f}% (RTN: 0,48%)"
+
+
+def t13_pib_ibge(pib_csv):
+    ano0, ano1 = P.carregar_mapeamento()["anos"]
+    tri = P.ler_pib_trimestral(pib_csv)
+    anos = range(ano0, ano1 + 1)
+    no_intervalo = tri[(tri.index.year >= ano0) & (tri.index.year <= ano1)]
+    contagem = {a: int((no_intervalo.index.year == a).sum()) for a in anos}
+    incompletos = {a: n for a, n in contagem.items() if n != 4}
+    nulos = [P.rotulo_trimestre(t) for t in no_intervalo.index[no_intervalo.isna()]]
+    ok = not incompletos and not nulos
+    return ok, (f"{len(tri)} trimestres no arquivo ({P.rotulo_trimestre(tri.index.min())} a "
+                f"{P.rotulo_trimestre(tri.index.max())}); {ano0}–{ano1}: anos sem 4 trimestres: {incompletos or 'nenhum'}; "
+                f"valores nulos: {nulos or 'nenhum'}")
+
+
+def a4_pib_ancora(c, rtn, pib_csv):
+    mapa, M, nos, totais, _ = c
+    anos = range(mapa["anos"][0], mapa["anos"][1] + 1)
+    pib = P.ler_pib_ibge(pib_csv)[0]
+    implicito = P.pib_implicito(rtn)
+    publicado = P.ler_rtn_anual(rtn, "2.2-A").loc["5"] * 100  # % do PIB publicado pelo Tesouro
+    primario = totais["primario_acima"].groupby(totais["primario_acima"].index.year).sum()
+    pct, rel = {}, {}
+    for a in anos:
+        p, p0 = 100 * float(primario[a]) / float(pib[a]), float(publicado[a])
+        pct[a] = (abs(p - p0), 0.005 * abs(p0) + 0.001)
+        rel[a] = abs(float(pib[a]) / float(implicito[a]) - 1)
+    a_p = max(pct, key=lambda a: pct[a][0])
+    a_f = min(pct, key=lambda a: pct[a][1] - pct[a][0])
+    a_r = max(rel, key=rel.get)
+    ok = all(d <= t for d, t in pct.values()) and all(r <= 0.005 for r in rel.values())
+    return ok, (f"primário/PIB IBGE contra a aba 2.2-A: maior diferença {pct[a_p][0]:.5f} p.p. ({a_p}, tolerância "
+                f"{pct[a_p][1]:.5f}); menor folga {pct[a_f][1] - pct[a_f][0]:.5f} p.p. ({a_f}); "
+                f"PIB IBGE / implícito − 1: maior {100 * rel[a_r]:.5f}% ({a_r}), folga {100 * (0.005 - rel[a_r]):.5f}%")
 
 
 CASOS_NOME = {
@@ -243,13 +278,13 @@ def t12_estrutura(c):
     return not falhas, f"{len(checagens)} checagens; falharam: {falhas or 'nenhuma'}; ordem: {e['obrigatorias']}"
 
 
-def t11_determinismo(rtn, ipca):
-    a =json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
-    b = json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
+def t11_determinismo(rtn, ipca, pib):
+    a = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
+    b = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
     return a == b, f"duas gerações: {len(a)} caracteres, idênticas: {a == b}"
 
 
-def lista_testes(c, rtn, ipca):
+def lista_testes(c, rtn, ipca, pib):
     return [
         ("T1  Receita: soma dos 6 nós = receita total", lambda: t1_receita(c)),
         ("T2  Receita total − repasses = receita líquida", lambda: t2_receita_liquida(c)),
@@ -261,24 +296,27 @@ def lista_testes(c, rtn, ipca):
         ("T8  Regressão: 2025 real bate com o gráfico original", lambda: t8_regressao(c)),
         ("A1  Âncora: boletim RTN de dez/2025 (2025 nominal)", lambda: a1_boletim(c)),
         ("A2  Âncora: financiamento (BC) e identidades 5+6+7=8, 8+9=10", lambda: a2_financiamento(c, rtn)),
-        ("A3  Âncora: PIB implícito e déficit de 0,48% do PIB", lambda: a3_pib(c, rtn)),
+        ("A3  Âncora: PIB do IBGE e déficit de 0,48% do PIB", lambda: a3_pib(c, pib)),
+        ("A4  Âncora: primário/PIB contra a aba 2.2-A e PIB contra o implícito", lambda: a4_pib_ancora(c, rtn, pib)),
         ("T9  Linhas: códigos existem na aba 1.2 e nomes normalizados", lambda: t9_linhas_nomes(c, rtn)),
         ("T10 Linhas reproduzem soma/subtrai do mapeamento e os totais", lambda: t10_linhas_mapeamento(c, rtn)),
-        ("T11 Gerar duas vezes dá JSON idêntico", lambda: t11_determinismo(rtn, ipca)),
+        ("T11 Gerar duas vezes dá JSON idêntico", lambda: t11_determinismo(rtn, ipca, pib)),
         ("T12 Estrutura: papéis e ordem fixa das obrigatórias", lambda: t12_estrutura(c)),
+        ("T13 PIB do IBGE: 4 trimestres por ano, sem nulos", lambda: t13_pib_ibge(pib)),
     ]
 
 
 def main():
     ap = argparse.ArgumentParser()
-    rtn0, ipca0 = P.entradas_padrao()
+    rtn0, ipca0, pib0 = P.entradas_padrao()
     ap.add_argument("--rtn", default=rtn0)
     ap.add_argument("--ipca", default=ipca0)
+    ap.add_argument("--pib", default=pib0)
     a = ap.parse_args()
     if not a.rtn:
         ap.error("nenhum arquivo entrada/seriehistorica*.xlsx encontrado; passe --rtn")
     c = contexto(a.rtn, a.ipca)
-    testes = lista_testes(c, a.rtn, a.ipca)
+    testes = lista_testes(c, a.rtn, a.ipca, a.pib)
     falhas = 0
     for nome, fn in testes:
         ok, det = fn()
