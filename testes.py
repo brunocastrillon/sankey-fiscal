@@ -539,6 +539,7 @@ def lista_testes(c, rtn, ipca, pib):
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")  # no Windows, a saída redirecionada usa cp1252 e quebra em "−" e "→"
     ap = argparse.ArgumentParser()
     rtn0, ipca0, pib0 = P.entradas_padrao()
     ap.add_argument("--rtn", default=rtn0)
