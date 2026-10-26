@@ -23,6 +23,9 @@ MESES = {
 SIMBOLOS_SIDRA = {"-", "..", "...", "X"}  # valor ausente, inibido ou que não se aplica (legenda do SIDRA)
 CATEGORIA_PIB = "PIB a preços de mercado"
 FONTE_PIB = "IBGE, Contas Nacionais Trimestrais, tabela 1846"
+MARCADOR = r"\{[^{}]*\}"
+CLASSES_NOTA = ("fatos", "contexto")
+CAMPOS_FONTE_CONTEXTO = ("publicacao", "pagina", "endereco", "verificado_em")
 
 
 def entradas_padrao():
@@ -235,6 +238,87 @@ def montar_subcontas(mapa, M, fator, nomes):
             for ano in anos}
 
 
+def formatar_bi(valor_mi):
+    """R$ milhões -> 'R$ 1.027,4 bi' (como formatarBi do site)."""
+    return "R$ " + f"{valor_mi / 1000:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".") + " bi"
+
+
+def carregar_notas(caminho=None):
+    with open(caminho or AQUI / "notas.json", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _partes(marcador):
+    m = re.fullmatch(r"\{(\w+)(?::([^{}]*))?\}", marcador)
+    if not m:
+        raise ValueError(f"marcador malformado: {marcador}")
+    return m.group(1), m.group(2) or ""
+
+
+def valor_marcador(marcador, ano, R, nos_reais):
+    """Valor (R$ milhões constantes) de um marcador numérico no ano: {linha:COD}, {total:id}, {soma:COD:MM-MM},
+    {soma:COD+COD} e {mes:COD:MM}. R é a série mensal das linhas (código x mês); nos_reais, a dos nós."""
+    tipo, arg = _partes(marcador)
+
+    def no_ano(serie, meses=range(1, 13)):
+        return float(serie[(serie.index.year == ano) & serie.index.month.isin(list(meses))].sum())
+
+    if tipo == "linha":
+        return no_ano(R.loc[arg])
+    if tipo == "total":
+        return no_ano(nos_reais[arg])
+    if tipo == "mes":
+        cod, mes = arg.split(":")
+        return no_ano(R.loc[cod], [int(mes)])
+    if tipo == "soma" and ":" in arg:
+        cod, meses = arg.split(":")
+        m0, m1 = (int(x) for x in meses.split("-"))
+        return no_ano(R.loc[cod], range(m0, m1 + 1))
+    if tipo == "soma":
+        return sum(no_ano(R.loc[cod]) for cod in arg.split("+"))
+    raise ValueError(f"marcador sem valor numérico: {marcador}")
+
+
+def linhas_citadas(nota):
+    """Códigos do RTN citados pelos marcadores do texto e das comparações de uma nota."""
+    marcadores = re.findall(MARCADOR, nota["texto"]) + [x for a, _, b in nota.get("comparacoes", []) for x in (a, b)]
+    codigos = set()
+    for m in marcadores:
+        tipo, arg = _partes(m)
+        if tipo in ("linha", "mes", "soma", "codigo", "nome"):
+            codigos |= set(arg.split(":")[0].split("+"))
+    return codigos
+
+
+def aplicar_notas(notas, ano, R, nomes, nos_reais):
+    """Notas do ano com os marcadores substituídos: [{no, classe, texto, fonte}].
+
+    Valores em 'R$ x,y bi' (R$ constantes). Uma nota de contexto precisa de publicação, página, endereço e data de
+    verificação na fonte; sem isso, ValueError.
+    """
+    for n in notas:
+        if n["classe"] not in CLASSES_NOTA:
+            raise ValueError(f"nota {n['ano']} {n['no']}: classe {n['classe']!r} desconhecida")
+        faltam = [k for k in CAMPOS_FONTE_CONTEXTO if not n["fonte"].get(k)]
+        if n["classe"] == "contexto" and faltam:
+            raise ValueError(f"nota de contexto {n['ano']} {n['no']} sem {faltam} na fonte")
+
+    def substituir(m):
+        tipo, arg = _partes(m.group(0))
+        if tipo == "ano":
+            return str(ano)
+        if tipo in ("codigo", "nome"):
+            if arg not in nomes:
+                raise ValueError(f"linha {arg} não existe na aba 1.2")
+            return arg if tipo == "codigo" else nomes[arg]
+        if tipo in ("linha", "total", "soma", "mes"):
+            return formatar_bi(valor_marcador(m.group(0), ano, R, nos_reais))
+        raise ValueError(f"marcador desconhecido: {tipo}")
+
+    return [{"no": n["no"], "classe": n["classe"], "texto": re.sub(MARCADOR, substituir, n["texto"]), "fonte": n["fonte"]}
+            for n in notas if n["ano"] == ano]
+
+
 def pib_implicito(xlsx):
     """PIB nominal anual (R$ milhões) implícito nas abas 2.2 (valor) e 2.2-A (% do PIB) do RTN."""
     v = ler_rtn_anual(xlsx, "2.2").loc["1"]
@@ -273,6 +357,7 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
     nomes = ler_nomes_linhas(xlsx)
     linhas = montar_linhas(mapa, nomes)
     subcontas = montar_subcontas(mapa, M, fator, nomes)
+    notas, R, nos_reais = carregar_notas(), M * fator, {k: s * fator for k, s in nos.items()}
     estrutura = montar_estrutura(mapa)
 
     saida = {}
@@ -302,6 +387,7 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
                 "ultimo_trimestre": ultimo_trimestre,
             },
             "subcontas": subcontas[ano],
+            "notas": aplicar_notas(notas, ano, R, nomes, nos_reais),
         }
     return saida, {"ultimo_mes_publicado": f"{ultimo:%Y-%m}", "mes_base": base, "anos": [ano0, ano1]}
 

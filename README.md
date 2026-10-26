@@ -51,6 +51,7 @@ build. Cada merge na `main` vira produção; cada PR ganha uma prévia, protegid
 | `docs/como-conduzir.md` | Como conduzir o projeto com Claude Code e Superpowers |
 | `CLAUDE.md` | Contexto e regras para o Claude Code |
 | `mapeamento.json` | Linhas do RTN → nós do Sankey |
+| `notas.json` | Notas por ano e nó, escritas à mão sem números: os valores entram por marcadores calculados sobre a série |
 | `pipeline.py` | Leitura do RTN e do IPCA, mapeamento, deflação, JSON por ano |
 | `testes.py`, `tests/` | Testes de validação (identidades contábeis, deflação, regressão contra o gráfico original) |
 | `referencias/` | Valores impressos no gráfico original (2025), usados pelos testes do pipeline e do site |
@@ -78,6 +79,7 @@ mês-base e o último mês publicado.
 | `nominal`, `real` | Valores do ano em R$ correntes e em R$ constantes do mês-base: `nos`, `totais` e `financiamento` |
 | `pib` | PIB nominal do ano (R$ milhões correntes, soma dos 4 trimestres do IBGE): `valor_nominal`, `fonte`, `trimestres` e `ultimo_trimestre` (o último trimestre do CSV do IBGE, por exemplo `2026T2`, que identifica a versão da série) |
 | `subcontas` | Id do nó → linhas filhas diretas (aba 1.2) das linhas que o formam, menos as que subtraem, na ordem da aba: `codigo`, `nome`, `real` e `nominal` (R$ milhões); só nós com duas ou mais |
+| `notas` | Notas do ano (lista vazia se não há): `no`, `classe` (`fatos`, derivada da série do RTN; `contexto`, de uma publicação do Tesouro, com publicação, página, endereço e data de verificação), `texto` com os marcadores de `notas.json` já substituídos (valores em R$ constantes, "R$ x,y bi") e `fonte` |
 
 Cada item de `linhas` traz o código da aba 1.2 da série histórica, o nome oficial da linha (sem o código, sem marcadores de
 nota) e se ela soma ou subtrai no nó:

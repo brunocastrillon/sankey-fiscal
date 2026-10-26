@@ -7,6 +7,7 @@ Sai com código 1 se qualquer teste falhar (o pipeline não deve publicar nesse 
 """
 import argparse
 import json
+import re
 import sys
 
 import pandas as pd
@@ -354,6 +355,53 @@ def t15_subcontas_codigos(c, rtn):
                 f"{fora_de_ordem or 'nenhum'}")
 
 
+def _reais(c):
+    """Séries mensais em R$ constantes do mês-base: linhas do RTN (código x mês) e nós."""
+    mapa, M, nos, totais, ipca = c
+    fator = pd.Series(P.fator_deflacao(ipca, M.columns, mapa["mes_base_padrao"]), index=M.columns)
+    return M * fator, {k: v * fator for k, v in nos.items()}
+
+
+def t16_notas_sem_digitos():
+    notas = P.carregar_notas()
+    com_digito = [f"{n['ano']} {n['no']}: {re.sub(P.MARCADOR, '', n['texto'])!r}" for n in notas
+                  if re.search(r"\d", re.sub(P.MARCADOR, "", n["texto"]))]
+    return bool(notas) and not com_digito, f"{len(notas)} notas; com dígito fora dos marcadores: {com_digito or 'nenhuma'}"
+
+
+def t17_notas_comparacoes(c, rtn):
+    R, nos_reais = _reais(c)
+    falsas, avaliadas, sem_fonte = [], [], []
+    for n in P.carregar_notas():
+        for a, op, b in n.get("comparacoes", []):
+            va, vb = (P.valor_marcador(x, n["ano"], R, nos_reais) for x in (a, b))
+            ok = {"<": va < vb, ">": va > vb}[op]
+            avaliadas.append(f"{n['ano']} {a} {op} {b}: {va / 1000:.1f} {op} {vb / 1000:.1f} bi")
+            if not ok:
+                falsas.append(avaliadas[-1])
+        citadas = P.linhas_citadas(n)
+        if "linhas" in n["fonte"] and not citadas <= set(n["fonte"]["linhas"]):
+            sem_fonte.append(f"{n['ano']} {n['no']}: {sorted(citadas - set(n['fonte']['linhas']))}")
+    ok = bool(avaliadas) and not falsas and not sem_fonte
+    return ok, (f"{len(avaliadas)} comparações ({'; '.join(avaliadas)}); falsas: {falsas or 'nenhuma'}; "
+                f"linhas citadas fora da fonte: {sem_fonte or 'nenhuma'}")
+
+
+def t18_notas_fontes(c):
+    R, nos_reais = _reais(c)
+    nomes = P.ler_nomes_linhas(P.entradas_padrao()[0])
+    sem_pagina = {"ano": 2020, "no": "bolsa_familia", "classe": "contexto", "texto": "Texto.",
+                  "fonte": {"publicacao": "Publicação", "endereco": "https://exemplo", "verificado_em": "2026-01-01"}}
+    try:
+        P.aplicar_notas([sem_pagina], 2020, R, nomes, nos_reais)
+        levantou = False
+    except ValueError:
+        levantou = True
+    classes = sorted({n["classe"] for n in P.carregar_notas()})
+    ok = levantou and classes == ["fatos"]
+    return ok, f"nota de contexto sem página levanta ValueError: {levantou}; classes em notas.json: {classes}"
+
+
 def t11_determinismo(rtn, ipca, pib):
     a = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
     b = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
@@ -381,6 +429,9 @@ def lista_testes(c, rtn, ipca, pib):
         ("T13 PIB do IBGE: 4 trimestres por ano, sem nulos", lambda: t13_pib_ibge(pib)),
         ("T14 Subcontas fecham com o nó, nos 11 anos (real e nominal)", lambda: t14_subcontas_fecham(c, rtn)),
         ("T15 Subcontas: códigos da aba 1.2, com nome, na ordem dela, nenhum de subtrai", lambda: t15_subcontas_codigos(c, rtn)),
+        ("T16 Notas sem dígitos fora dos marcadores", lambda: t16_notas_sem_digitos()),
+        ("T17 Notas: comparações verdadeiras e linhas citadas na fonte", lambda: t17_notas_comparacoes(c, rtn)),
+        ("T18 Notas: contexto sem fonte completa falha; hoje só fatos", lambda: t18_notas_fontes(c)),
     ]
 
 

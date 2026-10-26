@@ -722,5 +722,32 @@
         "nominal": 29756.322
       }
     ]
-  }
+  },
+  "notas": [
+    {
+      "no": "fundeb_seguro_desemprego_outras",
+      "classe": "fatos",
+      "texto": "Em 2020, R$ 591,9 bi dos R$ 906,9 bi deste grupo estão na linha 4.3.07 Créditos Extraordinários, e R$ 108,1 bi na linha 4.3.03 Apoio Fin. EE/MM. Fundeb e seguro-desemprego, que dão nome ao grupo, somam R$ 102,8 bi nas linhas 4.3.10 FUNDEB (Complem. União) e 4.3.01 Abono e Seguro Desemprego.",
+      "fonte": {
+        "titulo": "Série histórica do RTN, aba 1.2",
+        "linhas": [
+          "4.3.07",
+          "4.3.03",
+          "4.3.01",
+          "4.3.10"
+        ]
+      }
+    },
+    {
+      "no": "bolsa_familia",
+      "classe": "fatos",
+      "texto": "Em 2020, a linha 4.4.1.2 somou R$ 0,6 bi entre abril e agosto, contra R$ 3,6 bi só em março.",
+      "fonte": {
+        "titulo": "Série histórica do RTN, aba 1.2, mensal",
+        "linhas": [
+          "4.4.1.2"
+        ]
+      }
+    }
+  ]
 }

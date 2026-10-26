@@ -1,0 +1,18 @@
+[
+  {
+    "ano": 2020,
+    "no": "fundeb_seguro_desemprego_outras",
+    "classe": "fatos",
+    "texto": "Em {ano}, {linha:4.3.07} dos {total:fundeb_seguro_desemprego_outras} deste grupo estão na linha {codigo:4.3.07} {nome:4.3.07}, e {linha:4.3.03} na linha {codigo:4.3.03} {nome:4.3.03}. Fundeb e seguro-desemprego, que dão nome ao grupo, somam {soma:4.3.10+4.3.01} nas linhas {codigo:4.3.10} {nome:4.3.10} e {codigo:4.3.01} {nome:4.3.01}.",
+    "comparacoes": [["{soma:4.3.10+4.3.01}", "<", "{linha:4.3.03}"], ["{linha:4.3.03}", "<", "{linha:4.3.07}"]],
+    "fonte": {"titulo": "Série histórica do RTN, aba 1.2", "linhas": ["4.3.07", "4.3.03", "4.3.01", "4.3.10"]}
+  },
+  {
+    "ano": 2020,
+    "no": "bolsa_familia",
+    "classe": "fatos",
+    "texto": "Em {ano}, a linha {codigo:4.4.1.2} somou {soma:4.4.1.2:04-08} entre abril e agosto, contra {mes:4.4.1.2:03} só em março.",
+    "comparacoes": [["{soma:4.4.1.2:04-08}", "<", "{mes:4.4.1.2:03}"]],
+    "fonte": {"titulo": "Série histórica do RTN, aba 1.2, mensal", "linhas": ["4.4.1.2"]}
+  }
+]
