@@ -77,6 +77,7 @@ mês-base e o último mês publicado.
 | `estrutura` | Papéis e ordem de desenho: `receita` (origens), `repasse`, `obrigatorias` (ordem fixa de `mapeamento.json → desenho`) e `discricionarias` |
 | `nominal`, `real` | Valores do ano em R$ correntes e em R$ constantes do mês-base: `nos`, `totais` e `financiamento` |
 | `pib` | PIB nominal do ano (R$ milhões correntes, soma dos 4 trimestres do IBGE): `valor_nominal`, `fonte`, `trimestres` e `ultimo_trimestre` (o último trimestre do CSV do IBGE, por exemplo `2026T2`, que identifica a versão da série) |
+| `subcontas` | Id do nó → linhas filhas diretas (aba 1.2) das linhas que o formam, menos as que subtraem, na ordem da aba: `codigo`, `nome`, `real` e `nominal` (R$ milhões); só nós com duas ou mais |
 
 Cada item de `linhas` traz o código da aba 1.2 da série histórica, o nome oficial da linha (sem o código, sem marcadores de
 nota) e se ela soma ou subtrai no nó:

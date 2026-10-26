@@ -278,6 +278,82 @@ def t12_estrutura(c):
     return not falhas, f"{len(checagens)} checagens; falharam: {falhas or 'nenhuma'}; ordem: {e['obrigatorias']}"
 
 
+# Nós com 2 ou mais subcontas e quantas são (design da fase 3, "Subcontas")
+SUBCONTAS_ESPERADAS = {
+    "imposto_renda": 3, "contribuicao_inss": 2, "cofins_pis": 2, "iof_ipi_importacao": 7,
+    "royalties_dividendos_outras": 12, "repasse_estados_municipios": 6, "aposentadorias_pensoes": 2,
+    "demais_controle_fluxo": 3, "fundeb_seguro_desemprego_outras": 19, "discricionarias": 9,
+}
+TOL_SUBCONTAS = 0.02  # R$ milhões: 3 casas por valor, até 0,0005 por subconta, 19 × 0,0005 = 0,0095
+# Meses em que a própria aba 1.2 não fecha (linha-pai ≠ soma das filhas). O resíduo vem da planilha do Tesouro, não do
+# arredondamento; um mês novo nesta lista é uma revisão da série a conferir.
+RESIDUOS_FONTE = {("aposentadorias_pensoes", "2015-05"), ("aposentadorias_pensoes", "2016-08")}
+
+
+def _subcontas(c, rtn):
+    mapa, M, nos, totais, ipca = c
+    fator = pd.Series(P.fator_deflacao(ipca, M.columns, mapa["mes_base_padrao"]), index=M.columns)
+    return P.montar_subcontas(mapa, M, fator, P.ler_nomes_linhas(rtn)), fator
+
+
+def t14_subcontas_fecham(c, rtn):
+    mapa, M, nos, totais, _ = c
+    sub, fator = _subcontas(c, rtn)
+    pior, onde, pior_arred = 0.0, None, 0.0
+    for ano, por_no in sub.items():
+        for no, itens in por_no.items():
+            for chave, f in (("real", fator), ("nominal", 1.0)):
+                arred = sum(i[chave] for i in itens)
+                bruto = sum(float(P.por_ano(M.loc[i["codigo"]] * f)[ano]) for i in itens)
+                pior_arred = max(pior_arred, abs(arred - bruto))
+                dif = abs(arred - float(P.por_ano(nos[no] * f)[ano]))
+                if dif > pior:
+                    pior, onde = dif, f"{no} {ano} {chave}"
+    residuos = {}
+    for no, itens in sub.get(mapa["anos"][1], {}).items():
+        r = nos[no] - sum(M.loc[i["codigo"]] for i in itens)
+        for m, v in r[r.abs() > 1e-6].items():
+            residuos[(no, f"{m:%Y-%m}")] = float(v)
+    anos = list(range(mapa["anos"][0], mapa["anos"][1] + 1))
+    contagens = {ano: {no: len(v) for no, v in por_no.items()} for ano, por_no in sub.items()}
+    fundeb = [i["codigo"] for i in sub[2025]["fundeb_seguro_desemprego_outras"]] if 2025 in sub else []
+    ir = [i["codigo"] for i in sub[2025].get("imposto_renda", [])] if 2025 in sub else []
+    checagens = {
+        "11 anos": sorted(sub) == anos,
+        "10 nós com as contagens do design, em todos os anos": all(v == SUBCONTAS_ESPERADAS for v in contagens.values()),
+        "Fundeb sem 4.3.05": "4.3.05" not in fundeb,
+        "Imposto de Renda = 1.1.03.1, 1.1.03.2, 1.1.03.3": ir == ["1.1.03.1", "1.1.03.2", "1.1.03.3"],
+        f"arredondamento das subcontas ≤ {TOL_SUBCONTAS}": pior_arred <= TOL_SUBCONTAS,
+        "resíduo da aba 1.2 só nos meses conhecidos": set(residuos) <= RESIDUOS_FONTE,
+        f"somas fecham com o nó (≤ {TOL_SUBCONTAS} + resíduo da fonte)": pior <= TOL_SUBCONTAS + sum(
+            abs(v) for v in residuos.values()) * float(fator.max()),
+    }
+    falhas = [k for k, ok in checagens.items() if not ok]
+    det_res = "; ".join(f"{no} {m}: {v:+.4f}" for (no, m), v in sorted(residuos.items())) or "nenhum"
+    return not falhas, (f"{sum(len(v) for v in sub.get(2025, {}).values())} subcontas em {len(sub.get(2025, {}))} nós; "
+                        f"maior |Σ subcontas − nó| R$ {pior:.4f} mi ({onde}); arredondamento até R$ {pior_arred:.4f} mi; "
+                        f"resíduo mensal da aba 1.2 (R$ mi correntes): {det_res}; falharam: {falhas or 'nenhuma'}")
+
+
+def t15_subcontas_codigos(c, rtn):
+    mapa, M, *_ = c
+    nomes = P.ler_nomes_linhas(rtn)
+    sub, _ = _subcontas(c, rtn)
+    subtrai = {cod for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"] for cod in n.get("subtrai", [])}
+    codigos = {i["codigo"] for por_no in sub.values() for itens in por_no.values() for i in itens}
+    sem_nome = sorted(cod for cod in codigos if not nomes.get(cod, "").strip())
+    nome_errado = sorted({i["codigo"] for por_no in sub.values() for itens in por_no.values() for i in itens
+                          if i["nome"] != nomes.get(i["codigo"])})
+    de_subtrai = sorted(codigos & subtrai)
+    posicao = {cod: k for k, cod in enumerate(M.index)}
+    fora_de_ordem = sorted({no for por_no in sub.values() for no, itens in por_no.items()
+                            if [posicao[i["codigo"]] for i in itens] != sorted(posicao[i["codigo"]] for i in itens)})
+    ok = bool(codigos) and not sem_nome and not nome_errado and not de_subtrai and not fora_de_ordem
+    return ok, (f"{len(codigos)} códigos; sem nome na aba 1.2: {sem_nome or 'nenhum'}; nome diferente do da aba 1.2: "
+                f"{nome_errado or 'nenhum'}; de subtrai: {de_subtrai or 'nenhum'}; fora da ordem da aba 1.2: "
+                f"{fora_de_ordem or 'nenhum'}")
+
+
 def t11_determinismo(rtn, ipca, pib):
     a = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
     b = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
@@ -303,6 +379,8 @@ def lista_testes(c, rtn, ipca, pib):
         ("T11 Gerar duas vezes dá JSON idêntico", lambda: t11_determinismo(rtn, ipca, pib)),
         ("T12 Estrutura: papéis e ordem fixa das obrigatórias", lambda: t12_estrutura(c)),
         ("T13 PIB do IBGE: 4 trimestres por ano, sem nulos", lambda: t13_pib_ibge(pib)),
+        ("T14 Subcontas fecham com o nó, nos 11 anos (real e nominal)", lambda: t14_subcontas_fecham(c, rtn)),
+        ("T15 Subcontas: códigos da aba 1.2, com nome, na ordem dela, nenhum de subtrai", lambda: t15_subcontas_codigos(c, rtn)),
     ]
 
 

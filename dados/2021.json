@@ -310,5 +310,417 @@
     "fonte": "IBGE, Contas Nacionais Trimestrais, tabela 1846",
     "trimestres": 4,
     "ultimo_trimestre": "2026T2"
+  },
+  "subcontas": {
+    "imposto_renda": [
+      {
+        "codigo": "1.1.03.1",
+        "nome": "I.R. - Pessoa Física",
+        "real": 71447.589,
+        "nominal": 56262.42
+      },
+      {
+        "codigo": "1.1.03.2",
+        "nome": "I.R. - Pessoa Jurídica",
+        "real": 273500.629,
+        "nominal": 214466.787
+      },
+      {
+        "codigo": "1.1.03.3",
+        "nome": "I.R. - Retido na fonte",
+        "real": 314274.425,
+        "nominal": 247795.916
+      }
+    ],
+    "contribuicao_inss": [
+      {
+        "codigo": "1.3.1",
+        "nome": "Arrecadação Líquida para o RGPS - Urbana",
+        "real": 572074.737,
+        "nominal": 451885.857
+      },
+      {
+        "codigo": "1.3.2",
+        "nome": "Arrecadação Líquida para o RGPS - Rural",
+        "real": 13149.548,
+        "nominal": 10358.257
+      }
+    ],
+    "cofins_pis": [
+      {
+        "codigo": "1.1.05",
+        "nome": "Cofins",
+        "real": 348467.742,
+        "nominal": 274580.947
+      },
+      {
+        "codigo": "1.1.06",
+        "nome": "PIS/Pasep",
+        "real": 96607.429,
+        "nominal": 76089.027
+      }
+    ],
+    "iof_ipi_importacao": [
+      {
+        "codigo": "1.1.01",
+        "nome": "Imposto sobre a Importação",
+        "real": 78744.14,
+        "nominal": 61970.275
+      },
+      {
+        "codigo": "1.1.02.1",
+        "nome": "IPI - Fumo",
+        "real": 7093.612,
+        "nominal": 5576.673
+      },
+      {
+        "codigo": "1.1.02.2",
+        "nome": "IPI - Bebidas",
+        "real": 3428.128,
+        "nominal": 2687.42
+      },
+      {
+        "codigo": "1.1.02.3",
+        "nome": "IPI - Automóveis",
+        "real": 4392.957,
+        "nominal": 3446.695
+      },
+      {
+        "codigo": "1.1.02.4",
+        "nome": "IPI - Vinculado à importação",
+        "real": 40217.105,
+        "nominal": 31693.283
+      },
+      {
+        "codigo": "1.1.02.5",
+        "nome": "IPI - Outros",
+        "real": 35381.864,
+        "nominal": 27882.037
+      },
+      {
+        "codigo": "1.1.04",
+        "nome": "IOF",
+        "real": 62094.949,
+        "nominal": 49128.422
+      }
+    ],
+    "royalties_dividendos_outras": [
+      {
+        "codigo": "1.1.08",
+        "nome": "CPMF",
+        "real": 0.0,
+        "nominal": 0.0
+      },
+      {
+        "codigo": "1.1.09",
+        "nome": "CIDE - Combustíveis",
+        "real": 2420.707,
+        "nominal": 1927.972
+      },
+      {
+        "codigo": "1.1.10",
+        "nome": "Outras Receitas Administradas pela RFB",
+        "real": 35042.412,
+        "nominal": 27674.098
+      },
+      {
+        "codigo": "1.2",
+        "nome": "Incentivos Fiscais",
+        "real": -200.499,
+        "nominal": -160.458
+      },
+      {
+        "codigo": "1.4.1",
+        "nome": "Concessões e Permissões",
+        "real": 12259.184,
+        "nominal": 9865.841
+      },
+      {
+        "codigo": "1.4.2",
+        "nome": "Dividendos e Participações",
+        "real": 54277.258,
+        "nominal": 43484.461
+      },
+      {
+        "codigo": "1.4.3",
+        "nome": "Contr. Plano de Seguridade Social do Servidor",
+        "real": 22737.006,
+        "nominal": 17945.255
+      },
+      {
+        "codigo": "1.4.4",
+        "nome": "Receitas de Exploração de Recursos Naturais",
+        "real": 119430.142,
+        "nominal": 94063.606
+      },
+      {
+        "codigo": "1.4.5",
+        "nome": "Receitas Próprias (fontes 50, 81 e 82)",
+        "real": 21134.969,
+        "nominal": 16665.741
+      },
+      {
+        "codigo": "1.4.6",
+        "nome": "Contribuição do Salário Educação",
+        "real": 30420.863,
+        "nominal": 24021.631
+      },
+      {
+        "codigo": "1.4.7",
+        "nome": "Complemento para o FGTS (LC nº 110/01)",
+        "real": 38.754,
+        "nominal": 31.673
+      },
+      {
+        "codigo": "1.4.8",
+        "nome": "Demais Receitas Não Administradas pela RFB",
+        "real": 87546.233,
+        "nominal": 68775.515
+      }
+    ],
+    "repasse_estados_municipios": [
+      {
+        "codigo": "2.1",
+        "nome": "FPM / FPE / IPI-EE",
+        "real": 348963.746,
+        "nominal": 274865.184
+      },
+      {
+        "codigo": "2.2",
+        "nome": "Fundos Constitucionais",
+        "real": 7418.106,
+        "nominal": 5815.37
+      },
+      {
+        "codigo": "2.3",
+        "nome": "Transferência de Contribuição do Salário Educação",
+        "real": 17929.519,
+        "nominal": 14088.567
+      },
+      {
+        "codigo": "2.4",
+        "nome": "Transferências de Exploração de Recursos Naturais",
+        "real": 71172.897,
+        "nominal": 56282.487
+      },
+      {
+        "codigo": "2.5",
+        "nome": "Transferência da CIDE - Combustíveis",
+        "real": 564.849,
+        "nominal": 443.968
+      },
+      {
+        "codigo": "2.6",
+        "nome": "Demais Transferências por Repartição de Receita",
+        "real": 2545.224,
+        "nominal": 2051.259
+      }
+    ],
+    "aposentadorias_pensoes": [
+      {
+        "codigo": "4.1.1",
+        "nome": "Benefícios Previdenciários - Urbano",
+        "real": 717309.721,
+        "nominal": 564041.707
+      },
+      {
+        "codigo": "4.1.2",
+        "nome": "Benefícios Previdenciários - Rural",
+        "real": 185137.412,
+        "nominal": 145540.795
+      }
+    ],
+    "demais_controle_fluxo": [
+      {
+        "codigo": "4.4.1.1",
+        "nome": "Benefícios a servidores públicos",
+        "real": 17518.631,
+        "nominal": 13812.388
+      },
+      {
+        "codigo": "4.4.1.4",
+        "nome": "Educação",
+        "real": 9144.031,
+        "nominal": 7215.869
+      },
+      {
+        "codigo": "4.4.1.5",
+        "nome": "Demais",
+        "real": 6480.674,
+        "nominal": 5189.632
+      }
+    ],
+    "fundeb_seguro_desemprego_outras": [
+      {
+        "codigo": "4.3.01",
+        "nome": "Abono e Seguro Desemprego",
+        "real": 58883.119,
+        "nominal": 45894.699
+      },
+      {
+        "codigo": "4.3.02",
+        "nome": "Anistiados",
+        "real": 200.42,
+        "nominal": 157.784
+      },
+      {
+        "codigo": "4.3.03",
+        "nome": "Apoio Fin. EE/MM",
+        "real": 0.0,
+        "nominal": 0.0
+      },
+      {
+        "codigo": "4.3.04",
+        "nome": "Benefícios de Legislação Especial e Indenizações",
+        "real": 802.925,
+        "nominal": 630.808
+      },
+      {
+        "codigo": "4.3.06",
+        "nome": "Complemento para o FGTS (LC nº 110/01)",
+        "real": 38.754,
+        "nominal": 31.673
+      },
+      {
+        "codigo": "4.3.07",
+        "nome": "Créditos Extraordinários",
+        "real": 148545.119,
+        "nominal": 117175.626
+      },
+      {
+        "codigo": "4.3.08",
+        "nome": "Compensação ao RGPS pelas Desonerações da Folha",
+        "real": 9275.519,
+        "nominal": 7271.3
+      },
+      {
+        "codigo": "4.3.09",
+        "nome": "Fabricação de Cédulas e Moedas",
+        "real": 1253.706,
+        "nominal": 999.193
+      },
+      {
+        "codigo": "4.3.10",
+        "nome": "FUNDEB (Complem. União)",
+        "real": 27939.717,
+        "nominal": 22033.407
+      },
+      {
+        "codigo": "4.3.11",
+        "nome": "Fundo Constitucional DF (Custeio e Capital)",
+        "real": 2719.547,
+        "nominal": 2147.788
+      },
+      {
+        "codigo": "4.3.12",
+        "nome": "Legislativo/Judiciário/MPU/DPU (Custeio e Capital)",
+        "real": 13908.954,
+        "nominal": 11011.212
+      },
+      {
+        "codigo": "4.3.13",
+        "nome": "Lei Kandir (LC nº 87/96 e 102/00) e LC nº 176 de 2020",
+        "real": 6220.109,
+        "nominal": 4856.418
+      },
+      {
+        "codigo": "4.3.14",
+        "nome": "Sentenças Judiciais e Precatórios (Custeio e Capital)",
+        "real": 24033.107,
+        "nominal": 18763.336
+      },
+      {
+        "codigo": "4.3.15",
+        "nome": "Subsídios, Subvenções e Proagro",
+        "real": 9515.71,
+        "nominal": 7468.845
+      },
+      {
+        "codigo": "4.3.16",
+        "nome": "Transferências ANA",
+        "real": 192.095,
+        "nominal": 154.395
+      },
+      {
+        "codigo": "4.3.17",
+        "nome": "Transferências Multas ANEEL",
+        "real": 1520.113,
+        "nominal": 1197.469
+      },
+      {
+        "codigo": "4.3.18",
+        "nome": "Impacto Primário do FIES",
+        "real": -1677.081,
+        "nominal": -1334.598
+      },
+      {
+        "codigo": "4.3.19",
+        "nome": "Financiamento de Campanha Eleitoral",
+        "real": 0.0,
+        "nominal": 0.0
+      },
+      {
+        "codigo": "4.3.20",
+        "nome": "Demais Despesas Obrigatórias",
+        "real": 0.0,
+        "nominal": 0.0
+      }
+    ],
+    "discricionarias": [
+      {
+        "codigo": "4.4.2.1",
+        "nome": "Saúde",
+        "real": 37567.202,
+        "nominal": 29938.995
+      },
+      {
+        "codigo": "4.4.2.2",
+        "nome": "Educação",
+        "real": 24734.283,
+        "nominal": 19616.999
+      },
+      {
+        "codigo": "4.4.2.3",
+        "nome": "Defesa",
+        "real": 14219.608,
+        "nominal": 11330.745
+      },
+      {
+        "codigo": "4.4.2.4",
+        "nome": "Transporte",
+        "real": 10205.31,
+        "nominal": 8103.709
+      },
+      {
+        "codigo": "4.4.2.5",
+        "nome": "Administração",
+        "real": 7522.346,
+        "nominal": 5963.055
+      },
+      {
+        "codigo": "4.4.2.6",
+        "nome": "Ciência e Tecnologia",
+        "real": 3712.057,
+        "nominal": 2941.2
+      },
+      {
+        "codigo": "4.4.2.7",
+        "nome": "Segurança Pública",
+        "real": 3833.143,
+        "nominal": 3042.741
+      },
+      {
+        "codigo": "4.4.2.8",
+        "nome": "Assistência Social",
+        "real": 3180.725,
+        "nominal": 2548.454
+      },
+      {
+        "codigo": "4.4.2.9",
+        "nome": "Demais",
+        "real": 50322.901,
+        "nominal": 40432.066
+      }
+    ]
   }
 }

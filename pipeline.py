@@ -210,6 +210,31 @@ def por_ano(serie_mensal):
     return serie_mensal.groupby(serie_mensal.index.year).sum()
 
 
+def montar_subcontas(mapa, M, fator, nomes):
+    """Ano -> id do nó -> subcontas [{codigo, nome, real, nominal}] (R$ milhões, 3 casas), na ordem da aba 1.2.
+
+    Subcontas de um nó: as filhas diretas de cada linha de `soma` (uma linha sem filhas entra como ela mesma), menos as
+    linhas de `subtrai`. Só entram nós com duas ou mais subcontas.
+    """
+    ordem = {c: k for k, c in enumerate(M.index)}
+
+    def filhas(c):
+        return [k for k in M.index if k.startswith(c + ".") and k.count(".") == c.count(".") + 1]
+
+    por_no = {}
+    for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"]:
+        codigos = [f for c in n["soma"] for f in (filhas(c) or [c]) if f not in n.get("subtrai", [])]
+        if len(codigos) >= 2:
+            por_no[n["id"]] = sorted(codigos, key=ordem.get)
+    real = {c: por_ano(M.loc[c] * fator) for cs in por_no.values() for c in cs}
+    nominal = {c: por_ano(M.loc[c]) for cs in por_no.values() for c in cs}
+    anos = sorted(set(M.columns.year))
+    return {ano: {no: [{"codigo": c, "nome": nomes[c], "real": round(float(real[c][ano]), 3),
+                        "nominal": round(float(nominal[c][ano]), 3)} for c in cs]
+                  for no, cs in por_no.items()}
+            for ano in anos}
+
+
 def pib_implicito(xlsx):
     """PIB nominal anual (R$ milhões) implícito nas abas 2.2 (valor) e 2.2-A (% do PIB) do RTN."""
     v = ler_rtn_anual(xlsx, "2.2").loc["1"]
@@ -245,7 +270,9 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
     rotulos = {n["id"]: n["rotulo"] for n in mapa["receita"] + mapa["despesa"]}
     rotulos[mapa["repasse"]["id"]] = mapa["repasse"]["rotulo"]
     grupos = {n["id"]: n["grupo"] for n in mapa["despesa"]}
-    linhas = montar_linhas(mapa, ler_nomes_linhas(xlsx))
+    nomes = ler_nomes_linhas(xlsx)
+    linhas = montar_linhas(mapa, nomes)
+    subcontas = montar_subcontas(mapa, M, fator, nomes)
     estrutura = montar_estrutura(mapa)
 
     saida = {}
@@ -274,6 +301,7 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
                 "trimestres": 4,
                 "ultimo_trimestre": ultimo_trimestre,
             },
+            "subcontas": subcontas[ano],
         }
     return saida, {"ultimo_mes_publicado": f"{ultimo:%Y-%m}", "mes_base": base, "anos": [ano0, ano1]}
 
