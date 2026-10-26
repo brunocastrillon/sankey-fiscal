@@ -18,6 +18,17 @@ python pipeline.py     # lê entrada/ e grava dados/AAAA.json
 pytest -q              # testes de validação
 ```
 
+**Notas de contexto:** antes de qualquer merge que toque em notas de contexto (`notas.json`, classe `contexto`), confira os
+trechos citados contra o PDF da publicação, que não é versionado (ver `entrada/LEIAME.md`):
+
+```bash
+python verificar_trechos.py --pdf C:/caminho/RTN_Boletim_2020_12.pdf
+```
+
+O script confere que o PDF é o citado (SHA256 igual a `arquivo_sha256`), que cada `trecho` aparece na página citada
+(espaços e hifenização de fim de linha normalizados) e que tem menos de 15 palavras; sai com código 1 se algo não conferir.
+Precisa do `pdftotext` (Poppler). Fica fora do CI porque o PDF não está no repositório.
+
 O site (Node 24):
 
 ```bash
@@ -54,6 +65,7 @@ build. Cada merge na `main` vira produção; cada PR ganha uma prévia, protegid
 | `notas.json` | Notas por ano e nó, escritas à mão sem números: os valores entram por marcadores calculados sobre a série |
 | `pipeline.py` | Leitura do RTN e do IPCA, mapeamento, deflação, JSON por ano |
 | `testes.py`, `tests/` | Testes de validação (identidades contábeis, deflação, regressão contra o gráfico original) |
+| `verificar_trechos.py` | Confere os trechos das notas de contexto contra o PDF citado (fora do CI) |
 | `referencias/` | Valores impressos no gráfico original (2025), usados pelos testes do pipeline e do site, e valores nominais de 2020 do boletim do RTN de dez/2020 (`boletim-dez-2020.json`, com página e SHA256 do PDF), que conferem as subcontas (T21) |
 | `entrada/` | Arquivos públicos de entrada (RTN, IPCA e PIB) e a fonte de cada um |
 | `dados/` | JSON gerados, um por ano, com valores nominais e em R$ constantes |

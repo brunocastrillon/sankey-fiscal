@@ -28,4 +28,4 @@ O PDF não é versionado. SHA256 do arquivo conferido (`Get-FileHash`):
 `1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef`. Texto conferido em 26/10/2026 (data do download não
 registrada). Páginas usadas: 7 (tabela do resultado acumulado), 9 (texto das Notas Explicativas) e 15 (Tabela 2.3). A
 numeração das notas segue o texto da p. 9; a tabela da p. 7 numera diferente (Nota 16 do texto = 15 da tabela; 18 = 17;
-21 = 20).
+21 = 20). Para conferir os trechos citados: `python verificar_trechos.py --pdf <caminho do PDF>`.
