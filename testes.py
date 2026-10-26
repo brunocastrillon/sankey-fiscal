@@ -394,7 +394,7 @@ def t17_notas_comparacoes(c, rtn):
             if not ok:
                 falsas.append(avaliadas[-1])
         citadas = P.linhas_citadas(n)
-        if "linhas" in n["fonte"] and not citadas <= set(n["fonte"]["linhas"]):
+        if isinstance(n["fonte"], dict) and "linhas" in n["fonte"] and not citadas <= set(n["fonte"]["linhas"]):
             sem_fonte.append(f"{n['ano']} {n['no']}: {sorted(citadas - set(n['fonte']['linhas']))}")
     ok = bool(avaliadas) and not falsas and not sem_fonte
     return ok, (f"{len(avaliadas)} comparações ({'; '.join(avaliadas)}); falsas: {falsas or 'nenhuma'}; "
@@ -404,27 +404,41 @@ def t17_notas_comparacoes(c, rtn):
 def t18_notas_fontes(c):
     R, nos_reais = _reais(c)
     nomes = P.ler_nomes_linhas(P.entradas_padrao()[0])
-    completa = {"publicacao": "Publicação", "pagina": 1, "nota": "Nota 1", "endereco": "https://exemplo",
-                "verificado_em": "2026-01-01"}
-    levantou = {}
-    for falta in ("pagina", "nota"):
-        nota = {"ano": 2020, "no": "bolsa_familia", "classe": "contexto", "texto": "Texto.",
-                "fonte": {k: v for k, v in completa.items() if k != falta}}
+    citacao = {"publicacao": "Publicação", "pagina": 1, "nota": "Nota 1", "endereco": "https://exemplo",
+               "verificado_em": "2026-01-01"}
+
+    def nota(fonte):
+        return {"ano": 2020, "no": "bolsa_familia", "classe": "contexto", "texto": "Texto.", "fonte": fonte}
+
+    def levanta(fonte):
         try:
-            P.aplicar_notas([nota], 2020, R, nomes, nos_reais)
-            levantou[falta] = False
+            P.aplicar_notas([nota(fonte)], 2020, R, nomes, nos_reais)
+            return False
         except ValueError:
-            levantou[falta] = True
+            return True
+
+    # uma citação só ou uma lista; sem página ou sem nota em qualquer citação da lista, ValueError
+    levantou = {f"{falta} na citação {i + 1} de 2": levanta([{k: v for k, v in citacao.items() if not (j == i and k == falta)}
+                                                          for j in range(2)])
+                for falta in ("pagina", "nota") for i in range(2)}
+    levantou.update({f"{falta} na citação única": levanta({k: v for k, v in citacao.items() if k != falta})
+                     for falta in ("pagina", "nota")})
+    completas = {"citação única": nota(citacao), "lista de 2": nota([citacao, dict(citacao, nota="Nota 2")])}
+    gravadas = {k: P.aplicar_notas([n], 2020, R, nomes, nos_reais)[0]["fonte"] for k, n in completas.items()}
+    em_lista = all(isinstance(f, list) and all(c["pagina"] and c["nota"] for c in f) for f in gravadas.values())
     classes = sorted({n["classe"] for n in P.carregar_notas()})
-    ok = all(levantou.values()) and set(classes) <= set(P.CLASSES_NOTA)
-    return ok, f"nota de contexto sem o campo levanta ValueError: {levantou}; classes em notas.json: {classes}"
+    ok = all(levantou.values()) and em_lista and set(classes) <= set(P.CLASSES_NOTA)
+    return ok, (f"fonte de contexto incompleta levanta ValueError: {levantou}; fonte completa gravada como lista: "
+                f"{em_lista}; classes em notas.json: {classes}")
 
 
 # Notas de contexto de 2020: boletim do RTN de dezembro de 2020, Notas Explicativas do resultado acumulado (página 9 do PDF)
 PUBLICACAO_RTN_2020 = "Resultado do Tesouro Nacional, dezembro de 2020"
 ENDERECO_RTN_2020 = "https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12"
-NOTAS_CONTEXTO_2020 = {("fundeb_seguro_desemprego_outras", "Nota 16"), ("fundeb_seguro_desemprego_outras", "Nota 18"),
-                       ("bolsa_familia", "Nota 21")}
+# nó -> notas do boletim citadas pela nota, em ordem
+NOTAS_CONTEXTO_2020 = {("fundeb_seguro_desemprego_outras", ("Nota 18",)),
+                       ("fundeb_seguro_desemprego_outras", ("Nota 16", "Nota 18")),
+                       ("bolsa_familia", ("Nota 21",))}
 CAMPOS_FONTE_T19 = ("publicacao", "boletim", "pagina", "nota", "endereco", "verificado_em", "trecho", "linha_rtn", "menciona")
 # Nota 21 do boletim: queda real do Bolsa Família de 2019 para 2020, em % (preços de dez/2020; a nossa série usa dez/2025,
 # mas a variação real entre dois anos não depende do mês-base)
@@ -446,23 +460,24 @@ def t19_notas_contexto(c):
     contexto = [n for n in P.carregar_notas() if n["classe"] == "contexto"]
     erros = []
     for n in contexto:
-        f, quem = n["fonte"], f"{n['ano']} {n['no']} {n['fonte'].get('nota')}"
-        faltam = [k for k in CAMPOS_FONTE_T19 if f.get(k) in (None, "")]
-        if faltam:
-            erros.append(f"{quem}: sem {faltam}")
-            continue
-        if not isinstance(f["pagina"], int) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", f["verificado_em"]):
-            erros.append(f"{quem}: página não inteira ou data fora de AAAA-MM-DD")
-        if len(f["trecho"]) > 200 or len(f["trecho"].split()) >= 15:
-            erros.append(f"{quem}: trecho longo")
-        if f["publicacao"] != PUBLICACAO_RTN_2020 or f["endereco"] != ENDERECO_RTN_2020:
-            erros.append(f"{quem}: publicação ou endereço")
-        if f["linha_rtn"] not in nomes or f["menciona"] not in nomes:
-            erros.append(f"{quem}: linha_rtn ou menciona fora da aba 1.2")
-        elif no_da_linha(mapa, f["menciona"]) != n["no"]:
-            erros.append(f"{quem}: menciona {f['menciona']} é do nó {no_da_linha(mapa, f['menciona'])}")
+        for f in P.citacoes(n["fonte"]):
+            quem = f"{n['ano']} {n['no']} {f.get('nota')}"
+            faltam = [k for k in CAMPOS_FONTE_T19 if f.get(k) in (None, "")]
+            if faltam:
+                erros.append(f"{quem}: sem {faltam}")
+                continue
+            if not isinstance(f["pagina"], int) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", f["verificado_em"]):
+                erros.append(f"{quem}: página não inteira ou data fora de AAAA-MM-DD")
+            if len(f["trecho"]) > 200 or len(f["trecho"].split()) >= 15:
+                erros.append(f"{quem}: trecho longo")
+            if f["publicacao"] != PUBLICACAO_RTN_2020 or f["endereco"] != ENDERECO_RTN_2020:
+                erros.append(f"{quem}: publicação ou endereço")
+            if f["linha_rtn"] not in nomes or f["menciona"] not in nomes:
+                erros.append(f"{quem}: linha_rtn ou menciona fora da aba 1.2")
+            elif no_da_linha(mapa, f["menciona"]) != n["no"]:
+                erros.append(f"{quem}: menciona {f['menciona']} é do nó {no_da_linha(mapa, f['menciona'])}")
         if re.search(r"maior parte|maioria", n["texto"], re.I):
-            erros.append(f"{quem}: diz 'maior parte'")
+            erros.append(f"{n['ano']} {n['no']}: diz 'maior parte'")
     frases = [fr for n in contexto if n["ano"] == 2020 for fr in re.split(r"(?<=[.!?])\s+", n["texto"])]
     pessoas = [fr for fr in frases if "pessoas" in fr and "{codigo:4.3.07}" in fr]
     governos = [fr for fr in frases if "Estados" in fr and "{codigo:4.3.03}" in fr]
@@ -470,7 +485,8 @@ def t19_notas_contexto(c):
     if not pessoas or not governos or juntos:
         erros.append(f"auxílio a pessoas e a Estados e Municípios em frases separadas: pessoas {len(pessoas)}, "
                      f"Estados {len(governos)}, na mesma frase {len(juntos)}")
-    presentes = {(n["no"], n["fonte"]["nota"].split(" das ")[0]) for n in contexto if n["ano"] == 2020 and "nota" in n["fonte"]}
+    presentes = {(n["no"], tuple(f.get("nota", "").split(" das ")[0] for f in P.citacoes(n["fonte"])))
+                 for n in contexto if n["ano"] == 2020}
     if presentes != NOTAS_CONTEXTO_2020:
         erros.append(f"notas de 2020: {sorted(presentes)} (esperadas {sorted(NOTAS_CONTEXTO_2020)})")
     bf = P.por_ano(nos["bolsa_familia"] * pd.Series(P.fator_deflacao(c[4], M.columns, mapa["mes_base_padrao"]), index=M.columns))

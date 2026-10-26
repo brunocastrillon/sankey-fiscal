@@ -290,18 +290,26 @@ def linhas_citadas(nota):
     return codigos
 
 
+def citacoes(fonte):
+    """Fonte de uma nota de contexto como lista de citações (aceita uma citação só, fora de lista)."""
+    return fonte if isinstance(fonte, list) else [fonte]
+
+
 def aplicar_notas(notas, ano, R, nomes, nos_reais):
     """Notas do ano com os marcadores substituídos: [{no, classe, texto, fonte}].
 
-    Valores em 'R$ x,y bi' (R$ constantes). Uma nota de contexto precisa de publicação, página, nota, endereço e data de
-    verificação na fonte; sem isso, ValueError.
+    Valores em 'R$ x,y bi' (R$ constantes). A fonte de uma nota de contexto é uma citação ou uma lista delas, e cada uma
+    precisa de publicação, página, nota, endereço e data de verificação; sem isso, ValueError. Ela é gravada como lista.
     """
     for n in notas:
         if n["classe"] not in CLASSES_NOTA:
             raise ValueError(f"nota {n['ano']} {n['no']}: classe {n['classe']!r} desconhecida")
-        faltam = [k for k in CAMPOS_FONTE_CONTEXTO if not n["fonte"].get(k)]
-        if n["classe"] == "contexto" and faltam:
-            raise ValueError(f"nota de contexto {n['ano']} {n['no']} sem {faltam} na fonte")
+        if n["classe"] != "contexto":
+            continue
+        for i, c in enumerate(citacoes(n["fonte"]), 1):
+            faltam = [k for k in CAMPOS_FONTE_CONTEXTO if not c.get(k)]
+            if faltam:
+                raise ValueError(f"nota de contexto {n['ano']} {n['no']} sem {faltam} na citação {i} da fonte")
 
     def substituir(m):
         tipo, arg = _partes(m.group(0))
@@ -315,7 +323,8 @@ def aplicar_notas(notas, ano, R, nomes, nos_reais):
             return formatar_bi(valor_marcador(m.group(0), ano, R, nos_reais))
         raise ValueError(f"marcador desconhecido: {tipo}")
 
-    return [{"no": n["no"], "classe": n["classe"], "texto": re.sub(MARCADOR, substituir, n["texto"]), "fonte": n["fonte"]}
+    return [{"no": n["no"], "classe": n["classe"], "texto": re.sub(MARCADOR, substituir, n["texto"]),
+             "fonte": citacoes(n["fonte"]) if n["classe"] == "contexto" else n["fonte"]}
             for n in notas if n["ano"] == ano]
 
 
