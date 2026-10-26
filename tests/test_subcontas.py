@@ -21,3 +21,15 @@ def test_subcontas_no_json():
             for i in itens:
                 assert set(i) == {"codigo", "nome", "real", "nominal"}
                 assert round(i["real"], 3) == i["real"] and round(i["nominal"], 3) == i["nominal"]
+
+
+def test_subcontas_oraculo():
+    """Cada subconta do dados/AAAA.json recalculada da aba 1.2 e do IPCA por funções próprias do teste."""
+    ok, detalhe = T.t20_subcontas_oraculo(RTN, IPCA)
+    assert ok, detalhe
+
+
+def test_subcontas_boletim_dez_2020():
+    """Valores nominais de 2020 publicados no boletim (referencias/boletim-dez-2020.json) contra o dados/2020.json."""
+    ok, detalhe = T.t21_subcontas_boletim()
+    assert ok, detalhe

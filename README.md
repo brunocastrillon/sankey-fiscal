@@ -54,7 +54,7 @@ build. Cada merge na `main` vira produção; cada PR ganha uma prévia, protegid
 | `notas.json` | Notas por ano e nó, escritas à mão sem números: os valores entram por marcadores calculados sobre a série |
 | `pipeline.py` | Leitura do RTN e do IPCA, mapeamento, deflação, JSON por ano |
 | `testes.py`, `tests/` | Testes de validação (identidades contábeis, deflação, regressão contra o gráfico original) |
-| `referencias/` | Valores impressos no gráfico original (2025), usados pelos testes do pipeline e do site |
+| `referencias/` | Valores impressos no gráfico original (2025), usados pelos testes do pipeline e do site, e valores nominais de 2020 do boletim do RTN de dez/2020 (`boletim-dez-2020.json`, com página e SHA256 do PDF), que conferem as subcontas (T21) |
 | `entrada/` | Arquivos públicos de entrada (RTN, IPCA e PIB) e a fonte de cada um |
 | `dados/` | JSON gerados, um por ano, com valores nominais e em R$ constantes |
 | `web/` | O site: grafo, layout próprio em SVG e interface React, com testes (Vitest e Playwright) |

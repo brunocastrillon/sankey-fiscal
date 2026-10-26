@@ -9,6 +9,7 @@ import argparse
 import json
 import re
 import sys
+from pathlib import Path
 
 import pandas as pd
 
@@ -504,6 +505,112 @@ def t19_notas_contexto(c):
                        f"problemas: {erros or 'nenhum'}")
 
 
+DADOS = P.AQUI / "dados"
+BOLETIM_2020 = P.AQUI / "referencias" / "boletim-dez-2020.json"
+TOL_ORACULO = 0.001  # R$ milhões: o JSON grava 3 casas (erro de até 0,0005)
+_MESES_ORACULO = {"janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4, "maio": 5, "junho": 6, "julho": 7, "agosto": 8,
+                  "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12}
+
+
+def _ler_json(caminho):
+    with open(caminho, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _oraculo_aba12(rtn):
+    """Leitura própria da aba 1.2, sem o pipeline: código -> {mês: valor em R$ milhões correntes} e a ordem dos códigos."""
+    bruto = pd.read_excel(rtn, sheet_name="1.2", header=None)
+    rotulos = bruto[0].astype(str)
+    h = rotulos[rotulos.str.startswith("Discriminação")].index[0]
+    meses = pd.to_datetime(bruto.iloc[h, 1:], errors="coerce")
+    serie, ordem = {}, []
+    for i in range(h + 1, len(bruto)):
+        if pd.isna(bruto.iloc[i, 0]):
+            continue
+        cod = str(bruto.iloc[i, 0]).split()[0].rstrip(".")
+        if cod in serie:
+            continue
+        valores = pd.to_numeric(bruto.iloc[i, 1:], errors="coerce")
+        serie[cod] = {m: (0.0 if pd.isna(v) else float(v)) for m, v in zip(meses, valores) if pd.notna(m)}
+        ordem.append(cod)
+    return serie, ordem
+
+
+def _oraculo_ipca(csv):
+    """Leitura própria do IPCA do SIDRA (tabela 1737): {mês: número-índice}."""
+    with open(csv, encoding="utf-8-sig") as f:
+        linhas = [[c.strip('"') for c in l.split(";")] for l in f.read().splitlines()]
+    i = next(k for k, l in enumerate(linhas) if len(l) > 2 and l[1].split(" ")[0].lower() in _MESES_ORACULO)
+    return {pd.Timestamp(int(m.split()[1]), _MESES_ORACULO[m.split()[0].lower()], 1):
+            float(v.replace(".", "").replace(",", ".")) for m, v in zip(linhas[i][1:], linhas[i + 1][1:])}
+
+
+def _oraculo_codigos(n, ordem):
+    """Filhas diretas de cada linha de soma (ou a própria linha), menos subtrai, na ordem da aba; None se menos de 2."""
+    codigos = []
+    for s in n["soma"]:
+        filhas = [c for c in ordem if c.startswith(s + ".") and c.count(".") == s.count(".") + 1]
+        codigos += filhas or [s]
+    codigos = sorted((c for c in codigos if c not in n.get("subtrai", [])), key=ordem.index)
+    return codigos if len(codigos) >= 2 else None
+
+
+def t20_subcontas_oraculo(rtn, ipca_csv, pasta=DADOS):
+    mapa = P.carregar_mapeamento()
+    serie, ordem = _oraculo_aba12(rtn)
+    ipca = _oraculo_ipca(ipca_csv)
+    erros, pior, n_val = [], 0.0, 0
+    for ano in range(mapa["anos"][0], mapa["anos"][1] + 1):
+        d = _ler_json(Path(pasta) / f"{ano}.json")
+        base = pd.Timestamp(d["mes_base"])
+        esperados = {n["id"]: _oraculo_codigos(n, ordem) for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"]}
+        esperados = {k: v for k, v in esperados.items() if v}
+        gravados = {no: [i["codigo"] for i in itens] for no, itens in d["subcontas"].items()}
+        if gravados != esperados:
+            erros.append(f"{ano}: códigos {gravados} != {esperados}")
+            continue
+        for no, itens in d["subcontas"].items():
+            for i in itens:
+                meses = {m: v for m, v in serie[i["codigo"]].items() if m.year == ano}
+                nominal = sum(meses.values())
+                real = sum(v * ipca[base] / ipca[m] for m, v in meses.items())
+                for chave, x in (("nominal", nominal), ("real", real)):
+                    dif = abs(i[chave] - x)
+                    n_val += 1
+                    if dif > pior:
+                        pior = dif
+                    if dif > TOL_ORACULO:
+                        erros.append(f"{ano} {no} {i['codigo']} {chave}: JSON {i[chave]} × oráculo {x:.3f}")
+    return not erros and n_val > 0, (f"{n_val} valores (subconta × real/nominal × ano) recalculados; maior diferença "
+                                     f"R$ {pior:.4f} mi (limite {TOL_ORACULO}); erros: {erros[:5] or 'nenhum'}")
+
+
+def _valor_no_json(d, codigo, chave="nominal"):
+    """Valor de uma linha do RTN no AAAA.json: como subconta, ou como nó formado só por ela."""
+    for itens in d["subcontas"].values():
+        for i in itens:
+            if i["codigo"] == codigo:
+                return i[chave]
+    for no, linhas in d["linhas"].items():
+        if [(l["codigo"], l["operacao"]) for l in linhas] == [(codigo, "soma")] and no in d[chave]["nos"]:
+            return d[chave]["nos"][no]
+    raise KeyError(codigo)
+
+
+def t21_subcontas_boletim(caminho=BOLETIM_2020, pasta=DADOS):
+    ref = _ler_json(caminho)
+    d = _ler_json(Path(pasta) / f"{ref['ano']}.json")
+    tol, linhas, falhas = ref["tolerancia_relativa"], [], []
+    for v in ref["valores"]:
+        x = _valor_no_json(d, v["codigo"])
+        rel = x / v["valor"] - 1
+        linhas.append(f"{v['codigo']} {x:,.1f} × {v['valor']:,.1f} (p. {v['pagina']}, {100 * rel:+.3f}%)")
+        if abs(rel) > tol:
+            falhas.append(v["codigo"])
+    return bool(ref["valores"]) and not falhas, (f"{len(ref['valores'])} linhas de {ref['ano']} contra o boletim (limite "
+                                                f"{100 * tol:.1f}%): {'; '.join(linhas)}; fora: {falhas or 'nenhuma'}")
+
+
 def t11_determinismo(rtn, ipca, pib):
     a = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
     b = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
@@ -535,6 +642,8 @@ def lista_testes(c, rtn, ipca, pib):
         ("T17 Notas: comparações verdadeiras e linhas citadas na fonte", lambda: t17_notas_comparacoes(c, rtn)),
         ("T18 Notas: contexto sem página ou nota na fonte falha", lambda: t18_notas_fontes(c)),
         ("T19 Notas de contexto de 2020: fonte completa, nó certo, auxílios separados", lambda: t19_notas_contexto(c)),
+        ("T20 Subcontas do JSON contra um oráculo próprio (aba 1.2 e IPCA)", lambda: t20_subcontas_oraculo(rtn, ipca)),
+        ("T21 Subcontas e Bolsa Família de 2020 contra o boletim de dez/2020", lambda: t21_subcontas_boletim()),
     ]
 
 
