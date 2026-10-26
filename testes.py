@@ -365,10 +365,21 @@ def _reais(c):
     return M * fator, {k: v * fator for k, v in nos.items()}
 
 
+# Nomes próprios com dígito que não são números fiscais; saem do texto antes da procura por dígitos
+TERMOS_COM_DIGITO = ("Covid-19",)
+
+
+def _sem_marcadores(texto):
+    texto = re.sub(P.MARCADOR, "", texto)
+    for termo in TERMOS_COM_DIGITO:
+        texto = texto.replace(termo, "")
+    return texto
+
+
 def t16_notas_sem_digitos():
     notas = P.carregar_notas()
-    com_digito = [f"{n['ano']} {n['no']}: {re.sub(P.MARCADOR, '', n['texto'])!r}" for n in notas
-                  if re.search(r"\d", re.sub(P.MARCADOR, "", n["texto"]))]
+    com_digito = [f"{n['ano']} {n['no']}: {_sem_marcadores(n['texto'])!r}" for n in notas
+                  if re.search(r"\d", _sem_marcadores(n["texto"]))]
     return bool(notas) and not com_digito, f"{len(notas)} notas; com dígito fora dos marcadores: {com_digito or 'nenhuma'}"
 
 
@@ -393,16 +404,82 @@ def t17_notas_comparacoes(c, rtn):
 def t18_notas_fontes(c):
     R, nos_reais = _reais(c)
     nomes = P.ler_nomes_linhas(P.entradas_padrao()[0])
-    sem_pagina = {"ano": 2020, "no": "bolsa_familia", "classe": "contexto", "texto": "Texto.",
-                  "fonte": {"publicacao": "Publicação", "endereco": "https://exemplo", "verificado_em": "2026-01-01"}}
-    try:
-        P.aplicar_notas([sem_pagina], 2020, R, nomes, nos_reais)
-        levantou = False
-    except ValueError:
-        levantou = True
+    completa = {"publicacao": "Publicação", "pagina": 1, "nota": "Nota 1", "endereco": "https://exemplo",
+                "verificado_em": "2026-01-01"}
+    levantou = {}
+    for falta in ("pagina", "nota"):
+        nota = {"ano": 2020, "no": "bolsa_familia", "classe": "contexto", "texto": "Texto.",
+                "fonte": {k: v for k, v in completa.items() if k != falta}}
+        try:
+            P.aplicar_notas([nota], 2020, R, nomes, nos_reais)
+            levantou[falta] = False
+        except ValueError:
+            levantou[falta] = True
     classes = sorted({n["classe"] for n in P.carregar_notas()})
-    ok = levantou and classes == ["fatos"]
-    return ok, f"nota de contexto sem página levanta ValueError: {levantou}; classes em notas.json: {classes}"
+    ok = all(levantou.values()) and set(classes) <= set(P.CLASSES_NOTA)
+    return ok, f"nota de contexto sem o campo levanta ValueError: {levantou}; classes em notas.json: {classes}"
+
+
+# Notas de contexto de 2020: boletim do RTN de dezembro de 2020, Notas Explicativas do resultado acumulado (página 9 do PDF)
+PUBLICACAO_RTN_2020 = "Resultado do Tesouro Nacional, dezembro de 2020"
+ENDERECO_RTN_2020 = "https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12"
+NOTAS_CONTEXTO_2020 = {("fundeb_seguro_desemprego_outras", "Nota 16"), ("fundeb_seguro_desemprego_outras", "Nota 18"),
+                       ("bolsa_familia", "Nota 21")}
+CAMPOS_FONTE_T19 = ("publicacao", "boletim", "pagina", "nota", "endereco", "verificado_em", "trecho", "linha_rtn", "menciona")
+# Nota 21 do boletim: queda real do Bolsa Família de 2019 para 2020, em % (preços de dez/2020; a nossa série usa dez/2025,
+# mas a variação real entre dois anos não depende do mês-base)
+QUEDA_REAL_BOLSA_FAMILIA_NOTA_21 = -44.3
+TOL_QUEDA_BOLSA_FAMILIA = 0.2  # pontos percentuais
+
+
+def no_da_linha(mapa, codigo):
+    """Id do nó cujas linhas de soma contêm o código (ele mesmo ou um ancestral), fora das linhas de subtrai."""
+    dentro = lambda c, raizes: any(c == r or c.startswith(r + ".") for r in raizes)
+    nos = [n["id"] for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"]
+           if dentro(codigo, n["soma"]) and not dentro(codigo, n.get("subtrai", []))]
+    return nos[0] if len(nos) == 1 else None
+
+
+def t19_notas_contexto(c):
+    mapa, M, nos, *_ = c
+    nomes = P.ler_nomes_linhas(P.entradas_padrao()[0])
+    contexto = [n for n in P.carregar_notas() if n["classe"] == "contexto"]
+    erros = []
+    for n in contexto:
+        f, quem = n["fonte"], f"{n['ano']} {n['no']} {n['fonte'].get('nota')}"
+        faltam = [k for k in CAMPOS_FONTE_T19 if f.get(k) in (None, "")]
+        if faltam:
+            erros.append(f"{quem}: sem {faltam}")
+            continue
+        if not isinstance(f["pagina"], int) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", f["verificado_em"]):
+            erros.append(f"{quem}: página não inteira ou data fora de AAAA-MM-DD")
+        if len(f["trecho"]) > 200 or len(f["trecho"].split()) >= 15:
+            erros.append(f"{quem}: trecho longo")
+        if f["publicacao"] != PUBLICACAO_RTN_2020 or f["endereco"] != ENDERECO_RTN_2020:
+            erros.append(f"{quem}: publicação ou endereço")
+        if f["linha_rtn"] not in nomes or f["menciona"] not in nomes:
+            erros.append(f"{quem}: linha_rtn ou menciona fora da aba 1.2")
+        elif no_da_linha(mapa, f["menciona"]) != n["no"]:
+            erros.append(f"{quem}: menciona {f['menciona']} é do nó {no_da_linha(mapa, f['menciona'])}")
+        if re.search(r"maior parte|maioria", n["texto"], re.I):
+            erros.append(f"{quem}: diz 'maior parte'")
+    frases = [fr for n in contexto if n["ano"] == 2020 for fr in re.split(r"(?<=[.!?])\s+", n["texto"])]
+    pessoas = [fr for fr in frases if "pessoas" in fr and "{codigo:4.3.07}" in fr]
+    governos = [fr for fr in frases if "Estados" in fr and "{codigo:4.3.03}" in fr]
+    juntos = [fr for fr in frases if "pessoas" in fr and "Estados" in fr]
+    if not pessoas or not governos or juntos:
+        erros.append(f"auxílio a pessoas e a Estados e Municípios em frases separadas: pessoas {len(pessoas)}, "
+                     f"Estados {len(governos)}, na mesma frase {len(juntos)}")
+    presentes = {(n["no"], n["fonte"]["nota"].split(" das ")[0]) for n in contexto if n["ano"] == 2020 and "nota" in n["fonte"]}
+    if presentes != NOTAS_CONTEXTO_2020:
+        erros.append(f"notas de 2020: {sorted(presentes)} (esperadas {sorted(NOTAS_CONTEXTO_2020)})")
+    bf = P.por_ano(nos["bolsa_familia"] * pd.Series(P.fator_deflacao(c[4], M.columns, mapa["mes_base_padrao"]), index=M.columns))
+    queda = 100 * (float(bf[2020]) / float(bf[2019]) - 1)
+    if abs(queda - QUEDA_REAL_BOLSA_FAMILIA_NOTA_21) > TOL_QUEDA_BOLSA_FAMILIA:
+        erros.append(f"queda real do Bolsa Família {queda:.3f}% contra {QUEDA_REAL_BOLSA_FAMILIA_NOTA_21}% da Nota 21")
+    return not erros, (f"{len(contexto)} notas de contexto; queda real do Bolsa Família 2019→2020 na série {queda:.3f}% "
+                       f"(Nota 21: {QUEDA_REAL_BOLSA_FAMILIA_NOTA_21}%, tolerância {TOL_QUEDA_BOLSA_FAMILIA}); "
+                       f"problemas: {erros or 'nenhum'}")
 
 
 def t11_determinismo(rtn, ipca, pib):
@@ -434,7 +511,8 @@ def lista_testes(c, rtn, ipca, pib):
         ("T15 Subcontas: códigos da aba 1.2, com nome, na ordem dela, nenhum de subtrai", lambda: t15_subcontas_codigos(c, rtn)),
         ("T16 Notas sem dígitos fora dos marcadores", lambda: t16_notas_sem_digitos()),
         ("T17 Notas: comparações verdadeiras e linhas citadas na fonte", lambda: t17_notas_comparacoes(c, rtn)),
-        ("T18 Notas: contexto sem fonte completa falha; hoje só fatos", lambda: t18_notas_fontes(c)),
+        ("T18 Notas: contexto sem página ou nota na fonte falha", lambda: t18_notas_fontes(c)),
+        ("T19 Notas de contexto de 2020: fonte completa, nó certo, auxílios separados", lambda: t19_notas_contexto(c)),
     ]
 
 

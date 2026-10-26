@@ -748,6 +748,54 @@
           "4.4.1.2"
         ]
       }
+    },
+    {
+      "no": "fundeb_seguro_desemprego_outras",
+      "classe": "contexto",
+      "texto": "Segundo o Tesouro, a linha 4.3.07 Créditos Extraordinários foi influenciada, em 2020, pelas medidas de combate à Covid-19. Entre elas, o Tesouro destaca o Auxílio Emergencial a pessoas em situação de vulnerabilidade, as despesas adicionais do Ministério da Saúde e de outros ministérios, o Benefício Emergencial de Manutenção do Emprego e da Renda e as cotas dos fundos garantidores de operações e de crédito.",
+      "fonte": {
+        "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
+        "boletim": "v. 26, n. 12",
+        "pagina": 9,
+        "nota": "Nota 18 das Notas Explicativas do resultado acumulado",
+        "endereco": "https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12",
+        "verificado_em": "2026-10-26",
+        "trecho": "resultado influenciado pela implementação de medidas de combate ao Covid-19",
+        "linha_rtn": "4.3.07",
+        "menciona": "4.3.07"
+      }
+    },
+    {
+      "no": "fundeb_seguro_desemprego_outras",
+      "classe": "contexto",
+      "texto": "Segundo o Tesouro, a linha 4.3.03 Apoio Fin. EE/MM (Estados e Municípios) subiu em 2020 por causa do Auxílio Emergencial aos Estados, aos Municípios e ao Distrito Federal, uma das medidas para enfrentar as consequências econômicas e sociais da pandemia de Covid-19. Não é o auxílio pago às pessoas: esse está na linha 4.3.07, segundo o Tesouro.",
+      "fonte": {
+        "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
+        "boletim": "v. 26, n. 12",
+        "pagina": 9,
+        "nota": "Nota 16 das Notas Explicativas do resultado acumulado",
+        "endereco": "https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12",
+        "verificado_em": "2026-10-26",
+        "trecho": "aumento resultante do Auxílio Emergencial aos Estados, Municípios e DF",
+        "linha_rtn": "4.3.03",
+        "menciona": "4.3.03"
+      }
+    },
+    {
+      "no": "bolsa_familia",
+      "classe": "contexto",
+      "texto": "Segundo o Tesouro, o valor pago pelo Programa Bolsa Família caiu em 2020, em termos reais, em relação ao ano anterior, porque os benefícios migraram temporariamente para o auxílio emergencial, uma das medidas de combate à Covid-19. A explicação do Tesouro se refere ao total do ano, não a cada mês.",
+      "fonte": {
+        "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
+        "boletim": "v. 26, n. 12",
+        "pagina": 9,
+        "nota": "Nota 21 das Notas Explicativas do resultado acumulado",
+        "endereco": "https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12",
+        "verificado_em": "2026-10-26",
+        "trecho": "houve migração temporária desses benefícios para os benefícios de auxílio emergencial",
+        "linha_rtn": "4.4.1",
+        "menciona": "4.4.1.2"
+      }
     }
   ]
 }

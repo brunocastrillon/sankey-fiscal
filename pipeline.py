@@ -25,7 +25,7 @@ CATEGORIA_PIB = "PIB a preços de mercado"
 FONTE_PIB = "IBGE, Contas Nacionais Trimestrais, tabela 1846"
 MARCADOR = r"\{[^{}]*\}"
 CLASSES_NOTA = ("fatos", "contexto")
-CAMPOS_FONTE_CONTEXTO = ("publicacao", "pagina", "endereco", "verificado_em")
+CAMPOS_FONTE_CONTEXTO = ("publicacao", "pagina", "nota", "endereco", "verificado_em")
 
 
 def entradas_padrao():
@@ -293,7 +293,7 @@ def linhas_citadas(nota):
 def aplicar_notas(notas, ano, R, nomes, nos_reais):
     """Notas do ano com os marcadores substituídos: [{no, classe, texto, fonte}].
 
-    Valores em 'R$ x,y bi' (R$ constantes). Uma nota de contexto precisa de publicação, página, endereço e data de
+    Valores em 'R$ x,y bi' (R$ constantes). Uma nota de contexto precisa de publicação, página, nota, endereço e data de
     verificação na fonte; sem isso, ValueError.
     """
     for n in notas:

@@ -13,8 +13,8 @@ RTN, IPCA, PIB = P.entradas_padrao()
 SAIDA, _ = P.montar_anos(RTN, IPCA, PIB)
 
 
-def _nota(ano, no):
-    (n,) = [n for n in SAIDA[ano]["notas"] if n["no"] == no]
+def _nota(ano, no, classe="fatos"):
+    (n,) = [n for n in SAIDA[ano]["notas"] if n["no"] == no and n["classe"] == classe]
     return n
 
 
