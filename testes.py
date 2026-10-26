@@ -379,11 +379,10 @@ def _reais(c):
     return M * fator, {k: v * fator for k, v in nos.items()}
 
 
-# Lista FECHADA de nomes próprios com dígito que não são números fiscais. Cada termo sai do texto, exatamente como escrito,
-# antes da procura por dígitos; qualquer outro dígito numa nota derruba o T16. Hoje só "Covid-19" (notas de contexto de
-# 2020, aprovadas pelo Bruno em 26/10/2026). Acrescentar um termo exige mudar TERMOS_COM_DIGITO_APROVADOS junto, de propósito.
-TERMOS_COM_DIGITO = ("Covid-19",)
-TERMOS_COM_DIGITO_APROVADOS = ("Covid-19",)
+# Nomes próprios com dígito aceitos no texto das notas: a lista fechada vem do pipeline (fonte única). Cada termo sai do
+# texto, exatamente como escrito, antes da procura por dígitos; qualquer outro dígito numa nota derruba o T16.
+TERMOS_COM_DIGITO = P.TERMOS_COM_DIGITO
+TERMOS_COM_DIGITO_APROVADOS = ("Covid-19",)  # a conferência: a lista do pipeline tem de ser exatamente esta
 
 
 def _sem_marcadores(texto):
@@ -460,9 +459,9 @@ def t17_notas_comparacoes(c, rtn):
                 f"nó, linhas e fontes: {erros or 'tudo certo'}")
 
 
-def t18_notas_fontes(c):
+def t18_notas_fontes(c, rtn):
     R, nos_reais = _reais(c)
-    nomes = P.ler_nomes_linhas(P.entradas_padrao()[0])
+    nomes = P.ler_nomes_linhas(rtn)
     citacao = {"publicacao": "Publicação", "pagina": 1, "nota": "Nota 1", "endereco": "https://exemplo",
                "verificado_em": "2026-01-01"}
 
@@ -508,6 +507,8 @@ SHA256_PDF_RTN_2020 = "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fc
 # Nota 21 do boletim: queda real do Bolsa Família de 2019 para 2020, em % (preços de dez/2020; a nossa série usa dez/2025,
 # mas a variação real entre dois anos não depende do mês-base)
 QUEDA_REAL_BOLSA_FAMILIA_NOTA_21 = -44.3
+# Quantificadores que as notas de contexto não usam (o boletim não diz que o auxílio é a maior parte de nada)
+QUANTIFICADORES_PROIBIDOS = r"\b(maior parte|maioria|maior fatia|grande parte|quase tod[oa]s?|praticamente tod[oa]s?)\b"
 TOL_QUEDA_BOLSA_FAMILIA = 0.2  # pontos percentuais
 
 
@@ -519,10 +520,10 @@ def no_da_linha(mapa, codigo):
     return nos[0] if len(nos) == 1 else None
 
 
-def t19_notas_contexto(c):
+def t19_notas_contexto(c, rtn, notas=None):
     mapa, M, nos, *_ = c
-    nomes = P.ler_nomes_linhas(P.entradas_padrao()[0])
-    contexto = [n for n in P.carregar_notas() if n["classe"] == "contexto"]
+    nomes = P.ler_nomes_linhas(rtn)
+    contexto = [n for n in (P.carregar_notas() if notas is None else notas) if n["classe"] == "contexto"]
     erros = []
     for n in contexto:
         for f in P.citacoes(n["fonte"]):
@@ -547,8 +548,9 @@ def t19_notas_contexto(c):
                 erros.append(f"{quem}: linha_rtn ou menciona fora da aba 1.2")
             elif no_da_linha(mapa, f["menciona"]) != n["no"]:
                 erros.append(f"{quem}: menciona {f['menciona']} é do nó {no_da_linha(mapa, f['menciona'])}")
-        if re.search(r"maior parte|maioria", n["texto"], re.I):
-            erros.append(f"{n['ano']} {n['no']}: diz 'maior parte'")
+        quantificadores = re.findall(QUANTIFICADORES_PROIBIDOS, n["texto"], re.I)
+        if quantificadores:
+            erros.append(f"{n['ano']} {n['no']}: quantificador proibido {quantificadores}")
     frases = [fr for n in contexto if n["ano"] == 2020 for fr in re.split(r"(?<=[.!?])\s+", n["texto"])]
     pessoas = [fr for fr in frases if "pessoas" in fr and "{codigo:4.3.07}" in fr]
     governos = [fr for fr in frases if "Estados" in fr and "{codigo:4.3.03}" in fr]
@@ -704,8 +706,8 @@ def lista_testes(c, rtn, ipca, pib):
         ("T15 Subcontas: códigos da aba 1.2, com nome, na ordem dela, nenhum de subtrai", lambda: t15_subcontas_codigos(c, rtn)),
         ("T16 Notas sem dígitos fora dos marcadores", lambda: t16_notas_sem_digitos()),
         ("T17 Notas: comparações verdadeiras e linhas citadas na fonte", lambda: t17_notas_comparacoes(c, rtn)),
-        ("T18 Notas: contexto sem página ou nota na fonte falha", lambda: t18_notas_fontes(c)),
-        ("T19 Notas de contexto de 2020: fonte completa, nó certo, auxílios separados", lambda: t19_notas_contexto(c)),
+        ("T18 Notas: contexto sem página ou nota na fonte falha", lambda: t18_notas_fontes(c, rtn)),
+        ("T19 Notas de contexto de 2020: fonte completa, nó certo, auxílios separados", lambda: t19_notas_contexto(c, rtn)),
         ("T20 Subcontas do JSON contra um oráculo próprio (aba 1.2 e IPCA)", lambda: t20_subcontas_oraculo(rtn, ipca)),
         ("T21 Subcontas e Bolsa Família de 2020 contra o boletim de dez/2020", lambda: t21_subcontas_boletim()),
     ]

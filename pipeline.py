@@ -26,6 +26,10 @@ FONTE_PIB = "IBGE, Contas Nacionais Trimestrais, tabela 1846"
 MARCADOR = r"\{[^{}]*\}"
 CLASSES_NOTA = ("fatos", "contexto")
 CAMPOS_FONTE_CONTEXTO = ("publicacao", "pagina", "nota", "endereco", "verificado_em")
+# Lista FECHADA de nomes próprios com dígito que podem aparecer no texto das notas sem ser número fiscal. Hoje só
+# "Covid-19" (notas de contexto de 2020, aprovadas pelo Bruno em 26/10/2026). Fonte única: o testes.py importa daqui e o
+# T16 confere que a lista é exatamente a aprovada; acrescentar um termo exige mudar a conferência junto, de propósito.
+TERMOS_COM_DIGITO = ("Covid-19",)
 
 
 def entradas_padrao():

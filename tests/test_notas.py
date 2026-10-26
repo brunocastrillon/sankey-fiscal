@@ -54,7 +54,9 @@ def test_formato_bi():
 
 
 def test_termos_com_digito_e_lista_fechada_so_com_covid():
-    assert T.TERMOS_COM_DIGITO == ("Covid-19",)
+    # uma fonte só: o pipeline define a lista, o testes.py a importa e o T16 confere que ela é a aprovada
+    assert T.TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO
+    assert P.TERMOS_COM_DIGITO == ("Covid-19",)
     ok, detalhe = T.t16_notas_sem_digitos()
     assert ok and "lista fechada: True" in detalhe
 
@@ -64,3 +66,24 @@ def test_termos_com_digito_e_lista_fechada_so_com_covid():
 def test_mes_ou_intervalo_invalido_levanta(marcador):
     with pytest.raises(ValueError, match="mês"):
         P.valor_marcador(marcador, 2020, P.pd.DataFrame(), {})
+
+
+@pytest.fixture(scope="module")
+def ctx():
+    return T.contexto(RTN, IPCA)
+
+
+@pytest.mark.parametrize("teste", ["t18_notas_fontes", "t19_notas_contexto"])
+def test_t18_e_t19_usam_o_rtn_recebido(ctx, teste):
+    with pytest.raises(FileNotFoundError):
+        getattr(T, teste)(ctx, "nao-existe.xlsx")
+
+
+@pytest.mark.parametrize("frase", ["a maior parte", "a maioria", "a maior fatia", "grande parte", "quase todo",
+                                   "quase toda", "praticamente todos"])
+def test_t19_recusa_quantificadores(ctx, frase):
+    notas = P.carregar_notas()
+    (n,) = [n for n in notas if n["classe"] == "contexto" and P.citacoes(n["fonte"])[0]["nota"].startswith("Nota 18")]
+    n["texto"] += f" O auxílio é {frase} do grupo."
+    ok, detalhe = T.t19_notas_contexto(ctx, RTN, notas=notas)
+    assert not ok and "quantificador" in detalhe
