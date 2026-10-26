@@ -154,7 +154,8 @@ def ler_pib_trimestral(csv):
     Confere o layout: linha de trimestres ('1º trimestre 2015', ...), linha da categoria (só "PIB a preços de mercado")
     e linha de valores do Brasil. Símbolos do SIDRA (valor ausente ou inibido) viram nulos.
     """
-    linhas = [[c.strip('"') for c in l.split(";")] for l in open(csv, encoding="utf-8-sig").read().splitlines()]
+    with open(csv, encoding="utf-8-sig") as f:
+        linhas = [[c.strip('"') for c in l.split(";")] for l in f.read().splitlines()]
     trimestre = re.compile(r"^([1-4])º trimestre (\d{4})$")
     i = next((k for k, l in enumerate(linhas) if len(l) > 2 and trimestre.match(l[1])), None)
     if i is None:
@@ -167,7 +168,10 @@ def ler_pib_trimestral(csv):
     serie = {}
     for q, v in zip(cab, valores[1:]):
         n, ano = trimestre.match(q).groups()
-        serie[pd.Period(year=int(ano), quarter=int(n), freq="Q")] = (float("nan") if v in SIMBOLOS_SIDRA
+        t = pd.Period(year=int(ano), quarter=int(n), freq="Q")
+        if t in serie:
+            raise ValueError(f"{csv}: trimestre duplicado: {q}")
+        serie[t] = (float("nan") if v in SIMBOLOS_SIDRA
                                                                     else float(v.replace(".", "").replace(",", ".")))
     return pd.Series(serie).sort_index()
 
@@ -255,6 +259,13 @@ def _partes(marcador):
     return m.group(1), m.group(2) or ""
 
 
+def _mes(texto, marcador):
+    """'03' -> 3; mês com dois dígitos, de 01 a 12, ou ValueError."""
+    if not re.fullmatch(r"\d{2}", texto) or not 1 <= int(texto) <= 12:
+        raise ValueError(f"marcador {marcador}: mês {texto!r} fora de 01–12")
+    return int(texto)
+
+
 def valor_marcador(marcador, ano, R, nos_reais):
     """Valor (R$ milhões constantes) de um marcador numérico no ano: {linha:COD}, {total:id}, {soma:COD:MM-MM},
     {soma:COD+COD} e {mes:COD:MM}. R é a série mensal das linhas (código x mês); nos_reais, a dos nós."""
@@ -269,10 +280,13 @@ def valor_marcador(marcador, ano, R, nos_reais):
         return no_ano(nos_reais[arg])
     if tipo == "mes":
         cod, mes = arg.split(":")
-        return no_ano(R.loc[cod], [int(mes)])
+        mes = _mes(mes, marcador)
+        return no_ano(R.loc[cod], [mes])
     if tipo == "soma" and ":" in arg:
         cod, meses = arg.split(":")
-        m0, m1 = (int(x) for x in meses.split("-"))
+        m0, m1 = (_mes(x, marcador) for x in meses.split("-"))
+        if m0 > m1:
+            raise ValueError(f"marcador {marcador}: mês inicial maior que o final")
         return no_ano(R.loc[cod], range(m0, m1 + 1))
     if tipo == "soma":
         return sum(no_ano(R.loc[cod]) for cod in arg.split("+"))

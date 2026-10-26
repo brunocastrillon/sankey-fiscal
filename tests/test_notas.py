@@ -53,3 +53,10 @@ def test_termos_com_digito_e_lista_fechada_so_com_covid():
     assert T.TERMOS_COM_DIGITO == ("Covid-19",)
     ok, detalhe = T.t16_notas_sem_digitos()
     assert ok and "lista fechada: True" in detalhe
+
+
+@pytest.mark.parametrize("marcador", ["{mes:4.4.1.2:13}", "{mes:4.4.1.2:00}", "{mes:4.4.1.2:3}",
+                                      "{soma:4.4.1.2:08-04}", "{soma:4.4.1.2:00-03}", "{soma:4.4.1.2:04-13}"])
+def test_mes_ou_intervalo_invalido_levanta(marcador):
+    with pytest.raises(ValueError, match="mês"):
+        P.valor_marcador(marcador, 2020, P.pd.DataFrame(), {})

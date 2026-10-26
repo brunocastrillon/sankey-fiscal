@@ -57,3 +57,9 @@ def test_bloco_pib_no_json_e_ultimo_trimestre_do_arquivo_no_indice():
                             "trimestres": 4, "ultimo_trimestre": ultimo_do_ano}
         assert ultimo_do_ano == f"{ano}T4"
     assert indice["pib_ultimo_trimestre"] == ultimo == P.rotulo_trimestre(tri.index.max())
+
+
+def test_trimestre_duplicado_levanta(tmp_path):
+    csv = _copia(tmp_path, '"2º trimestre 2015"', '"1º trimestre 2015"')
+    with pytest.raises(ValueError, match="duplicado"):
+        P.ler_pib_trimestral(csv)
