@@ -286,8 +286,11 @@ SUBCONTAS_ESPERADAS = {
     "demais_controle_fluxo": 3, "fundeb_seguro_desemprego_outras": 19, "discricionarias": 9,
 }
 TOL_SUBCONTAS = 0.02  # R$ milhões: 3 casas por valor, até 0,0005 por subconta, 19 × 0,0005 = 0,0095
-# Meses em que a própria aba 1.2 não fecha (linha-pai ≠ soma das filhas). O resíduo vem da planilha do Tesouro, não do
-# arredondamento; um mês novo nesta lista é uma revisão da série a conferir.
+# Meses em que a própria aba 1.2 não fecha: a linha-pai difere da soma das filhas diretas. O resíduo vem da planilha do
+# Tesouro (seriehistoricajul26.xlsx), não do arredondamento do pipeline. Medido em 26/10/2026, R$ milhões correntes:
+#   4.1 − (4.1.1 + 4.1.2) em ago/2016 = +0,0176 (vira R$ 0,028 mi em 2016, a preços de dez/2025, acima dos 0,02 do
+#   arredondamento); em mai/2015 = −0,0001.
+# Um mês com resíduo fora desta lista derruba o T14 de propósito: é uma revisão da série a conferir antes de publicar.
 RESIDUOS_FONTE = {("aposentadorias_pensoes", "2015-05"), ("aposentadorias_pensoes", "2016-08")}
 
 
