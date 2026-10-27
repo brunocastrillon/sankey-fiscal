@@ -8,7 +8,7 @@ Uso:
     python verificar_trechos.py --pdf C:/caminho/RTN_Boletim_2020_12.pdf
     python verificar_trechos.py --pdf boletim.pdf --notas outro.json
 
-Precisa do `pdftotext` (Poppler) no PATH. O PDF não é versionado (ver entrada/LEIAME.md).
+Precisa do `pdftotext` (do xpdf ou do Poppler) no PATH. O PDF não é versionado (ver entrada/LEIAME.md).
 """
 import argparse
 import hashlib

@@ -27,7 +27,7 @@ python verificar_trechos.py --pdf C:/caminho/RTN_Boletim_2020_12.pdf
 
 O script confere que o PDF é o citado (SHA256 igual a `arquivo_sha256`), que cada `trecho` aparece na página citada
 (espaços e hifenização de fim de linha normalizados) e que tem menos de 15 palavras; sai com código 1 se algo não conferir.
-Precisa do `pdftotext` (Poppler). Fica fora do CI porque o PDF não está no repositório.
+Precisa do `pdftotext` (do xpdf ou do Poppler) no PATH. Fica fora do CI porque o PDF não está no repositório.
 
 O site (Node 24):
 
