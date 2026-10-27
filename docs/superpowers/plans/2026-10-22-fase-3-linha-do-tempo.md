@@ -197,13 +197,18 @@ repositório).
 
 ## 3b · Layout (branch `fase-3b-layout`, PR próprio a partir da `main`, depois do merge da 3a)
 
+**Modos na 3b:** "% da despesa" e "% do PIB" existem no grafo e no layout e são provados por teste (a tabela de métricas da B2
+cobre os 3 modos), mas só aparecem na tela na 3c (C2, seletor e legendas). As capturas da B2 e da B3 mostram o modo R$.
+
 ### Tarefa B1: Tipos, carga dos 11 anos, modos no grafo
 
 **Arquivos:**
 - Modificar: `web/src/dados/tipos.ts` (`Subconta`, `Nota`, `pib` novo, `subcontas?`, `notas?`)
 - Modificar: `web/src/dados/carregar.ts` (novo `carregarTodos`)
-- Modificar: `web/src/grafo/grafo.ts`, `web/src/grafo/tipos.ts`, `web/src/formatar.ts`, `web/src/textos.ts`
-- Teste: `web/test/grafo.test.ts`, `web/test/formatar.test.ts`, `web/test/modos.test.ts` (novo)
+- Modificar: `web/src/grafo/grafo.ts`, `web/src/grafo/tipos.ts`, `web/src/formatar.ts`, `web/src/textos.ts`,
+  `web/src/App.tsx` (carregamento e erro dos 11 arquivos)
+- Teste: `web/test/grafo.test.ts`, `web/test/formatar.test.ts`, `web/test/modos.test.ts` (novo), `web/test/carregar.test.ts`
+  (novo), `web/e2e/sankey.spec.ts`
 
 **Interfaces:**
 - Produz: `type Modo = 'rs' | 'desp' | 'pib'` (em `grafo/tipos.ts`); `carregarTodos(indice: Indice): Promise<DadosAno[]>`;
@@ -219,8 +224,16 @@ repositório).
   min(receita líquida, despesa total). A animação (C4) interpola `ValoresModo`, nunca `DadosAno`.
 - `TEXTOS` ganha: `modos` (`rs`, `desp`, `pib`: nomes do seletor), `legendas` (curta e longa por modo, sem dígitos; o mês-base é
   inserido pelo componente) e `receitaAcimaDoGasto` (frase do design).
+- **Carregamento e erro dos 11 arquivos:** a escala compartilhada só existe com os 11 anos, então o site só desenha depois de
+  carregar todos. Enquanto isso, um texto de carregamento (`TEXTOS.carregando`); se algum arquivo falhar, a mensagem de erro
+  (o mesmo `p.erro` com `role="alert"` de hoje) com um botão "Tentar de novo" (`TEXTOS.tentarDeNovo`) que refaz a carga, nunca
+  página em branco. `carregarTodos` rejeita com o nome do arquivo que falhou.
 
 - [ ] **Passo 1: Testes que falham.**
+  - `carregar.test.ts` (novo): `carregarTodos` com um `fetch` falso devolve os 11 anos em ordem; com UM arquivo respondendo
+    404, rejeita com o nome dele.
+  - `sankey.spec.ts`: com `page.route` fazendo UM `AAAA.json` falhar, aparecem a mensagem de erro e o botão "Tentar de novo";
+    sem a falha, o clique no botão desenha o Sankey; o texto de carregamento aparece antes do desenho.
   - `modos.test.ts`: (a) 11 anos × todos os nós, `desp`: |rótulo lido de `formatarValor` × despesa total real / 100 − valor
     real| ≤ 0,05 p.p.; (b) `pib`: rótulo do déficit de 2025 = "0,48%", do superávit de 2022 = "0,46%", diferentes; (c)
     conservação por nó nos 3 modos, 11 anos, inclusive 2022.
@@ -323,6 +336,7 @@ repositório).
 - Produz: `lerHash(hash: string, anos: [number, number]): { ano: number; modo: Modo } | null` — aceita só `#AAAA`,
   `#AAAA/despesa` e `#AAAA/pib`, com o ano dentro do intervalo do índice (sem sufixo = `rs`); lido com expressão regular, sem
   `URLSearchParams`; `escreverHash(ano: number, modo: Modo): void` (`history.replaceState`; `rs` sem sufixo).
+- O nome do job `site-navegador` **não muda** (é check obrigatório do ruleset da `main`); só os passos dele e do job `site` mudam.
 
 - [ ] **Passo 1: Testes que falham.** `hash.test.ts`: `#2020` → `{ 2020, rs }`; `#2020/despesa` → `{ 2020, desp }`;
   `#2020/pib` → `{ 2020, pib }`; `#1999`, `#2026`, `#abc`, `#2020x`, `#`, `#02020`, `#2020/`, `#2020/xyz`, `#2020/PIB`, `#/pib`,
