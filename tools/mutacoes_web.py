@@ -1,8 +1,9 @@
 """Manifesto de mutações do site (3b em diante) e o executor que as roda numa cópia descartável do repositório (fora do CI).
 
 Irmão de tools/mutacoes.py, com a mesma disciplina. Cada mutação diz em que arquivo mexer (trecho -> substituição) e o
-que se espera: o código de saída de cada comando que ela roda (vitest; tsc -b; e2e, o Playwright filtrado por -g) e o
-conjunto exato de testes que cai em cada um. O executor:
+que se espera: o código de saída de cada comando que ela roda (vitest; tsc -b; e2e, o Playwright filtrado por -g) e os
+testes que caem em cada um, agrupados com o ano e o fator do medidor normalizados ("AAAA", "×F") e contados: um teste que
+cai em 7 anos aparece uma vez, com 7. O executor:
 
 1. cria uma cópia descartável com `git worktree add --detach` numa pasta temporária, fora do repositório (nunca mexe na
    árvore de trabalho principal), e roda `npm ci` nela;
@@ -19,6 +20,7 @@ Uso (na raiz do repositório; o e2e local usa o Chrome instalado e a porta 4173 
 import argparse
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -34,12 +36,20 @@ TIMEOUT_S = 600  # por comando
 COMANDOS = ("vitest", "tsc", "e2e")
 
 
-def mut(id_, nome, edicoes, codigos, vitest=(), e2e=(), grep=None):
+def resumir(nomes):
+    """Testes que caem ("arquivo > descrição > teste") agrupados com o ano e o fator normalizados: {nome: quantos}."""
+    contagem = {}
+    for n in nomes:
+        n = re.sub(r"medidor ×[\d.]+", "medidor ×F", re.sub(r" > \d{4} > ", " > AAAA > ", n))
+        contagem[n] = contagem.get(n, 0) + 1
+    return dict(sorted(contagem.items()))
+
+
+def mut(id_, nome, edicoes, codigos, grep=None):
     """Uma mutação. codigos: {comando: saída esperada} só dos comandos que ela roda (vitest, tsc, e2e).
-    vitest e e2e: os testes que caem ("arquivo > descrição > teste"). grep: filtro -g do Playwright (obrigatório com e2e)."""
+    grep: filtro -g do Playwright (obrigatório com e2e). Os testes que caem vêm de CAEM."""
     assert "e2e" not in codigos or grep, f"{id_}: e2e sem grep"
-    return {"id": id_, "nome": nome, "edicoes": edicoes, "esperado": codigos, "grep": grep,
-            "caem": {"vitest": sorted(vitest), "e2e": sorted(e2e)}}
+    return {"id": id_, "nome": nome, "edicoes": edicoes, "esperado": codigos, "grep": grep, "caem": {"vitest": {}, "e2e": {}}}
 
 
 ANOS = range(2015, 2026)
@@ -68,6 +78,27 @@ MUTACOES = [
         {"e2e": 1}, grep="erro de carga em UM"),
     mut("W6", "sem o texto de carregamento",
         [("web/src/App.tsx", "{!carga && !erro && (", "{false && (")], {"tsc": 0, "e2e": 1}, grep="carregamento:"),
+    # B2: escala compartilhada, âncora, altura, reserva de largura, fila apertada
+    mut("E1", "alturaSvg 20 px menor no desktop (732)", [("web/src/layout/constantes.ts", "  alturaSvg: 752,", "  alturaSvg: 732,")],
+        {"vitest": 1}),
+    mut("E2", "alturaSvg 20 px menor no celular (724)", [("web/src/layout/constantes.ts", "  alturaSvg: 744,", "  alturaSvg: 724,")],
+        {"vitest": 1}),
+    mut("E3", "a série com o ano sintético 2025 × 1,3 cabe (controle: passa)",
+        [("web/test/escala.test.ts", "expect(problemas(SERIE, cfg, opcoes)).toEqual([]);",
+          "expect(problemas(comSintetico(1.3), cfg, opcoes, { deslocamento: false })).toEqual([]);")], {"vitest": 0}),
+    mut("E4", "a série com o ano sintético 2025 × 1,5 (a espessura mínima cai no celular)",
+        [("web/test/escala.test.ts", "expect(problemas(SERIE, cfg, opcoes)).toEqual([]);",
+          "expect(problemas(comSintetico(1.5), cfg, opcoes, { deslocamento: false })).toEqual([]);")], {"vitest": 1}),
+    mut("E5", "rótulo das discricionárias empurrado 20 px além, para longe da barra",
+        [("web/src/layout/layout.ts", "      const topo = faixaTopo + (item.altura - t.altura) / 2;",
+          "      const topo = faixaTopo + (item.altura - t.altura) / 2 +\n"
+          "        (item.id === 'discricionarias' ? 20 * Math.sign(faixaTopo + item.altura / 2 - (nl.y0 + nl.y1) / 2) : 0);")],
+        {"vitest": 1}),
+    mut("E6", "reservaLargura sem porNo (posições x pelos rótulos do próprio ano)",
+        [("web/src/layout/layout.ts", "const larguraX = (id: string) => Math.max(textos.get(id)!.largura, reserva?.porNo[id] ?? 0);",
+          "const larguraX = (id: string) => textos.get(id)!.largura;")], {"vitest": 1}),
+    mut("E7", "filaApertada desligada (a fila empurrada pelos limites não acusa)",
+        [("web/src/layout/layout.ts", " > 1e-6)) filaApertada = true;", " > 1e-6)) filaApertada = false;")], {"vitest": 1}),
 ]
 
 # Esperado de cada mutação: (testes que caem no vitest, testes que caem no e2e). Observado com --esboco e revisado um a um.
@@ -85,7 +116,7 @@ CAEM = {
 for _m in MUTACOES:
     if _m["id"] in CAEM:
         _v, _e = CAEM[_m["id"]]
-        _m["caem"] = {"vitest": sorted(_v), "e2e": sorted(_e)}
+        _m["caem"] = {k: x if isinstance(x, dict) else resumir(x) for k, x in (("vitest", _v), ("e2e", _e))}
 
 
 def rodar(argv, cwd, env=None):
@@ -170,11 +201,11 @@ def conferir(m, cod, obs):
     """Diferenças entre o esperado e o observado (lista vazia se confere)."""
     dif = [f"saída de {k} {cod[k]} (esperado {e})" for k, e in m["esperado"].items() if cod[k] != e]
     for k in ("vitest", "e2e"):
-        a_mais = [t for t in obs[k] if t not in m["caem"][k]]
-        a_menos = [t for t in m["caem"][k] if t not in obs[k]]
-        if a_mais or a_menos:
-            dif.append(f"no {k}, {len(a_mais)} a mais e {len(a_menos)} a menos que o esperado"
-                       f"{' (' + (a_mais or a_menos)[0] + ')' if a_mais or a_menos else ''}")
+        o, e = resumir(obs[k]), m["caem"][k]
+        diferentes = sorted(n for n in set(o) | set(e) if o.get(n, 0) != e.get(n, 0))
+        if diferentes:
+            n = diferentes[0]
+            dif.append(f"no {k}, {len(diferentes)} grupos diferentes (ex.: {n}: {o.get(n, 0)}, esperado {e.get(n, 0)})")
     return dif
 
 
@@ -203,10 +234,11 @@ def main():
             if dif:
                 divergentes.append(m["id"])
             if a.esboco:
-                print(f'    {m["id"]!r}: ({obs["vitest"]!r},\n           {obs["e2e"]!r}),  # códigos {cod}', flush=True)
+                print(f'    {m["id"]!r}: ({resumir(obs["vitest"])!r},\n           {resumir(obs["e2e"])!r}),  # códigos {cod}', flush=True)
             esp = "/".join(f"{k} {m['esperado'][k]}" for k in COMANDOS if k in m["esperado"])
             obt = "/".join(f"{k} {cod[k]}" for k in COMANDOS if k in cod)
-            caiu = "; ".join(f"{k}: {len(obs[k])} ({obs[k][0]}{' …' if len(obs[k]) > 1 else ''})" for k in ("vitest", "e2e") if obs[k])
+            caiu = "; ".join(f"{k}: {len(obs[k])} em {len(resumir(obs[k]))} grupos ({next(iter(resumir(obs[k])))}"
+                             f"{' …' if len(resumir(obs[k])) > 1 else ''})" for k in ("vitest", "e2e") if obs[k])
             linhas.append(f"| {m['id']} | {m['nome']} | {esp} | {obt} | {'sim' if not dif else '**NÃO**: ' + '; '.join(dif)} | "
                           f"{caiu or '—'} |")
             print(linhas[-1], flush=True)
