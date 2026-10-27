@@ -177,8 +177,7 @@ def ler_pib_trimestral(csv):
         t = pd.Period(year=int(ano), quarter=int(n), freq="Q")
         if t in serie:
             raise ValueError(f"{csv}: trimestre duplicado: {q}")
-        serie[t] = (float("nan") if v in SIMBOLOS_SIDRA
-                                                                    else float(v.replace(".", "").replace(",", ".")))
+        serie[t] = float("nan") if v in SIMBOLOS_SIDRA else float(v.replace(".", "").replace(",", "."))
     return pd.Series(serie).sort_index()
 
 

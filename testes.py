@@ -438,7 +438,8 @@ def t23_termos_com_digito():
     # derruba este teste, no testes.py e no pytest, até alguém aprovar e mudar esta linha.
     aprovada = ("Covid-19",)
     ok = P.TERMOS_COM_DIGITO == aprovada and TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO
-    return ok, f"termos com dígito no pipeline: {list(P.TERMOS_COM_DIGITO)}; aprovados: {list(aprovada)}; fonte única: "                f"{TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO}"
+    return ok, (f"termos com dígito no pipeline: {list(P.TERMOS_COM_DIGITO)}; aprovados: {list(aprovada)}; "
+                f"fonte única: {TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO}")
 
 
 def t17_notas_comparacoes(c, rtn, notas=None):

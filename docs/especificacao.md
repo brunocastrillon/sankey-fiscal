@@ -135,23 +135,10 @@ A validação é a única etapa que barra a publicação: se qualquer teste falh
 
 ## Validações automáticas
 
-O pipeline roda os testes T1–T8 a cada carga e não publica nada se algum falhar. Além deles, quatro âncoras (A1–A4) conferem a série
-contra fontes externas. Implementação em `testes.py`; os mesmos casos rodam sob `pytest`.
-
-| Teste | O que verifica | Valor-âncora 2025 (R$ milhões correntes) |
-| --- | --- | --- |
-| T1 Receita | Soma dos nós de receita = receita total | 2.902.274,6 |
-| T2 Receita líquida | Receita total − repasses = receita líquida | 2.332.555,3 |
-| T3 Despesa | Soma dos nós de despesa = despesa total | 2.394.249,6 |
-| T4 Resultado primário | Receita líquida − despesa = linha 5 do RTN | −61.694,3 |
-| T5 Mensal × anual | Soma dos 12 meses = anual (aba 2.2), por linha | 28 linhas × 11 anos |
-| T6 Deflação | Mês-base devolve o nominal; IPCA sem lacunas; igual aos valores constantes do Tesouro (aba 1.2-A) | diferença 0 |
-| T7 Sinais | Nenhum fluxo anual negativo | 0 fluxos negativos |
-| T8 Regressão | 2025 em preços de dez/2025 difere do gráfico original em até R$ 2 bi por nó | maior diferença atual R$ 0,6 bi |
-| A1 Boletim | 2025 nominal contra o boletim de dez/2025, com tolerância de R$ 5 mi para revisões | primário: −61.691,2 no boletim, −61.694,3 hoje |
-| A2 Financiamento | 5+6+7=8 e 8+9=10; primário abaixo da linha de 2025 igual ao do Banco Central | −58.687,1 |
-| A3 PIB | PIB do IBGE de 2025 ≈ R$ 12,7 tri e déficit/PIB arredondando para 0,48% | 0,484% |
-| A4 PIB × RTN | Em cada ano, primário/PIB do IBGE contra o % do PIB da aba 2.2-A (até 0,005 × \|percentual\| + 0,001 p.p.) e PIB do IBGE contra o implícito no RTN (até 0,5%) | diferença 0,000% |
+O pipeline roda a bateria de validação a cada carga e não publica nada se algum teste falhar: identidades contábeis (T1–T4),
+mensal × anual (T5), deflação (T6), sinais (T7), regressão contra o gráfico original (T8), linhas e estrutura (T9–T12), PIB
+do IBGE (T13), subcontas (T14, T15, T20, T21), notas (T16–T19, T22, T23) e as âncoras externas (A1–A4). A lista completa, com
+o que cada teste verifica e os limites, está em `lista_testes` (`testes.py`); `python testes.py` imprime o resultado de cada um.
 
 ## Módulo de financiamento
 
