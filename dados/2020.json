@@ -741,7 +741,7 @@
     {
       "no": "bolsa_familia",
       "classe": "fatos",
-      "texto": "Em 2020, a linha 4.4.1.2 somou R$ 0,6 bi entre abril e agosto, contra R$ 3,6 bi só em março.",
+      "texto": "Em 2020, a linha 4.4.1.2 Bolsa Família e Auxílio Brasil somou R$ 0,6 bi entre abril e agosto, contra R$ 3,6 bi só em março.",
       "fonte": {
         "titulo": "Série histórica do RTN, aba 1.2, mensal",
         "linhas": [
@@ -773,7 +773,7 @@
     {
       "no": "fundeb_seguro_desemprego_outras",
       "classe": "contexto",
-      "texto": "Segundo o Tesouro, a linha 4.3.03 Apoio Fin. EE/MM (Estados e Municípios) subiu em 2020 por causa do Auxílio Emergencial aos Estados, aos Municípios e ao Distrito Federal, uma das medidas para enfrentar as consequências econômicas e sociais da pandemia de Covid-19. Não é o auxílio pago às pessoas: esse está na linha 4.3.07, segundo o Tesouro.",
+      "texto": "Segundo o Tesouro, a linha 4.3.03 Apoio Fin. EE/MM (Estados e Municípios) subiu em 2020 por causa do Auxílio Emergencial aos Estados, aos Municípios e ao Distrito Federal, uma das medidas para enfrentar as consequências econômicas e sociais da pandemia de Covid-19. Não é o auxílio pago às pessoas: esse está na linha 4.3.07 Créditos Extraordinários, segundo o Tesouro.",
       "fonte": [
         {
           "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",

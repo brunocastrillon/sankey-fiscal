@@ -130,3 +130,10 @@ def test_t17_regra_unica_aceita_bolsa_com_4_4_1(ctx):
     assert _citacao(notas, "Nota 21")["linha_rtn"] == "4.4.1"
     ok, detalhe = T.t17_notas_comparacoes(ctx, RTN, notas=notas)
     assert ok, detalhe
+
+
+def test_textos_com_codigo_e_nome_da_linha(saida):
+    bolsa = _nota(saida, 2020, "bolsa_familia")["texto"]
+    assert "a linha 4.4.1.2 Bolsa Família e Auxílio Brasil somou" in bolsa
+    nota2 = next(n for n in saida[2020]["notas"] if n["classe"] == "contexto" and "Apoio Fin." in n["texto"])
+    assert "esse está na linha 4.3.07 Créditos Extraordinários, segundo o Tesouro." in nota2["texto"]

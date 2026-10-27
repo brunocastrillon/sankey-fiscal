@@ -30,7 +30,7 @@
     "ano": 2020,
     "no": "bolsa_familia",
     "classe": "fatos",
-    "texto": "Em {ano}, a linha {codigo:4.4.1.2} somou {soma:4.4.1.2:04-08} entre abril e agosto, contra {mes:4.4.1.2:03} só em março.",
+    "texto": "Em {ano}, a linha {codigo:4.4.1.2} {nome:4.4.1.2} somou {soma:4.4.1.2:04-08} entre abril e agosto, contra {mes:4.4.1.2:03} só em março.",
     "comparacoes": [
       [
         "{soma:4.4.1.2:04-08}",
@@ -71,7 +71,7 @@
     "ano": 2020,
     "no": "fundeb_seguro_desemprego_outras",
     "classe": "contexto",
-    "texto": "Segundo o Tesouro, a linha {codigo:4.3.03} {nome:4.3.03} (Estados e Municípios) subiu em {ano} por causa do Auxílio Emergencial aos Estados, aos Municípios e ao Distrito Federal, uma das medidas para enfrentar as consequências econômicas e sociais da pandemia de Covid-19. Não é o auxílio pago às pessoas: esse está na linha {codigo:4.3.07}, segundo o Tesouro.",
+    "texto": "Segundo o Tesouro, a linha {codigo:4.3.03} {nome:4.3.03} (Estados e Municípios) subiu em {ano} por causa do Auxílio Emergencial aos Estados, aos Municípios e ao Distrito Federal, uma das medidas para enfrentar as consequências econômicas e sociais da pandemia de Covid-19. Não é o auxílio pago às pessoas: esse está na linha {codigo:4.3.07} {nome:4.3.07}, segundo o Tesouro.",
     "fonte": [
       {
         "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
