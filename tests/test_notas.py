@@ -57,7 +57,7 @@ def test_formato_bi():
 def test_termos_com_digito_e_lista_fechada_so_com_covid():
     # uma fonte só: o pipeline define a lista, o testes.py a importa e o T16 confere que ela é a aprovada
     assert T.TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO  # a lista aprovada é conferida no T23, dentro do testes.py
-    ok, detalhe = T.t16_notas_sem_digitos()
+    ok, detalhe = T.t16_notas_campos()
     assert ok and "lista fechada: True" in detalhe
 
 
@@ -127,8 +127,10 @@ def test_t17_regra_unica_rejeita(ctx, caso, mudar):
 
 
 def test_t17_regra_unica_aceita_bolsa_com_4_4_1(ctx):
+    # o caso é injetado na memória: a regra aceita a mãe direta (4.4.1) como linha_rtn do Bolsa Família, qualquer que
+    # seja o valor de hoje em notas.json
     notas = P.carregar_notas()
-    assert _citacao(notas, "Nota 21")["linha_rtn"] == "4.4.1"
+    _citacao(notas, "Nota 21")["linha_rtn"] = "4.4.1"
     ok, detalhe = T.t17_notas_comparacoes(ctx, RTN, notas=notas)
     assert ok, detalhe
 

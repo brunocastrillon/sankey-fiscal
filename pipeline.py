@@ -11,6 +11,7 @@ Uso (com os arquivos em entrada/):
 import argparse
 import json
 import re
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -394,6 +395,238 @@ def aplicar_notas(notas, ano, R, nomes, nos_reais, mes_base=None):
             for n in notas if n["ano"] == ano]
 
 
+# --- Validação das notas e do esquema publicado ------------------------------------------------------------------------
+# Uma função só (validar_notas) para notas.json e outra (validar_ano) para cada AAAA.json; o pipeline chama as duas antes de
+# gravar, e os testes chamam as mesmas.
+
+# Esquema fechado: chaves permitidas em cada nível. Chave desconhecida é erro.
+CHAVES_NOTA = {"ano", "no", "classe", "texto", "comparacoes", "observacao", "fonte"}  # notas.json
+CHAVES_NOTA_OPCIONAIS = {"comparacoes"}
+CHAVES_NOTA_PUBLICADA = {"no", "classe", "texto", "fonte", "observacao", "base_precos"}  # AAAA.json
+CHAVES_CITACAO = {
+    "serie": {"tipo", "titulo", "linhas", "nota", "nota_na_tabela"},
+    "boletim": {"tipo", "publicacao", "boletim", "base_precos", "pagina", "nota", "nota_na_tabela", "endereco",
+                "verificado_em", "arquivo_sha256", "trecho", "linha_rtn", "menciona"},
+}
+TIPO_DA_CLASSE = {"fatos": "serie", "contexto": "boletim"}
+CHAVES_ANO = {"ano", "unidade", "mes_base", "versao_dados", "mapeamento_versao", "rotulos", "grupos_despesa", "linhas",
+              "estrutura", "nominal", "real", "pib", "subcontas", "notas"}
+CHAVES_BLOCO_VALORES = {"nos", "totais", "financiamento"}
+CHAVES_PIB = {"valor_nominal", "fonte", "trimestres", "ultimo_trimestre"}
+CHAVES_ESTRUTURA = {"receita", "repasse", "obrigatorias", "discricionarias"}
+CHAVES_LINHA = {"codigo", "nome", "operacao"}
+CHAVES_SUBCONTA = {"codigo", "nome", "real", "nominal"}
+CHAVES_INDICE = {"ultimo_mes_publicado", "mes_base", "anos", "pib_ultimo_trimestre"}
+# Formas fixas: "Nota N …" sem outro dígito; na tabela, também "(p. N)" no fim
+FORMA_NOTA = r"Nota [1-9]\d* [^\d()]+"
+FORMA_NOTA_NA_TABELA = r"Nota [1-9]\d* [^\d()]+(?: \(p\. [1-9]\d*\))?"
+
+
+def _tipo_ok(valor, tipo):
+    return isinstance(valor, tipo) and not isinstance(valor, bool)
+
+
+def _sem_digito(texto, permitidos=()):
+    for p in permitidos:
+        texto = re.sub(p, "", texto)
+    return re.search(r"\d", texto) is None
+
+
+def erros_campos(n, quem, mes_base=None, publicada=False):
+    """Regras de cada campo de uma nota e de suas citações. No notas.json, o texto não tem dígito fora dos marcadores e de
+    TERMOS_COM_DIGITO; publicada (AAAA.json), o texto já traz os valores, e o base_precos é o montado de mes_base."""
+    termos = [re.escape(t) for t in TERMOS_COM_DIGITO]
+    erros = []
+    texto = n.get("texto", "")
+    if not publicada and isinstance(texto, str) and not _sem_digito(texto, [MARCADOR] + termos):
+        erros.append(f"{quem}: texto com dígito fora dos marcadores e de {list(TERMOS_COM_DIGITO)}")
+    obs = n.get("observacao")
+    if isinstance(obs, str) and not _sem_digito(obs, [r"\bp\. [1-9]\d*\b"]):
+        erros.append(f"{quem}: observacao com dígito fora de páginas \"p. N\"")
+    if "base_precos" in n and n["base_precos"] is not None and (
+            mes_base is None or n["base_precos"] != rotulo_base_precos(mes_base)):
+        erros.append(f"{quem}: base_precos {n['base_precos']!r} não é a montada de mes_base {mes_base!r}")
+    for i, c in enumerate(n.get("fonte") or [], 1):
+        if not isinstance(c, dict):
+            continue
+        q = f"{quem} citação {i}"
+        if c.get("tipo") == "serie":
+            if c.get("nota") is not None or c.get("nota_na_tabela") is not None:
+                erros.append(f"{q}: nota e nota_na_tabela de uma citação da série são null")
+            continue
+        if isinstance(c.get("trecho"), str) and not _sem_digito(c["trecho"], termos):
+            erros.append(f"{q}: trecho com dígito fora de {list(TERMOS_COM_DIGITO)}")
+        if not (isinstance(c.get("nota"), str) and re.fullmatch(FORMA_NOTA, c["nota"])):
+            erros.append(f"{q}: nota fora da forma \"Nota N …\": {c.get('nota')!r}")
+        nt = c.get("nota_na_tabela")
+        if nt is not None and not (isinstance(nt, str) and re.fullmatch(FORMA_NOTA_NA_TABELA, nt)):
+            erros.append(f"{q}: nota_na_tabela fora da forma \"Nota N … (p. N)\": {nt!r}")
+        if not (_tipo_ok(c.get("pagina"), int) and c["pagina"] >= 1):
+            erros.append(f"{q}: pagina {c.get('pagina')!r} não é inteiro ≥ 1")
+        v = c.get("verificado_em")
+        try:
+            data = date.fromisoformat(v) if isinstance(v, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", v) else None
+        except ValueError:
+            data = None
+        if data is None or data > date.today():
+            erros.append(f"{q}: verificado_em {v!r} não é data real AAAA-MM-DD até hoje")
+        if not (isinstance(c.get("arquivo_sha256"), str) and re.fullmatch(r"[0-9a-f]{64}", c["arquivo_sha256"])):
+            erros.append(f"{q}: arquivo_sha256 não é SHA256 em minúsculas")
+        if isinstance(c.get("base_precos"), str) and not _sem_digito(c["base_precos"]):
+            erros.append(f"{q}: base_precos da publicação com dígito")
+    return erros
+
+
+def erros_esquema_nota(n, quem, publicada=False):
+    """Chaves (fechadas) e tipos de uma nota e de suas citações."""
+    if not isinstance(n, dict):
+        return [f"{quem}: nota não é objeto"]
+    permitidas = CHAVES_NOTA_PUBLICADA if publicada else CHAVES_NOTA
+    obrigatorias = permitidas - (set() if publicada else CHAVES_NOTA_OPCIONAIS)
+    erros = [f"{quem}: chave desconhecida {k!r}" for k in sorted(set(n) - permitidas)]
+    erros += [f"{quem}: sem {k}" for k in sorted(obrigatorias - set(n))]
+    tipos = {"ano": int, "no": str, "classe": str, "texto": str, "fonte": list, "comparacoes": list}
+    erros += [f"{quem}: {k} com tipo {type(n[k]).__name__}" for k, t in tipos.items() if k in n and not _tipo_ok(n[k], t)]
+    for k in ("observacao", "base_precos"):
+        if k in n and n[k] is not None and not isinstance(n[k], str):
+            erros.append(f"{quem}: {k} com tipo {type(n[k]).__name__}")
+    if n.get("classe") not in TIPO_DA_CLASSE:
+        return erros + [f"{quem}: classe {n.get('classe')!r}"]
+    if isinstance(n.get("fonte"), list):
+        if not n["fonte"]:
+            erros.append(f"{quem}: fonte vazia")
+        for i, c in enumerate(n["fonte"], 1):
+            q = f"{quem} citação {i}"
+            if not isinstance(c, dict):
+                erros.append(f"{q}: citação não é objeto")
+                continue
+            tipo = c.get("tipo")
+            if tipo not in CHAVES_CITACAO:
+                erros.append(f"{q}: tipo {tipo!r} (esperado serie ou boletim)")
+                continue
+            if tipo != TIPO_DA_CLASSE[n["classe"]]:
+                erros.append(f"{q}: citação {tipo} numa nota de {n['classe']}")
+            erros += [f"{q}: chave desconhecida {k!r}" for k in sorted(set(c) - CHAVES_CITACAO[tipo])]
+            erros += [f"{q}: sem {k}" for k in sorted(CHAVES_CITACAO[tipo] - set(c))]
+            textos = {"titulo", "publicacao", "boletim", "base_precos", "endereco", "verificado_em", "arquivo_sha256",
+                      "trecho", "linha_rtn", "menciona"}
+            erros += [f"{q}: {k} com tipo {type(c[k]).__name__}" for k in sorted(textos & set(c)) if not isinstance(c[k], str)]
+            erros += [f"{q}: {k} com tipo {type(c[k]).__name__}" for k in ("nota", "nota_na_tabela")
+                      if k in c and c[k] is not None and not isinstance(c[k], str)]
+            if tipo == "serie" and not (isinstance(c.get("linhas"), list) and all(isinstance(x, str) for x in c["linhas"])):
+                erros.append(f"{q}: linhas não é lista de códigos")
+    for comp in n.get("comparacoes", []) if isinstance(n.get("comparacoes"), list) else []:
+        if not (isinstance(comp, list) and len(comp) == 3 and comp[1] in ("<", ">")):
+            erros.append(f"{quem}: comparação malformada {comp}")
+    return erros
+
+
+def _no_do_mapa(mapa, no_id):
+    return next((n for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"] if n["id"] == no_id), None)
+
+
+def _descendentes(raizes, codigos_aba):
+    return {c for c in codigos_aba if any(c == r or c.startswith(r + ".") for r in raizes)}
+
+
+def linhas_L(mapa, no_id, codigos_aba):
+    """L: as linhas de soma do nó e todas as suas descendentes."""
+    return _descendentes(_no_do_mapa(mapa, no_id)["soma"], codigos_aba)
+
+
+def linhas_X(mapa, no_id, codigos_aba):
+    """X: as linhas de subtrai do nó e suas descendentes, mais os totais do mapeamento (1 a 5)."""
+    return _descendentes(_no_do_mapa(mapa, no_id).get("subtrai", []), codigos_aba) | set(mapa["totais"].values())
+
+
+def maes_do_no(mapa, no_id):
+    """Linha-mãe direta de cada linha de soma (a Nota 21 do boletim fala da 4.4.1, mãe da 4.4.1.2)."""
+    return {r.rsplit(".", 1)[0] for r in _no_do_mapa(mapa, no_id)["soma"] if "." in r}
+
+
+def codigos_das_fontes(n):
+    """Linhas do RTN citadas pelas fontes da nota: `linhas` (série) ou `linha_rtn` e `menciona` (boletim)."""
+    codigos = set()
+    for c in n["fonte"]:
+        codigos |= set(c.get("linhas", [])) if c.get("tipo") == "serie" else {c.get("linha_rtn"), c.get("menciona")}
+    return codigos - {None}
+
+
+def erros_regra_linhas(n, quem, mapa, codigos_aba):
+    """O nó existe; marcadores e menciona em L e fora de X; linha_rtn em L ou mãe direta de uma linha de soma, nunca em
+    X; todo código de marcador está entre as linhas citadas pelas fontes."""
+    if _no_do_mapa(mapa, n["no"]) is None:
+        return [f"{quem}: nó {n['no']!r} inexistente no mapeamento"]
+    L, X = linhas_L(mapa, n["no"], codigos_aba), linhas_X(mapa, n["no"], codigos_aba)
+    citadas, das_fontes = linhas_citadas(n), codigos_das_fontes(n)
+    erros = []
+    fora = sorted(c for c in citadas if c not in L or c in X)
+    if fora:
+        erros.append(f"{quem}: marcadores com linhas fora do nó {fora}")
+    if not citadas <= das_fontes:
+        erros.append(f"{quem}: marcadores com linhas fora da fonte {sorted(citadas - das_fontes)}")
+    for i, c in enumerate(n["fonte"], 1):
+        if c.get("tipo") != "boletim":
+            continue
+        if c.get("menciona") not in L or c.get("menciona") in X:
+            erros.append(f"{quem} citação {i}: menciona {c.get('menciona')} fora do nó")
+        if c.get("linha_rtn") not in L | maes_do_no(mapa, n["no"]) or c.get("linha_rtn") in X:
+            erros.append(f"{quem} citação {i}: linha_rtn {c.get('linha_rtn')} fora do nó e da linha-mãe, ou em subtrai/totais")
+    return erros
+
+
+def validar_notas(notas, mapa, codigos_aba):
+    """Todos os problemas de notas.json (lista vazia se nenhum): esquema fechado, campos e regra de linhas."""
+    if not isinstance(notas, list):
+        return ["notas.json não é uma lista"]
+    erros = []
+    for i, n in enumerate(notas):
+        quem = f"notas.json[{i}]"
+        esquema = erros_esquema_nota(n, quem)
+        erros += esquema + (erros_campos(n, quem) if isinstance(n, dict) else [])
+        if not esquema:
+            erros += erros_regra_linhas(n, quem, mapa, codigos_aba)
+    return erros
+
+
+def validar_ano(d):
+    """Todos os problemas de esquema de um AAAA.json (lista vazia se nenhum), inclusive das notas publicadas."""
+    quem = f"{d.get('ano')}.json"
+    erros = [f"{quem}: chave desconhecida {k!r}" for k in sorted(set(d) - CHAVES_ANO)]
+    erros += [f"{quem}: sem {k}" for k in sorted(CHAVES_ANO - set(d))]
+    for bloco in ("nominal", "real"):
+        if isinstance(d.get(bloco), dict) and set(d[bloco]) != CHAVES_BLOCO_VALORES:
+            erros.append(f"{quem}: {bloco} com chaves {sorted(d[bloco])}")
+    pib = d.get("pib", {})
+    if set(pib) != CHAVES_PIB or not (_tipo_ok(pib.get("valor_nominal"), float) and isinstance(pib.get("fonte"), str)
+                                      and pib.get("trimestres") == 4
+                                      and re.fullmatch(r"\d{4}T[1-4]", str(pib.get("ultimo_trimestre")))):
+        erros.append(f"{quem}: bloco pib")
+    if isinstance(d.get("estrutura"), dict) and set(d["estrutura"]) != CHAVES_ESTRUTURA:
+        erros.append(f"{quem}: estrutura com chaves {sorted(d['estrutura'])}")
+    for no, itens in (d.get("linhas") or {}).items():
+        if not isinstance(itens, list) or any(not isinstance(i, dict) or set(i) != CHAVES_LINHA for i in itens):
+            erros.append(f"{quem}: linhas de {no}")
+    for no, itens in (d.get("subcontas") or {}).items():
+        if not isinstance(itens, list) or not all(
+                isinstance(i, dict) and set(i) == CHAVES_SUBCONTA and isinstance(i["codigo"], str)
+                and isinstance(i["nome"], str) and all(_tipo_ok(i[k], (int, float)) for k in ("real", "nominal"))
+                for i in itens):
+            erros.append(f"{quem}: subcontas de {no}")
+    if not isinstance(d.get("notas"), list):
+        return erros + [f"{quem}: notas não é lista"]
+    for j, n in enumerate(d["notas"]):
+        q = f"{quem} notas[{j}]"
+        esquema = erros_esquema_nota(n, q, publicada=True)
+        erros += esquema + (erros_campos(n, q, d.get("mes_base"), publicada=True) if isinstance(n, dict) else [])
+    return erros
+
+
+def validar_indice(indice):
+    erros = [f"indice.json: chave desconhecida {k!r}" for k in sorted(set(indice) - CHAVES_INDICE)]
+    return erros + [f"indice.json: sem {k}" for k in sorted(CHAVES_INDICE - set(indice))]
+
+
 def pib_implicito(xlsx):
     """PIB nominal anual (R$ milhões) implícito nas abas 2.2 (valor) e 2.2-A (% do PIB) do RTN."""
     v = ler_rtn_anual(xlsx, "2.2").loc["1"]
@@ -433,6 +666,9 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
     linhas = montar_linhas(mapa, nomes)
     subcontas = montar_subcontas(mapa, M, fator, nomes)
     notas, R, nos_reais = carregar_notas(), M * fator, {k: s * fator for k, s in nos.items()}
+    erros = validar_notas(notas, mapa, M.index)
+    if erros:
+        raise ValueError("notas.json inválido:\n  " + "\n  ".join(erros))
     estrutura = montar_estrutura(mapa)
 
     saida = {}
@@ -464,8 +700,12 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
             "subcontas": subcontas[ano],
             "notas": aplicar_notas(notas, ano, R, nomes, nos_reais, base),
         }
-    return saida, {"ultimo_mes_publicado": f"{ultimo:%Y-%m}", "mes_base": base, "anos": [ano0, ano1],
-                   "pib_ultimo_trimestre": ultimo_trimestre_arquivo}
+    indice = {"ultimo_mes_publicado": f"{ultimo:%Y-%m}", "mes_base": base, "anos": [ano0, ano1],
+              "pib_ultimo_trimestre": ultimo_trimestre_arquivo}
+    erros = [e for d in saida.values() for e in validar_ano(d)] + validar_indice(indice)
+    if erros:
+        raise ValueError("dados gerados fora do esquema:\n  " + "\n  ".join(erros))
+    return saida, indice
 
 
 def gravar(saida, indice, pasta):

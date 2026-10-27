@@ -385,52 +385,13 @@ TERMOS_COM_DIGITO = P.TERMOS_COM_DIGITO
 TERMOS_COM_DIGITO_APROVADOS = ("Covid-19",)  # a conferência: a lista do pipeline tem de ser exatamente esta
 
 
-def _sem_marcadores(texto):
-    texto = re.sub(P.MARCADOR, "", texto)
-    for termo in TERMOS_COM_DIGITO:
-        texto = texto.replace(termo, "")
-    return texto
-
-
-def t16_notas_sem_digitos():
-    notas = P.carregar_notas()
-    com_digito = [f"{n['ano']} {n['no']}: {_sem_marcadores(n['texto'])!r}" for n in notas
-                  if re.search(r"\d", _sem_marcadores(n["texto"]))]
+def t16_notas_campos(notas=None):
+    notas = P.carregar_notas() if notas is None else notas
+    erros = [e for i, n in enumerate(notas) if isinstance(n, dict) for e in P.erros_campos(n, f"notas.json[{i}]")]
     lista_fechada = TERMOS_COM_DIGITO == TERMOS_COM_DIGITO_APROVADOS
-    return bool(notas) and not com_digito and lista_fechada, (
-        f"{len(notas)} notas; com dígito fora dos marcadores: {com_digito or 'nenhuma'}; termos com dígito aceitos: "
+    return bool(notas) and not erros and lista_fechada, (
+        f"{len(notas)} notas; problemas nos campos (P.erros_campos): {erros or 'nenhum'}; termos com dígito aceitos: "
         f"{list(TERMOS_COM_DIGITO)} (lista fechada: {lista_fechada})")
-
-
-def _no_do_mapa(mapa, no_id):
-    return next(n for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"] if n["id"] == no_id)
-
-
-def _descendentes(raizes, codigos_aba):
-    return {c for c in codigos_aba if any(c == r or c.startswith(r + ".") for r in raizes)}
-
-
-def _linhas_L(mapa, no_id, codigos_aba):
-    """L: as linhas de soma do nó e todas as suas descendentes."""
-    return _descendentes(_no_do_mapa(mapa, no_id)["soma"], codigos_aba)
-
-
-def _linhas_X(mapa, no_id, codigos_aba):
-    """X: as linhas de subtrai do nó e suas descendentes, mais os totais do mapeamento (1 a 5)."""
-    return _descendentes(_no_do_mapa(mapa, no_id).get("subtrai", []), codigos_aba) | set(mapa["totais"].values())
-
-
-def _maes_do_no(mapa, no_id):
-    """Linha-mãe direta de cada linha de soma (a Nota 21 do boletim fala da 4.4.1, mãe da 4.4.1.2)."""
-    return {r.rsplit(".", 1)[0] for r in _no_do_mapa(mapa, no_id)["soma"] if "." in r}
-
-
-def _codigos_das_fontes(n):
-    """Linhas do RTN citadas pelas fontes da nota: `linhas` (fatos) ou `linha_rtn` e `menciona` de cada citação."""
-    codigos = set()
-    for f in P.citacoes(n["fonte"]):
-        codigos |= set(f.get("linhas", [])) if f.get("tipo") == "serie" else {f.get("linha_rtn"), f.get("menciona")}
-    return codigos - {None}
 
 
 def t23_termos_com_digito():
@@ -445,36 +406,22 @@ def t23_termos_com_digito():
 def t17_notas_comparacoes(c, rtn, notas=None):
     mapa, M, *_ = c
     R, nos_reais = _reais(c)
-    ids = {n["id"] for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"]}
     falsas, avaliadas, erros = [], [], []
-    for n in (P.carregar_notas() if notas is None else notas):
-        quem = f"{n['ano']} {n['no']} ({n['classe']})"
+    for i, n in enumerate(P.carregar_notas() if notas is None else notas):
+        quem = f"notas.json[{i}] {n.get('ano')} {n.get('no')}"
+        if P.erros_esquema_nota(n, quem):
+            erros.append(f"{quem}: fora do esquema (ver T22)")
+            continue
         for a, op, b in n.get("comparacoes", []):
             va, vb = (P.valor_marcador(x, n["ano"], R, nos_reais) for x in (a, b))
             ok = {"<": va < vb, ">": va > vb}[op]
             avaliadas.append(f"{n['ano']} {a} {op} {b}: {va / 1000:.1f} {op} {vb / 1000:.1f} bi")
             if not ok:
                 falsas.append(avaliadas[-1])
-        if n["no"] not in ids:
-            erros.append(f"{quem}: nó inexistente no mapeamento")
-            continue
-        # Regra única: marcadores e menciona em L e fora de X; linha_rtn em L ou mãe direta de uma linha de soma, nunca em X
-        L, X = _linhas_L(mapa, n["no"], M.index), _linhas_X(mapa, n["no"], M.index)
-        citadas, das_fontes = P.linhas_citadas(n), _codigos_das_fontes(n)
-        fora_do_no = sorted(c for c in citadas if c not in L or c in X)
-        if fora_do_no:
-            erros.append(f"{quem}: marcadores com linhas fora do nó {fora_do_no}")
-        if not citadas <= das_fontes:
-            erros.append(f"{quem}: marcadores com linhas fora da fonte {sorted(citadas - das_fontes)}")
-        if n["classe"] == "contexto":
-            for f in P.citacoes(n["fonte"]):
-                if f.get("menciona") not in L or f.get("menciona") in X:
-                    erros.append(f"{quem}: menciona {f.get('menciona')} fora do nó")
-                if f.get("linha_rtn") not in L | _maes_do_no(mapa, n["no"]) or f.get("linha_rtn") in X:
-                    erros.append(f"{quem}: linha_rtn {f.get('linha_rtn')} fora do nó e da linha-mãe, ou em subtrai/totais")
+        erros += P.erros_regra_linhas(n, quem, mapa, M.index)
     ok = bool(avaliadas) and not falsas and not erros
     return ok, (f"{len(avaliadas)} comparações ({'; '.join(avaliadas)}); falsas: {falsas or 'nenhuma'}; "
-                f"nó, linhas e fontes: {erros or 'tudo certo'}")
+                f"nó, linhas e fontes (P.erros_regra_linhas): {erros or 'tudo certo'}")
 
 
 def t18_notas_fontes(c, rtn):
@@ -550,8 +497,6 @@ def t19_notas_contexto(c, rtn, notas=None):
             if faltam:
                 erros.append(f"{quem}: sem {faltam}")
                 continue
-            if not isinstance(f["pagina"], int) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", f["verificado_em"]):
-                erros.append(f"{quem}: página não inteira ou data fora de AAAA-MM-DD")
             if len(f["trecho"]) > 200 or len(f["trecho"].split()) >= 15:
                 erros.append(f"{quem}: trecho longo")
             if f["publicacao"] != PUBLICACAO_RTN_2020 or f["endereco"] != ENDERECO_RTN_2020:
@@ -699,98 +644,16 @@ def t21_subcontas_boletim(caminho=BOLETIM_2020, pasta=DADOS):
                                                 f"{100 * tol:.1f}%): {'; '.join(linhas)}; fora: {falhas or 'nenhuma'}")
 
 
-# Esquema dos dados publicados e de notas.json, conferido em Python puro (sem dependência nova)
-CHAVES_ANO = {"ano", "unidade", "mes_base", "versao_dados", "mapeamento_versao", "rotulos", "grupos_despesa", "linhas",
-              "estrutura", "nominal", "real", "pib", "subcontas", "notas"}
-CAMPOS_CITACAO = {
-    "serie": {"tipo": str, "titulo": str, "linhas": list, "nota": (str, type(None)), "nota_na_tabela": (str, type(None))},
-    "boletim": {"tipo": str, "publicacao": str, "boletim": str, "base_precos": str, "pagina": int, "nota": str,
-                "nota_na_tabela": (str, type(None)), "endereco": str, "verificado_em": str, "arquivo_sha256": str,
-                "trecho": str, "linha_rtn": str, "menciona": str},
-}
-TIPO_DA_CLASSE = {"fatos": "serie", "contexto": "boletim"}
-
-
-def _erros_citacao(c, quem, classe):
-    if not isinstance(c, dict):
-        return [f"{quem}: citação não é objeto"]
-    tipo = c.get("tipo")
-    if tipo not in CAMPOS_CITACAO:
-        return [f"{quem}: tipo {tipo!r} (esperado serie ou boletim)"]
-    erros = [] if tipo == TIPO_DA_CLASSE[classe] else [f"{quem}: citação {tipo} numa nota de {classe}"]
-    for k, t in CAMPOS_CITACAO[tipo].items():
-        if k not in c:
-            erros.append(f"{quem}: sem {k}")
-        elif not isinstance(c[k], t) or isinstance(c[k], bool):
-            erros.append(f"{quem}: {k} com tipo {type(c[k]).__name__}")
-    if tipo == "serie" and not all(isinstance(x, str) for x in c.get("linhas", [])):
-        erros.append(f"{quem}: linhas não são texto")
-    if tipo == "boletim":
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(c.get("verificado_em"))):
-            erros.append(f"{quem}: verificado_em fora de AAAA-MM-DD")
-        if not re.fullmatch(r"[0-9a-f]{64}", str(c.get("arquivo_sha256"))):
-            erros.append(f"{quem}: arquivo_sha256 não é SHA256 em minúsculas")
-    return erros
-
-
-def _erros_nota(n, quem, publicada):
-    if not isinstance(n, dict):
-        return [f"{quem}: nota não é objeto"]
-    erros = []
-    obrigatorias = {"no": str, "classe": str, "texto": str, "fonte": list, "observacao": (str, type(None))}
-    if publicada:
-        obrigatorias["base_precos"] = (str, type(None))
-    else:
-        obrigatorias["ano"] = int
-    for k, t in obrigatorias.items():
-        if k not in n:
-            erros.append(f"{quem}: sem {k}")
-        elif not isinstance(n[k], t) or isinstance(n[k], bool):
-            erros.append(f"{quem}: {k} com tipo {type(n[k]).__name__}")
-    if n.get("classe") not in TIPO_DA_CLASSE:
-        return erros + [f"{quem}: classe {n.get('classe')!r}"]
-    if isinstance(n.get("fonte"), list):
-        if not n["fonte"]:
-            erros.append(f"{quem}: fonte vazia")
-        for i, c in enumerate(n["fonte"], 1):
-            erros += _erros_citacao(c, f"{quem} citação {i}", n["classe"])
-    for comp in n.get("comparacoes", []):
-        if not (isinstance(comp, list) and len(comp) == 3 and comp[1] in ("<", ">")):
-            erros.append(f"{quem}: comparação malformada {comp}")
-    return erros
-
-
-def t22_esquema(pasta=DADOS, caminho_notas=None):
-    erros, n_notas = [], 0
-    notas = _ler_json(caminho_notas or P.AQUI / "notas.json")
-    if not isinstance(notas, list):
-        erros.append("notas.json não é lista")
-        notas = []
-    for i, n in enumerate(notas):
-        erros += _erros_nota(n, f"notas.json[{i}]", publicada=False)
+def t22_esquema(c, pasta=DADOS, notas=None):
+    mapa, M, *_ = c
+    notas = P.carregar_notas() if notas is None else notas
+    erros = P.validar_notas(notas, mapa, M.index)
     indice = _ler_json(Path(pasta) / "indice.json")
+    erros += P.validar_indice(indice)
     for ano in range(indice["anos"][0], indice["anos"][1] + 1):
-        d = _ler_json(Path(pasta) / f"{ano}.json")
-        if set(d) != CHAVES_ANO:
-            erros.append(f"{ano}.json: chaves {sorted(set(d) ^ CHAVES_ANO)}")
-        pib = d.get("pib", {})
-        if not (isinstance(pib.get("valor_nominal"), float) and isinstance(pib.get("fonte"), str)
-                and pib.get("trimestres") == 4 and re.fullmatch(r"\d{4}T[1-4]", str(pib.get("ultimo_trimestre")))):
-            erros.append(f"{ano}.json: bloco pib")
-        for no, itens in d.get("subcontas", {}).items():
-            if not isinstance(itens, list) or not all(
-                    isinstance(i, dict) and set(i) == {"codigo", "nome", "real", "nominal"} and isinstance(i["codigo"], str)
-                    and isinstance(i["nome"], str) and all(isinstance(i[k], (int, float)) for k in ("real", "nominal"))
-                    for i in itens):
-                erros.append(f"{ano}.json: subcontas de {no}")
-        if not isinstance(d.get("notas"), list):
-            erros.append(f"{ano}.json: notas não é lista")
-            continue
-        for j, n in enumerate(d["notas"]):
-            n_notas += 1
-            erros += _erros_nota(n, f"{ano}.json notas[{j}]", publicada=True)
-    return not erros, (f"notas.json ({len(notas)} notas) e {indice['anos'][1] - indice['anos'][0] + 1} AAAA.json "
-                       f"({n_notas} notas publicadas): {erros[:6] or 'esquema certo'}")
+        erros += P.validar_ano(_ler_json(Path(pasta) / f"{ano}.json"))
+    return not erros, (f"notas.json ({len(notas)} notas) e {indice['anos'][1] - indice['anos'][0] + 1} AAAA.json pela "
+                       f"validação do pipeline (validar_notas, validar_ano, validar_indice): {erros[:6] or 'esquema certo'}")
 
 
 def t11_determinismo(rtn, ipca, pib):
@@ -820,13 +683,13 @@ def lista_testes(c, rtn, ipca, pib):
         ("T13 PIB do IBGE: 4 trimestres por ano, sem nulos", lambda: t13_pib_ibge(pib)),
         ("T14 Subcontas fecham com o nó, nos 11 anos (real e nominal)", lambda: t14_subcontas_fecham(c, rtn)),
         ("T15 Subcontas: códigos da aba 1.2, com nome, na ordem dela, nenhum de subtrai", lambda: t15_subcontas_codigos(c, rtn)),
-        ("T16 Notas sem dígitos fora dos marcadores", lambda: t16_notas_sem_digitos()),
+        ("T16 Notas: regras de campo (dígitos por campo, formas de nota, página, data, base de preços)", lambda: t16_notas_campos()),
         ("T17 Notas: comparações verdadeiras e linhas citadas na fonte", lambda: t17_notas_comparacoes(c, rtn)),
         ("T18 Notas: contexto sem página ou nota na fonte falha", lambda: t18_notas_fontes(c, rtn)),
         ("T19 Notas de contexto de 2020: fonte completa, nó certo, auxílios separados", lambda: t19_notas_contexto(c, rtn)),
         ("T20 Subcontas do JSON contra um oráculo próprio (aba 1.2 e IPCA)", lambda: t20_subcontas_oraculo(rtn, ipca)),
         ("T21 Subcontas e Bolsa Família de 2020 contra o boletim de dez/2020", lambda: t21_subcontas_boletim()),
-        ("T22 Esquema de notas.json e dos AAAA.json (fonte sempre lista de citações com tipo)", lambda: t22_esquema()),
+        ("T22 Esquema fechado de notas.json e dos AAAA.json (validação do pipeline)", lambda: t22_esquema(c)),
         ("T23 Termos com dígito nas notas: lista fechada, só \"Covid-19\"", lambda: t23_termos_com_digito()),
     ]
 
