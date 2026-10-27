@@ -657,6 +657,49 @@ def t22_esquema(c, pasta=DADOS, notas=None):
                        f"validação do pipeline (validar_notas, validar_ano, validar_indice): {erros[:6] or 'esquema certo'}")
 
 
+TOL_DADOS = 0.02  # R$ milhões: valores gravados com 3 casas; somas de até 19 parcelas
+
+
+def _folga_do_residuo(c, no, ano, codigos, real):
+    """Folga pelo resíduo da própria aba 1.2 (só nos nós e anos de FOLGA_RESIDUO), em R$ milhões."""
+    if (no, ano) not in FOLGA_RESIDUO:
+        return 0.0
+    mapa, M, nos, _, ipca = c
+    fator = pd.Series(P.fator_deflacao(ipca, M.columns, mapa["mes_base_padrao"]), index=M.columns)
+    r = (nos[no] - sum(M.loc[cod] for cod in codigos)).abs() * (fator if real else 1.0)
+    return float(r[r.index.year == ano].sum())
+
+
+def t24_dados_fecham(c, pasta=DADOS):
+    """O dados/AAAA.json publicado fecha sozinho: subcontas = nó e identidades dos totais, em real e nominal."""
+    mapa = c[0]
+    receita = [n["id"] for n in mapa["receita"]]
+    despesa = [n["id"] for n in mapa["despesa"]]
+    erros, pior = [], 0.0
+    for ano in range(mapa["anos"][0], mapa["anos"][1] + 1):
+        d = _ler_json(Path(pasta) / f"{ano}.json")
+        for chave in ("real", "nominal"):
+            v, t = d[chave]["nos"], d[chave]["totais"]
+            identidades = {
+                "receita_total = Σ receita": (t["receita_total"], sum(v[k] for k in receita)),
+                "transferencias = repasse": (t["transferencias"], v[mapa["repasse"]["id"]]),
+                "receita_liquida = receita_total − transferencias": (t["receita_liquida"], t["receita_total"] - t["transferencias"]),
+                "despesa_total = Σ despesa": (t["despesa_total"], sum(v[k] for k in despesa)),
+                "primario_acima = receita_liquida − despesa_total": (t["primario_acima"], t["receita_liquida"] - t["despesa_total"]),
+            }
+            for nome, (x, y) in identidades.items():
+                pior = max(pior, abs(x - y))
+                if abs(x - y) > TOL_DADOS:
+                    erros.append(f"{ano} {chave}: {nome} ({x:.3f} × {y:.3f})")
+            for no, itens in d["subcontas"].items():
+                soma = sum(i[chave] for i in itens)
+                folga = TOL_DADOS + _folga_do_residuo(c, no, ano, [i["codigo"] for i in itens], chave == "real")
+                if abs(soma - v[no]) > folga:
+                    erros.append(f"{ano} {chave}: Σ subcontas de {no} {soma:.3f} × nó {v[no]:.3f} (folga {folga:.4f})")
+    return not erros, (f"11 anos × real/nominal: identidades dos totais (maior diferença R$ {pior:.4f} mi, limite {TOL_DADOS}) "
+                       f"e subcontas = nó (folga do resíduo da fonte só em {sorted(FOLGA_RESIDUO)}); erros: {erros[:5] or 'nenhum'}")
+
+
 def t11_determinismo(rtn, ipca, pib):
     a = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
     b = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
@@ -691,6 +734,7 @@ def lista_testes(c, rtn, ipca, pib):
         ("T20 Subcontas do JSON contra um oráculo próprio (aba 1.2 e IPCA)", lambda: t20_subcontas_oraculo(rtn, ipca)),
         ("T21 Subcontas e Bolsa Família de 2020 contra o boletim de dez/2020", lambda: t21_subcontas_boletim()),
         ("T22 Esquema fechado de notas.json e dos AAAA.json (validação do pipeline)", lambda: t22_esquema(c)),
+        ("T24 dados/AAAA.json fecha: subcontas = nó e identidades dos totais (real e nominal)", lambda: t24_dados_fecham(c)),
         ("T23 Termos com dígito nas notas: lista fechada, só \"Covid-19\"", lambda: t23_termos_com_digito()),
     ]
 

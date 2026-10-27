@@ -69,3 +69,9 @@ def _referencia_com_4307(tmp_path, fator):
 def test_t21_tolerancia_de_0_1_por_cento(tmp_path, fator, passa):
     ok, detalhe = T.t21_subcontas_boletim(_referencia_com_4307(tmp_path, fator))
     assert ok is passa, detalhe
+
+
+def test_dados_publicados_fecham():
+    """T24: o dados/AAAA.json fecha sozinho (subcontas = nó, real e nominal; identidades dos totais), sem regenerar."""
+    ok, detalhe = T.t24_dados_fecham(T.contexto(RTN, IPCA))
+    assert ok, detalhe
