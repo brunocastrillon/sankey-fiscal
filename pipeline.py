@@ -309,22 +309,26 @@ def linhas_citadas(nota):
 
 
 def citacoes(fonte):
-    """Fonte de uma nota de contexto como lista de citações (aceita uma citação só, fora de lista)."""
-    return fonte if isinstance(fonte, list) else [fonte]
+    """Citações da fonte de uma nota: a fonte é sempre uma lista; outra coisa é ValueError."""
+    if not isinstance(fonte, list):
+        raise ValueError(f"a fonte de uma nota é uma lista de citações, não {type(fonte).__name__}")
+    return fonte
 
 
 def aplicar_notas(notas, ano, R, nomes, nos_reais):
     """Notas do ano com os marcadores substituídos: [{no, classe, texto, fonte}].
 
-    Valores em 'R$ x,y bi' (R$ constantes). A fonte de uma nota de contexto é uma citação ou uma lista delas, e cada uma
-    precisa de publicação, página, nota, endereço e data de verificação; sem isso, ValueError. Ela é gravada como lista.
+    Valores em 'R$ x,y bi' (R$ constantes). A fonte de toda nota é uma lista de citações (`tipo` "serie" ou "boletim");
+    numa nota de contexto, cada citação precisa de publicação, página, nota, endereço e data de verificação. Fora disso,
+    ValueError. A observação (texto ou null) fica uma vez por nota.
     """
     for n in notas:
         if n["classe"] not in CLASSES_NOTA:
             raise ValueError(f"nota {n['ano']} {n['no']}: classe {n['classe']!r} desconhecida")
+        fonte = citacoes(n["fonte"])
         if n["classe"] != "contexto":
             continue
-        for i, c in enumerate(citacoes(n["fonte"]), 1):
+        for i, c in enumerate(fonte, 1):
             faltam = [k for k in CAMPOS_FONTE_CONTEXTO if not c.get(k)]
             if faltam:
                 raise ValueError(f"nota de contexto {n['ano']} {n['no']} sem {faltam} na citação {i} da fonte")
@@ -342,7 +346,7 @@ def aplicar_notas(notas, ano, R, nomes, nos_reais):
         raise ValueError(f"marcador desconhecido: {tipo}")
 
     return [{"no": n["no"], "classe": n["classe"], "texto": re.sub(MARCADOR, substituir, n["texto"]),
-             "fonte": citacoes(n["fonte"]) if n["classe"] == "contexto" else n["fonte"]}
+             "fonte": n["fonte"], "observacao": n.get("observacao")}
             for n in notas if n["ano"] == ano]
 
 

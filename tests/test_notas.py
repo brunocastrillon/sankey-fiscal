@@ -37,12 +37,13 @@ def test_notas_no_json_e_lista_vazia_nos_outros_anos(saida):
     for ano, d in saida.items():
         assert isinstance(d["notas"], list)
         for n in d["notas"]:
-            assert set(n) == {"no", "classe", "texto", "fonte"}
+            assert set(n) == {"no", "classe", "texto", "fonte", "observacao"}
     assert {ano for ano, d in saida.items() if d["notas"]} == {n["ano"] for n in P.carregar_notas()}
 
 
 def test_marcador_desconhecido_levanta():
-    nota = {"ano": 2020, "no": "bpc", "classe": "fatos", "texto": "{xyz:4.3.05}", "fonte": {"titulo": "t", "linhas": []}}
+    nota = {"ano": 2020, "no": "bpc", "classe": "fatos", "texto": "{xyz:4.3.05}",
+            "fonte": [{"tipo": "serie", "titulo": "t", "linhas": [], "nota": None, "nota_na_tabela": None}]}
     with pytest.raises(ValueError, match="xyz"):
         P.aplicar_notas([nota], 2020, P.pd.DataFrame(), {}, {})
 

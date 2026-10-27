@@ -14,7 +14,8 @@ PAGINA = ("Nota 16 - Apoio Fin. EE/MM (+R$ 1,0 milhões): aumento resul-\n"
 
 def _nota(trecho, pagina=9, sha=SHA):
     return {"ano": 2020, "no": "x", "classe": "contexto", "texto": "t",
-            "fonte": [{"nota": "Nota 16", "pagina": pagina, "trecho": trecho, "arquivo_sha256": sha}]}
+            "fonte": [{"tipo": "boletim", "nota": "Nota 16", "pagina": pagina, "trecho": trecho,
+                       "arquivo_sha256": sha}]}
 
 
 def test_normalizar_junta_hifenizacao_e_espacos():
@@ -44,5 +45,6 @@ def test_pdf_diferente_do_citado_falha():
 
 
 def test_notas_de_fatos_ficam_de_fora():
-    fatos = {"ano": 2020, "no": "x", "classe": "fatos", "texto": "t", "fonte": {"titulo": "t", "linhas": []}}
+    fatos = {"ano": 2020, "no": "x", "classe": "fatos", "texto": "t",
+             "fonte": [{"tipo": "serie", "titulo": "t", "linhas": [], "nota": None, "nota_na_tabela": None}]}
     assert V.conferir([fatos], {}.get, SHA) == []

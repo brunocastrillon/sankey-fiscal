@@ -53,8 +53,10 @@ def conferir(notas, pagina_texto, sha_pdf):
     for n in notas:
         if n["classe"] != "contexto":
             continue
-        fontes = n["fonte"] if isinstance(n["fonte"], list) else [n["fonte"]]
-        for c in fontes:
+        if not isinstance(n["fonte"], list):
+            problemas.append(f"{n['ano']} {n['no']}: a fonte não é uma lista de citações")
+            continue
+        for c in (c for c in n["fonte"] if c.get("tipo") == "boletim"):
             quem = f"{n['ano']} {n['no']} {c.get('nota')} (p. {c.get('pagina')})"
             trecho = normalizar(c.get("trecho", ""))
             if c.get("arquivo_sha256") != sha_pdf:
@@ -75,8 +77,8 @@ def main():
     a = ap.parse_args()
     with open(a.notas, encoding="utf-8") as f:
         notas = json.load(f)
-    citacoes = [c for n in notas if n["classe"] == "contexto"
-                for c in (n["fonte"] if isinstance(n["fonte"], list) else [n["fonte"]])]
+    citacoes = [c for n in notas if n["classe"] == "contexto" and isinstance(n["fonte"], list)
+                for c in n["fonte"] if c.get("tipo") == "boletim"]
     problemas = conferir(notas, texto_da_pagina(a.pdf), sha256(a.pdf))
     for p in problemas:
         print(f"[FALHOU] {p}")

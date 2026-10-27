@@ -427,9 +427,10 @@ def _maes_do_no(mapa, no_id):
 
 def _codigos_das_fontes(n):
     """Linhas do RTN citadas pelas fontes da nota: `linhas` (fatos) ou `linha_rtn` e `menciona` de cada citação."""
-    if n["classe"] == "fatos":
-        return set(n["fonte"].get("linhas", []))
-    return {f.get(k) for f in P.citacoes(n["fonte"]) for k in ("linha_rtn", "menciona")} - {None}
+    codigos = set()
+    for f in P.citacoes(n["fonte"]):
+        codigos |= set(f.get("linhas", [])) if f.get("tipo") == "serie" else {f.get("linha_rtn"), f.get("menciona")}
+    return codigos - {None}
 
 
 def t23_termos_com_digito():
@@ -478,7 +479,7 @@ def t17_notas_comparacoes(c, rtn, notas=None):
 def t18_notas_fontes(c, rtn):
     R, nos_reais = _reais(c)
     nomes = P.ler_nomes_linhas(rtn)
-    citacao = {"publicacao": "Publicação", "pagina": 1, "nota": "Nota 1", "endereco": "https://exemplo",
+    citacao = {"tipo": "boletim", "publicacao": "Publicação", "pagina": 1, "nota": "Nota 1", "endereco": "https://exemplo",
                "verificado_em": "2026-01-01"}
 
     def nota(fonte):
@@ -491,13 +492,12 @@ def t18_notas_fontes(c, rtn):
         except ValueError:
             return True
 
-    # uma citação só ou uma lista; sem página ou sem nota em qualquer citação da lista, ValueError
+    # a fonte é sempre lista: uma citação fora de lista é ValueError, e também sem página ou sem nota em qualquer citação
     levantou = {f"{falta} na citação {i + 1} de 2": levanta([{k: v for k, v in citacao.items() if not (j == i and k == falta)}
                                                           for j in range(2)])
                 for falta in ("pagina", "nota") for i in range(2)}
-    levantou.update({f"{falta} na citação única": levanta({k: v for k, v in citacao.items() if k != falta})
-                     for falta in ("pagina", "nota")})
-    completas = {"citação única": nota(citacao), "lista de 2": nota([citacao, dict(citacao, nota="Nota 2")])}
+    levantou["citação fora de lista"] = levanta(citacao)
+    completas = {"lista de 1": nota([citacao]), "lista de 2": nota([citacao, dict(citacao, nota="Nota 2")])}
     gravadas = {k: P.aplicar_notas([n], 2020, R, nomes, nos_reais)[0]["fonte"] for k, n in completas.items()}
     em_lista = all(isinstance(f, list) and all(c["pagina"] and c["nota"] for c in f) for f in gravadas.values())
     classes = sorted({n["classe"] for n in P.carregar_notas()})
@@ -513,10 +513,11 @@ ENDERECO_RTN_2020 = "https://www.tesourotransparente.gov.br/publicacoes/boletim-
 NOTAS_CONTEXTO_2020 = {("fundeb_seguro_desemprego_outras", ("Nota 18",)),
                        ("fundeb_seguro_desemprego_outras", ("Nota 16", "Nota 18")),
                        ("bolsa_familia", ("Nota 21",))}
-CAMPOS_FONTE_T19 = ("publicacao", "boletim", "pagina", "nota", "nota_na_tabela", "observacao", "endereco", "verificado_em",
+CAMPOS_FONTE_T19 = ("tipo", "publicacao", "boletim", "pagina", "nota", "nota_na_tabela", "endereco", "verificado_em",
                     "arquivo_sha256", "trecho", "linha_rtn", "menciona")
 # O texto das Notas Explicativas (p. 9) e a tabela do resultado acumulado (p. 7) numeram as notas de jeitos diferentes
-NOTA_NA_TABELA = {"Nota 16": 15, "Nota 18": 17, "Nota 21": 20}
+NOTA_NA_TABELA = {f"Nota {texto}": f"Nota {tabela} da tabela do resultado acumulado (p. 7)"
+                  for texto, tabela in (("16", "15"), ("18", "17"), ("21", "20"))}
 OBSERVACAO_NUMERACAO = "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente"
 # SHA256 do PDF do boletim baixado pelo Bruno (Get-FileHash), o mesmo de referencias/boletim-dez-2020.json
 SHA256_PDF_RTN_2020 = "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef"
@@ -556,14 +557,16 @@ def t19_notas_contexto(c, rtn, notas=None):
                 erros.append(f"{quem}: publicação ou endereço")
             if f["nota_na_tabela"] != NOTA_NA_TABELA.get(f["nota"].split(" das ")[0]):
                 erros.append(f"{quem}: nota_na_tabela {f['nota_na_tabela']}")
-            if f["observacao"] != OBSERVACAO_NUMERACAO:
-                erros.append(f"{quem}: observação da numeração")
+            if f["tipo"] != "boletim":
+                erros.append(f"{quem}: tipo {f['tipo']} numa nota de contexto")
             if f["arquivo_sha256"] != SHA256_PDF_RTN_2020 or f["arquivo_sha256"] != _ler_json(BOLETIM_2020)["fonte"]["arquivo_sha256"]:
                 erros.append(f"{quem}: arquivo_sha256")
             if f["linha_rtn"] not in nomes or f["menciona"] not in nomes:
                 erros.append(f"{quem}: linha_rtn ou menciona fora da aba 1.2")
             elif no_da_linha(mapa, f["menciona"]) != n["no"]:
                 erros.append(f"{quem}: menciona {f['menciona']} é do nó {no_da_linha(mapa, f['menciona'])}")
+        if n.get("observacao") != OBSERVACAO_NUMERACAO:
+            erros.append(f"{n['ano']} {n['no']}: observação da numeração (uma vez por nota)")
         quantificadores = re.findall(QUANTIFICADORES_PROIBIDOS, n["texto"], re.I)
         if quantificadores:
             erros.append(f"{n['ano']} {n['no']}: quantificador proibido {quantificadores}")
@@ -695,6 +698,98 @@ def t21_subcontas_boletim(caminho=BOLETIM_2020, pasta=DADOS):
                                                 f"{100 * tol:.1f}%): {'; '.join(linhas)}; fora: {falhas or 'nenhuma'}")
 
 
+# Esquema dos dados publicados e de notas.json, conferido em Python puro (sem dependência nova)
+CHAVES_ANO = {"ano", "unidade", "mes_base", "versao_dados", "mapeamento_versao", "rotulos", "grupos_despesa", "linhas",
+              "estrutura", "nominal", "real", "pib", "subcontas", "notas"}
+CAMPOS_CITACAO = {
+    "serie": {"tipo": str, "titulo": str, "linhas": list, "nota": (str, type(None)), "nota_na_tabela": (str, type(None))},
+    "boletim": {"tipo": str, "publicacao": str, "boletim": str, "pagina": int, "nota": str,
+                "nota_na_tabela": (str, type(None)), "endereco": str, "verificado_em": str, "arquivo_sha256": str,
+                "trecho": str, "linha_rtn": str, "menciona": str},
+}
+TIPO_DA_CLASSE = {"fatos": "serie", "contexto": "boletim"}
+
+
+def _erros_citacao(c, quem, classe):
+    if not isinstance(c, dict):
+        return [f"{quem}: citação não é objeto"]
+    tipo = c.get("tipo")
+    if tipo not in CAMPOS_CITACAO:
+        return [f"{quem}: tipo {tipo!r} (esperado serie ou boletim)"]
+    erros = [] if tipo == TIPO_DA_CLASSE[classe] else [f"{quem}: citação {tipo} numa nota de {classe}"]
+    for k, t in CAMPOS_CITACAO[tipo].items():
+        if k not in c:
+            erros.append(f"{quem}: sem {k}")
+        elif not isinstance(c[k], t) or isinstance(c[k], bool):
+            erros.append(f"{quem}: {k} com tipo {type(c[k]).__name__}")
+    if tipo == "serie" and not all(isinstance(x, str) for x in c.get("linhas", [])):
+        erros.append(f"{quem}: linhas não são texto")
+    if tipo == "boletim":
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(c.get("verificado_em"))):
+            erros.append(f"{quem}: verificado_em fora de AAAA-MM-DD")
+        if not re.fullmatch(r"[0-9a-f]{64}", str(c.get("arquivo_sha256"))):
+            erros.append(f"{quem}: arquivo_sha256 não é SHA256 em minúsculas")
+    return erros
+
+
+def _erros_nota(n, quem, publicada):
+    if not isinstance(n, dict):
+        return [f"{quem}: nota não é objeto"]
+    erros = []
+    obrigatorias = {"no": str, "classe": str, "texto": str, "fonte": list, "observacao": (str, type(None))}
+    if not publicada:
+        obrigatorias["ano"] = int
+    for k, t in obrigatorias.items():
+        if k not in n:
+            erros.append(f"{quem}: sem {k}")
+        elif not isinstance(n[k], t) or isinstance(n[k], bool):
+            erros.append(f"{quem}: {k} com tipo {type(n[k]).__name__}")
+    if n.get("classe") not in TIPO_DA_CLASSE:
+        return erros + [f"{quem}: classe {n.get('classe')!r}"]
+    if isinstance(n.get("fonte"), list):
+        if not n["fonte"]:
+            erros.append(f"{quem}: fonte vazia")
+        for i, c in enumerate(n["fonte"], 1):
+            erros += _erros_citacao(c, f"{quem} citação {i}", n["classe"])
+    for comp in n.get("comparacoes", []):
+        if not (isinstance(comp, list) and len(comp) == 3 and comp[1] in ("<", ">")):
+            erros.append(f"{quem}: comparação malformada {comp}")
+    return erros
+
+
+def t22_esquema(pasta=DADOS, caminho_notas=None):
+    erros, n_notas = [], 0
+    notas = _ler_json(caminho_notas or P.AQUI / "notas.json")
+    if not isinstance(notas, list):
+        erros.append("notas.json não é lista")
+        notas = []
+    for i, n in enumerate(notas):
+        erros += _erros_nota(n, f"notas.json[{i}]", publicada=False)
+    indice = _ler_json(Path(pasta) / "indice.json")
+    for ano in range(indice["anos"][0], indice["anos"][1] + 1):
+        d = _ler_json(Path(pasta) / f"{ano}.json")
+        if set(d) != CHAVES_ANO:
+            erros.append(f"{ano}.json: chaves {sorted(set(d) ^ CHAVES_ANO)}")
+        pib = d.get("pib", {})
+        if not (isinstance(pib.get("valor_nominal"), float) and isinstance(pib.get("fonte"), str)
+                and pib.get("trimestres") == 4 and re.fullmatch(r"\d{4}T[1-4]", str(pib.get("ultimo_trimestre")))):
+            erros.append(f"{ano}.json: bloco pib")
+        for no, itens in d.get("subcontas", {}).items():
+            if not isinstance(itens, list) or not all(
+                    isinstance(i, dict) and set(i) == {"codigo", "nome", "real", "nominal"} and isinstance(i["codigo"], str)
+                    and isinstance(i["nome"], str) and all(isinstance(i[k], (int, float)) for k in ("real", "nominal"))
+                    for i in itens):
+                erros.append(f"{ano}.json: subcontas de {no}")
+        if not isinstance(d.get("notas"), list):
+            erros.append(f"{ano}.json: notas não é lista")
+            continue
+        for j, n in enumerate(d["notas"]):
+            n_notas += 1
+            erros += _erros_nota(n, f"{ano}.json notas[{j}]", publicada=True)
+    return not erros, (f"notas.json ({len(notas)} notas) e {indice['anos'][1] - indice['anos'][0] + 1} AAAA.json "
+                       f"({n_notas} notas publicadas): {erros[:6] or 'esquema certo'}")
+
+
 def t11_determinismo(rtn, ipca, pib):
     a = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
     b = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
@@ -728,6 +823,7 @@ def lista_testes(c, rtn, ipca, pib):
         ("T19 Notas de contexto de 2020: fonte completa, nó certo, auxílios separados", lambda: t19_notas_contexto(c, rtn)),
         ("T20 Subcontas do JSON contra um oráculo próprio (aba 1.2 e IPCA)", lambda: t20_subcontas_oraculo(rtn, ipca)),
         ("T21 Subcontas e Bolsa Família de 2020 contra o boletim de dez/2020", lambda: t21_subcontas_boletim()),
+        ("T22 Esquema de notas.json e dos AAAA.json (fonte sempre lista de citações com tipo)", lambda: t22_esquema()),
         ("T23 Termos com dígito nas notas: lista fechada, só \"Covid-19\"", lambda: t23_termos_com_digito()),
     ]
 
