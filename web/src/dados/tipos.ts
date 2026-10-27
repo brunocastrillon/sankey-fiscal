@@ -25,6 +25,20 @@ export interface Bloco {
   financiamento: Record<string, number>;
 }
 
+export interface Subconta {
+  codigo: string;
+  nome: string;
+  real: number;
+  nominal: number;
+}
+
+export interface Nota {
+  no: string;
+  classe: 'fatos' | 'contexto';
+  texto: string;
+  fonte: Record<string, unknown>;
+}
+
 export interface DadosAno {
   ano: number;
   unidade: string;
@@ -37,7 +51,10 @@ export interface DadosAno {
   estrutura: Estrutura;
   nominal: Bloco;
   real: Bloco;
-  pib: { valor_nominal: number; fonte: string };
+  pib: { valor_nominal: number; fonte: string; trimestres: number; ultimo_trimestre: string };
+  /** Só nós com duas ou mais subcontas (aba 1.2 do RTN). */
+  subcontas?: Record<string, Subconta[]>;
+  notas?: Nota[];
 }
 
 export interface Indice {
