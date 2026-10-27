@@ -41,6 +41,19 @@ h1 .ano {
   border-radius: 8px;
   padding: 12px 16px;
 }
+.erro-carga button {
+  min-height: 44px;
+  padding: 0 16px;
+  font: inherit;
+  color: var(--texto);
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.carregando {
+  color: var(--secundario);
+}
 
 .cartao {
   position: relative;

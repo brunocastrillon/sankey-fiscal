@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import type { DadosAno } from '../dados/tipos';
 import { formatarMesBase } from '../formatar';
+import { montarGrafo } from '../grafo/grafo';
 import type { Grafo } from '../grafo/tipos';
 import { LARGURA_MAX_DESKTOP } from '../layout/constantes';
 import { calcularLayout } from '../layout/layout';
@@ -39,7 +41,9 @@ function rolarAte(g: SVGGElement, painelTopo: number | null) {
   if (Math.abs(alvo - topo) > 0.5) window.scrollTo({ top: alvo, behavior: 'smooth' });
 }
 
-export function Cartao({ grafo }: { grafo: Grafo }) {
+export function Cartao({ dados, ano }: { dados: DadosAno[]; ano: number }) {
+  // montado aqui, dentro da Protecao: dados corrompidos viram a mensagem de erro do desenho
+  const grafo: Grafo = useMemo(() => montarGrafo(dados.find((d) => d.ano === ano)!), [dados, ano]);
   const idSvg = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const refArea = useRef<HTMLDivElement>(null);
   const refAmostra = useRef<SVGTextElement>(null);

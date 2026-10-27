@@ -1,47 +1,65 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { anoSolicitado, SENTINELA } from './dados/anoDeTeste';
-import { carregarAno, carregarIndice } from './dados/carregar';
-import { montarGrafo } from './grafo/grafo';
-import type { Grafo } from './grafo/tipos';
+import { carregarIndice, carregarTodos } from './dados/carregar';
+import type { DadosAno } from './dados/tipos';
 import { TEXTOS } from './textos';
 import { Cartao } from './ui/Cartao';
 import { Protecao } from './ui/Protecao';
 
-async function carregarGrafo(): Promise<Grafo> {
+interface Carga {
+  dados: DadosAno[];
+  ano: number;
+}
+
+/** Os 11 anos (a escala compartilhada precisa de todos) e o ano a desenhar: o último do índice. */
+async function carregar(): Promise<Carga> {
   const indice = await carregarIndice();
+  const dados = await carregarTodos(indice);
   let ano = indice.anos[1];
   if (__PERMITIR_ANO__) {
     // só no build de teste (--mode teste); no de produção este bloco e o módulo somem do bundle
     const pedido = anoSolicitado(window.location.search);
-    if (pedido) {
+    if (pedido && dados.some((d) => d.ano === pedido)) {
       ano = pedido;
       document.documentElement.dataset.sentinela = SENTINELA;
     }
   }
-  return montarGrafo(await carregarAno(ano));
+  return { dados, ano };
 }
 
 export function App() {
-  const [grafo, setGrafo] = useState<Grafo | null>(null);
+  const [carga, setCarga] = useState<Carga | null>(null);
   const [erro, setErro] = useState(false);
-  useEffect(() => {
-    carregarGrafo().then(setGrafo, () => setErro(true));
+  const tentar = useCallback(() => {
+    setErro(false);
+    carregar().then(setCarga, () => setErro(true));
   }, []);
+  useEffect(tentar, [tentar]);
 
   return (
     <main className="pagina">
       <h1>
         {TEXTOS.titulo}
-        {grafo && <span className="ano"> · {grafo.ano}</span>}
+        {carga && <span className="ano"> · {carga.ano}</span>}
       </h1>
-      {erro && (
-        <p className="erro" data-testid="erro" role="alert">
-          {TEXTOS.erroCarga}
+      {!carga && !erro && (
+        <p className="carregando" data-testid="carregando" role="status">
+          {TEXTOS.carregando}
         </p>
       )}
-      {grafo && (
+      {erro && (
+        <div className="erro-carga">
+          <p className="erro" data-testid="erro" role="alert">
+            {TEXTOS.erroCarga}
+          </p>
+          <button type="button" onClick={tentar}>
+            {TEXTOS.tentarDeNovo}
+          </button>
+        </div>
+      )}
+      {carga && (
         <Protecao>
-          <Cartao grafo={grafo} />
+          <Cartao dados={carga.dados} ano={carga.ano} />
         </Protecao>
       )}
     </main>

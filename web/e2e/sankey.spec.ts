@@ -310,10 +310,33 @@ test.describe('desenho do celular sem rolagem (1024 px)', () => {
 });
 
 test.describe('foco da revisão', () => {
-  test('erro de carga: mensagem em texto, não página em branco', async ({ page }) => {
-    await page.route('**/dados/2025.json', (r) => r.fulfill({ status: 404, body: '' }));
+  test('erro de carga em UM dos anos: mensagem e "Tentar de novo"; sem a falha, o clique desenha', async ({ page }) => {
+    // a escala compartilhada precisa dos 11 anos: um ano que não é o desenhado também derruba a carga
+    let falhar = true;
+    await page.route('**/dados/2017.json', (r) => (falhar ? r.fulfill({ status: 404, body: '' }) : r.continue()));
     await page.goto('./?ano=2025');
     await expect(page.getByTestId('erro')).toHaveText(TEXTOS.erroCarga);
+    await expect(page.locator('svg.sankey')).toHaveCount(0);
+    await expect(page.locator('h1')).toBeVisible();
+    falhar = false;
+    await page.getByRole('button', { name: TEXTOS.tentarDeNovo }).click();
+    await page.locator('svg.sankey').waitFor();
+    await expect(page.getByTestId('erro')).toHaveCount(0);
+  });
+
+  test('carregamento: texto enquanto os anos chegam, depois o desenho', async ({ page }) => {
+    let soltar!: () => void;
+    const pronto = new Promise<void>((r) => (soltar = r));
+    await page.route('**/dados/2019.json', async (r) => {
+      await pronto;
+      await r.continue();
+    });
+    await page.goto('./?ano=2025');
+    await expect(page.getByTestId('carregando')).toHaveText(TEXTOS.carregando);
+    await expect(page.locator('svg.sankey')).toHaveCount(0);
+    soltar();
+    await page.locator('svg.sankey').waitFor();
+    await expect(page.getByTestId('carregando')).toHaveCount(0);
   });
 
   test('erro ao desenhar (dados corrompidos): mensagem em texto, não página em branco', async ({ page }) => {
