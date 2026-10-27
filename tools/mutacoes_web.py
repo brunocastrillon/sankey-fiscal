@@ -71,7 +71,16 @@ MUTACOES = [
 ]
 
 # Esperado de cada mutação: (testes que caem no vitest, testes que caem no e2e). Observado com --esboco e revisado um a um.
+ERRO_DE_CARGA = 'sankey.spec.ts > foco da revisão > erro de carga em UM dos anos: mensagem e "Tentar de novo"; sem a falha, o clique desenha'
 CAEM = {
+    "W1": ([MODOS_PCT_DESP.format(a) for a in ANOS], []),
+    "W2": (["test/modos.test.ts > % do PIB com duas casas > déficit de 2025 = 0,48% e superávit de 2022 = 0,46%, diferentes",
+            "test/modos.test.ts > formatarValor > R$ em bilhões; % da despesa com uma casa; % do PIB com duas"], []),
+    "W3": (["test/grafo.test.ts > fluxos do resultado em 2021 > os dois fluxos do resultado existem, um deles com valor 0; "
+            "o resultado com sinal vem do JSON"], []),
+    "W4": (["test/carregar.test.ts > carregarTodos > um arquivo com 404 rejeita a carga, com o nome do arquivo"], [ERRO_DE_CARGA]),
+    "W5": ([], [ERRO_DE_CARGA]),
+    "W6": ([], ["sankey.spec.ts > foco da revisão > carregamento: texto enquanto os anos chegam, depois o desenho"]),
 }
 for _m in MUTACOES:
     if _m["id"] in CAEM:
@@ -161,8 +170,11 @@ def conferir(m, cod, obs):
     """Diferenças entre o esperado e o observado (lista vazia se confere)."""
     dif = [f"saída de {k} {cod[k]} (esperado {e})" for k, e in m["esperado"].items() if cod[k] != e]
     for k in ("vitest", "e2e"):
-        if m["caem"][k] != obs[k]:
-            dif.append(f"caem no {k}: {obs[k]} (esperado {m['caem'][k]})")
+        a_mais = [t for t in obs[k] if t not in m["caem"][k]]
+        a_menos = [t for t in m["caem"][k] if t not in obs[k]]
+        if a_mais or a_menos:
+            dif.append(f"no {k}, {len(a_mais)} a mais e {len(a_menos)} a menos que o esperado"
+                       f"{' (' + (a_mais or a_menos)[0] + ')' if a_mais or a_menos else ''}")
     return dif
 
 
