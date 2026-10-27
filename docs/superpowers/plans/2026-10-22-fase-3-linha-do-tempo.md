@@ -337,12 +337,17 @@ cobre os 3 modos), mas só aparecem na tela na 3c (C2, seletor e legendas). As c
   `#AAAA/despesa` e `#AAAA/pib`, com o ano dentro do intervalo do índice (sem sufixo = `rs`); lido com expressão regular, sem
   `URLSearchParams`; `escreverHash(ano: number, modo: Modo): void` (`history.replaceState`; `rs` sem sufixo).
 - O nome do job `site-navegador` **não muda** (é check obrigatório do ruleset da `main`); só os passos dele e do job `site` mudam.
+- **Modo na tela só na C2 [decidido em 27/10/2026]:** o hash lê o modo (`lerHash` devolve `{ ano, modo }`), mas na 3b a tela
+  desenha sempre em R$, por uma constante transitória `MODOS_NA_TELA = ['rs']` (o modo lido fora dela vira `rs` no desenho).
+  Motivo: cada sub-fase vira um PR e um deploy; modos em % sem legenda, sem seletor e sem a frase da receita acima do gasto
+  seriam uma funcionalidade pela metade em produção. A C2 tira a constante e substitui o teste transitório.
 
 - [ ] **Passo 1: Testes que falham.** `hash.test.ts`: `#2020` → `{ 2020, rs }`; `#2020/despesa` → `{ 2020, desp }`;
   `#2020/pib` → `{ 2020, pib }`; `#1999`, `#2026`, `#abc`, `#2020x`, `#`, `#02020`, `#2020/`, `#2020/xyz`, `#2020/PIB`, `#/pib`,
   `""` → `null`; `escreverHash(2022, 'pib')` deixa `#2022/pib`. Em `sankey.spec.ts`: abrir `./#2020` mostra 2020 no `h1` e no
   `title`; abrir `./#1999` e `./#2020/xyz` mostra o padrão (último ano, R$) e o console não tem erro; trocar o hash
-  (`location.hash = '#2022/despesa'`) redesenha 2022 em "% da despesa".
+  (`location.hash = '#2022'`) redesenha 2022. **Transitório (sai na C2):** abrir `./#2022/pib` desenha 2022 em R$ (rótulos em
+  "R$ … bi", nenhum em %); mutação: `MODOS_NA_TELA = ['rs', 'desp', 'pib']` derruba.
 - [ ] **Passo 2:** `npm test` e `npm run e2e` → FALHAM.
 - [ ] **Passo 3:** implementar; ajustar `conferir-bundle` (continua conferindo os caminhos sob `/sankey-fiscal/`).
 - [ ] **Passo 4:** `npm test`, `npm run build && node scripts/conferir-bundle.mjs dist`, `npm run e2e` → passam.
@@ -405,7 +410,8 @@ orçamento, **C5b** (canvas).
 - Teste: `web/e2e/controle.spec.ts`
 
 - [ ] **Passo 1:** E2E: trocar para "% da despesa" mostra rótulos em %, a legenda com a base e `receitaAcimaDoGasto`; "% do PIB"
-  mostra duas casas; no celular, a frase curta na barra, a legenda longa abaixo do desenho, os nomes completos do seletor sem
+  mostra duas casas; trocar o hash (`location.hash = '#2022/despesa'`) redesenha 2022 em "% da despesa" (vindo da B5, que tira
+  `MODOS_NA_TELA` e substitui o teste transitório "`#2022/pib` desenha R$"); no celular, a frase curta na barra, a legenda longa abaixo do desenho, os nomes completos do seletor sem
   corte (`scrollWidth ≤ clientWidth`), fontes da frase e da legenda ≥ 11 px, altura da barra medida e reportada.
 - [ ] **Passo 2:** FALHA. **Passo 3:** implementar. **Passo 4:** passa.
 - [ ] **Passo 5:** commit `feat: modos % da despesa e % do PIB na tela, com legendas`.
