@@ -1,24 +1,27 @@
 """Manifesto de mutações da 3a e o executor que as roda numa cópia descartável do repositório (fora do CI).
 
-Cada mutação diz em que arquivo mexer (trecho -> substituição), e o que se espera de cada comando: pytest, testes.py,
-pipeline.py (com a comparação do CI entre dados/ e o que o pipeline gera) e verificar_trechos.py. O executor:
+Cada mutação diz em que arquivo mexer (trecho -> substituição) e o que se espera: o código de saída de pytest, testes.py,
+pipeline.py e verificar_trechos.py, o conjunto de testes que cai (no pytest e no testes.py) e os arquivos de dados/ que a
+comparação do CI acusaria. O executor:
 
-1. cria uma cópia descartável com `git worktree add --detach` numa pasta temporária, fora do repositório (nunca mexe na
+1. recusa rodar se o Python não é o do .venv do repositório;
+2. cria uma cópia descartável com `git worktree add --detach` numa pasta temporária, fora do repositório (nunca mexe na
    árvore de trabalho principal);
-2. para cada mutação, aplica as edições, roda os comandos com o Python que roda este script (o do .venv), lendo o código
-   de saída de cada um (sem shell e sem pipe), e restaura os arquivos;
-3. imprime uma tabela em Markdown e sai com 1 se algum resultado for diferente do esperado;
-4. remove a cópia.
+3. para cada mutação, aplica as edições, roda os comandos (sem shell e sem pipe, timeout de 300 s cada), lendo o código de
+   saída de cada um, e restaura os arquivos;
+4. imprime uma tabela em Markdown e sai com 1 se algum resultado for diferente do esperado;
+5. remove a cópia e roda `git worktree prune`.
 
-Uso (na raiz do repositório, com o .venv):
+Uso (na raiz do repositório):
     .venv/Scripts/python tools/mutacoes.py --pdf C:/caminho/RTN_Boletim_2020_12.pdf
     .venv/Scripts/python tools/mutacoes.py --pdf ... --so 1,6,17 --tabela saida.md
+    .venv/Scripts/python tools/mutacoes.py --pdf ... --esboco     # imprime o observado, para revisar e fixar
 
-Sem --pdf, o verificar_trechos.py não roda e as mutações que dependem dele ficam marcadas como não conferidas.
+Sem --pdf, o verificar_trechos.py não roda (o código esperado dele não é conferido).
 Os trechos valem para o código da 3a; numa sub-fase nova, acrescente mutações e confira que cada trecho ainda é único.
 """
 import argparse
-import importlib.util
+import os
 import re
 import shutil
 import subprocess
@@ -28,75 +31,198 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 
-# esperado: código de saída de cada comando; "pipeline" é a saída do python pipeline.py (a comparação de dados/ só é
-# mostrada, porque qualquer mutação nos dados ou nas notas a muda de propósito)
-DERRUBA = {"pytest": 1, "testes": 1, "pipeline": 0, "verificar": 0}
-DERRUBA_E_PARA_O_PIPELINE = {"pytest": 1, "testes": 1, "pipeline": 1, "verificar": 0}
-SO_VERIFICAR = {"pytest": 0, "testes": 0, "pipeline": 0, "verificar": 1}
-PASSA = {"pytest": 0, "testes": 0, "pipeline": 0, "verificar": 0}
 
-# (arquivo, trecho, substituição); o trecho tem de aparecer uma vez só (ou use "primeira" como 4º elemento)
+def mut(id_, nome, edicoes, codigos, pytest=(), testes=(), diff="igual"):
+    """Uma mutação. codigos: saídas esperadas de pytest, testes.py, pipeline.py e verificar_trechos.py, nessa ordem.
+    pytest e testes: o conjunto de testes que cai em cada um. diff: arquivos de dados/ que a comparação do CI acusaria
+    ("igual" se nenhum; "—" se o pipeline não chega a gerar)."""
+    return {"id": id_, "nome": nome, "edicoes": edicoes,
+            "esperado": dict(zip(("pytest", "testes", "pipeline", "verificar"), codigos)),
+            "caem": {"pytest": list(pytest), "testes": list(testes)}, "diff": diff}
+
+
+# Testes que caem quando o pipeline não gera os dados (montar_anos levanta ValueError antes de gravar)
+QUANDO_O_PIPELINE_PARA = ["test_bloco_pib_no_json_e_ultimo_trimestre_do_arquivo_no_indice", "test_subcontas_no_json",
+                          "T11", "test_notas_de_2020_com_os_valores_da_serie",
+                          "test_notas_no_json_e_lista_vazia_nos_outros_anos", "test_textos_com_codigo_e_nome_da_linha",
+                          "test_base_precos_em_toda_nota_com_valor"]
+NOTA21_ATE_TRECHO = ('"arquivo_sha256": "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef",\n'
+                     '        "trecho": "houve migração')
+
+# (arquivo, trecho, substituição); o trecho tem de aparecer uma vez só (ou use "primeira" como 4º elemento).
+# Os conjuntos de testes que caem foram observados (--esboco) e revisados um a um antes de virar o esperado.
 MUTACOES = [
-    {"id": "1", "nome": "valores de 4.3.03 e 4.3.07 trocados no dados/2020.json (real e nominal)", "esperado": DERRUBA,
-     "edicoes": [("dados/2020.json", "108120.886", "@@A@@"), ("dados/2020.json", "591910.668", "108120.886"),
-                 ("dados/2020.json", "@@A@@", "591910.668"), ("dados/2020.json", "78247.026", "@@B@@"),
-                 ("dados/2020.json", "429608.08", "78247.026"), ("dados/2020.json", "@@B@@", "429608.08")]},
-    {"id": "2", "nome": "nota de fatos do Bolsa Família no nó da Saúde", "esperado": DERRUBA,
-     "edicoes": [("notas.json", '"no": "bolsa_familia",\n    "classe": "fatos"',
-                  '"no": "saude_obrigatoria",\n    "classe": "fatos"')]},
-    {"id": "3", "nome": "\"a maior fatia\" no texto da nota da Nota 18", "esperado": DERRUBA,
-     "edicoes": [("notas.json", "Entre elas, o Tesouro destaca", "A maior fatia vem delas; o Tesouro destaca")]},
-    {"id": "4", "nome": "{codigo:4.3.10} na nota 2, fora da fonte", "esperado": DERRUBA,
-     "edicoes": [("notas.json", "esse está na linha {codigo:4.3.07} {nome:4.3.07}, segundo",
-                  "esse está na linha {codigo:4.3.07} {nome:4.3.07}, não na {codigo:4.3.10}, segundo")]},
-    {"id": "5", "nome": "termo novo nas duas listas de termos com dígito", "esperado": DERRUBA,
-     "edicoes": [("pipeline.py", 'TERMOS_COM_DIGITO = ("Covid-19",)', 'TERMOS_COM_DIGITO = ("Covid-19", "Lei 14.020")'),
-                 ("testes.py", 'TERMOS_COM_DIGITO_APROVADOS = ("Covid-19",)',
-                  'TERMOS_COM_DIGITO_APROVADOS = ("Covid-19", "Lei 14.020")')]},
-    {"id": "6", "nome": "3T2020 removido do CSV do PIB", "esperado": DERRUBA_E_PARA_O_PIPELINE,
-     "edicoes": [("entrada/tabela1846.csv", '"3º trimestre 2020";', ""),
-                 ("entrada/tabela1846.csv", '"PIB a preços de mercado";', "", "primeira"),
-                 ("entrada/tabela1846.csv", '"1929323";', "")]},
-    {"id": "7", "nome": "{mes:4.4.1.2:13} no texto da nota do Bolsa Família", "esperado": DERRUBA_E_PARA_O_PIPELINE,
-     "edicoes": [("notas.json", "contra {mes:4.4.1.2:03} só em março", "contra {mes:4.4.1.2:13} só em março")]},
-    {"id": "8", "nome": "{soma:4.4.1.2:08-04} (início maior que o fim)", "esperado": DERRUBA_E_PARA_O_PIPELINE,
-     "edicoes": [("notas.json", "{soma:4.4.1.2:04-08} entre abril", "{soma:4.4.1.2:08-04} entre abril")]},
-    {"id": "9", "nome": "trimestre duplicado no CSV do PIB", "esperado": DERRUBA_E_PARA_O_PIPELINE,
-     "edicoes": [("entrada/tabela1846.csv", '"2º trimestre 2015"', '"1º trimestre 2015"')]},
-    {"id": "10", "nome": "resíduo na fonte: 1.1.03.1 de mai/2018 + R$ 1 mi (a mãe 1.1.03 não muda)", "esperado": DERRUBA,
-     "edicoes": [("pipeline.py", '    corpo = corpo.apply(pd.to_numeric, errors="coerce")\n',
-                  '    corpo = corpo.apply(pd.to_numeric, errors="coerce")\n    if aba == "1.2":\n'
-                  '        corpo.loc["1.1.03.1", pd.Timestamp("2018-05-01")] += 1\n')]},
-    {"id": "11", "nome": "trecho inventado na citação da Nota 21", "esperado": SO_VERIFICAR,
-     "edicoes": [("notas.json", '"trecho": "houve migração temporária desses benefícios para os benefícios de auxílio emergencial"',
-                  '"trecho": "houve migração definitiva desses benefícios para o auxílio emergencial"')]},
-    {"id": "12", "nome": "dados/2020.json: nominal da 4.3.07 + 1.000, sem regenerar", "esperado": DERRUBA,
-     "edicoes": [("dados/2020.json", "429608.08", "430608.08")]},
-    {"id": "13", "nome": "dados/2020.json: real da 4.3.07 + 0,002, sem regenerar", "esperado": DERRUBA,
-     "edicoes": [("dados/2020.json", "591910.668", "591910.67")]},
-    {"id": "14", "nome": "código de subconta trocado no pipeline (4.3.07 gravada como 4.3.08), valor certo", "esperado": DERRUBA,
-     "edicoes": [("pipeline.py", '[{"codigo": c, "nome": nomes[c],',
-                  '[{"codigo": ("4.3.08" if c == "4.3.07" else c), "nome": nomes[c],')]},
-    {"id": "15", "nome": "código de subconta trocado à mão no dados/2020.json (4.3.07 -> 4.3.08), valor certo", "esperado": DERRUBA,
-     "edicoes": [("dados/2020.json", '"codigo": "4.3.07"', '"codigo": "4.3.08"')]},
-    {"id": "16", "nome": "referência do boletim: 4.3.07 + 0,6% (432.074,2)", "esperado": DERRUBA,
-     "edicoes": [("referencias/boletim-dez-2020.json", '"valor": 429497.2,', '"valor": 432074.2,')]},
-    {"id": "17", "nome": "referência do boletim: 4.3.07 + 0,4% (431.215,2)", "esperado": DERRUBA,
-     "edicoes": [("referencias/boletim-dez-2020.json", '"valor": 429497.2,', '"valor": 431215.2,')]},
-    {"id": "18", "nome": "Fundeb (Nota 18) com linha_rtn \"4\"", "esperado": DERRUBA,
-     "edicoes": [("notas.json", 'combate ao Covid-19",\n        "linha_rtn": "4.3.07"', 'combate ao Covid-19",\n        "linha_rtn": "4"')]},
-    {"id": "19", "nome": "Bolsa Família (Nota 21) com linha_rtn \"4\"", "esperado": DERRUBA,
-     "edicoes": [("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "4",')]},
-    {"id": "20", "nome": "Fundeb (Nota 18) com linha_rtn \"4.3.05\"", "esperado": DERRUBA,
-     "edicoes": [("notas.json", 'combate ao Covid-19",\n        "linha_rtn": "4.3.07"', 'combate ao Covid-19",\n        "linha_rtn": "4.3.05"')]},
-    {"id": "21", "nome": "Bolsa Família (Nota 21) com linha_rtn \"4.4.1.3\"", "esperado": DERRUBA,
-     "edicoes": [("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "4.4.1.3",')]},
-    {"id": "22", "nome": "nota de fatos do Fundeb com {linha:4.3.05}, com a 4.3.05 na fonte", "esperado": DERRUBA,
-     "edicoes": [("notas.json", '{nome:4.3.01}."', '{nome:4.3.01}. O BPC soma {linha:4.3.05}."'),
-                 ("notas.json", '          "4.3.10"\n        ],', '          "4.3.10",\n          "4.3.05"\n        ],')]},
-    {"id": "C", "nome": "controle: referência do boletim: 4.3.07 + 0,05% (429.711,9) — passa", "esperado": PASSA,
-     "edicoes": [("referencias/boletim-dez-2020.json", '"valor": 429497.2,', '"valor": 429711.9,')]},
+    mut("1", "valores de 4.3.03 e 4.3.07 trocados no dados/2020.json (real e nominal)",
+        [("dados/2020.json", "108120.886", "@@A@@"), ("dados/2020.json", "591910.668", "108120.886"),
+         ("dados/2020.json", "@@A@@", "591910.668"), ("dados/2020.json", "78247.026", "@@B@@"),
+         ("dados/2020.json", "429608.08", "78247.026"), ("dados/2020.json", "@@B@@", "429608.08")],
+        (1, 1, 0, 0)),
+    mut("2", "nota de fatos do Bolsa Família no nó da Saúde",
+        [("notas.json", '"no": "bolsa_familia",\n    "classe": "fatos"', '"no": "saude_obrigatoria",\n    "classe": "fatos"')],
+        (1, 1, 1, 0)),
+    mut("3", "\"a maior fatia\" no texto da nota da Nota 18",
+        [("notas.json", "Entre elas, o Tesouro destaca", "A maior fatia vem delas; o Tesouro destaca")], (1, 1, 0, 0)),
+    mut("4", "{codigo:4.3.10} na nota 2, fora da fonte",
+        [("notas.json", "esse está na linha {codigo:4.3.07} {nome:4.3.07}, segundo",
+          "esse está na linha {codigo:4.3.07} {nome:4.3.07}, não na {codigo:4.3.10}, segundo")], (1, 1, 1, 0)),
+    mut("5", "termo novo nas duas listas de termos com dígito",
+        [("pipeline.py", 'TERMOS_COM_DIGITO = ("Covid-19",)', 'TERMOS_COM_DIGITO = ("Covid-19", "Lei 14.020")'),
+         ("testes.py", 'TERMOS_COM_DIGITO_APROVADOS = ("Covid-19",)', 'TERMOS_COM_DIGITO_APROVADOS = ("Covid-19", "Lei 14.020")')],
+        (1, 1, 0, 0)),
+    mut("6", "3T2020 removido do CSV do PIB",
+        [("entrada/tabela1846.csv", '"3º trimestre 2020";', ""),
+         ("entrada/tabela1846.csv", '"PIB a preços de mercado";', "", "primeira"),
+         ("entrada/tabela1846.csv", '"1929323";', "")], (1, 1, 1, 0)),
+    mut("7", "{mes:4.4.1.2:13} no texto da nota do Bolsa Família",
+        [("notas.json", "contra {mes:4.4.1.2:03} só em março", "contra {mes:4.4.1.2:13} só em março")], (1, 1, 1, 0)),
+    mut("8", "{soma:4.4.1.2:08-04} (início maior que o fim)",
+        [("notas.json", "{soma:4.4.1.2:04-08} entre abril", "{soma:4.4.1.2:08-04} entre abril")], (1, 1, 1, 0)),
+    mut("9", "trimestre duplicado no CSV do PIB",
+        [("entrada/tabela1846.csv", '"2º trimestre 2015"', '"1º trimestre 2015"')], (1, 1, 1, 0)),
+    mut("10", "resíduo na fonte: 1.1.03.1 de mai/2018 + R$ 1 mi (a mãe 1.1.03 não muda)",
+        [("pipeline.py", '    corpo = corpo.apply(pd.to_numeric, errors="coerce")\n',
+          '    corpo = corpo.apply(pd.to_numeric, errors="coerce")\n    if aba == "1.2":\n'
+          '        corpo.loc["1.1.03.1", pd.Timestamp("2018-05-01")] += 1\n')], (1, 1, 0, 0)),
+    mut("11", "trecho inventado na citação da Nota 21",
+        [("notas.json", '"trecho": "houve migração temporária desses benefícios para os benefícios de auxílio emergencial"',
+          '"trecho": "houve migração definitiva desses benefícios para o auxílio emergencial"')], (0, 0, 0, 1)),
+    mut("12", "dados/2020.json: nominal da 4.3.07 + 1.000, sem regenerar",
+        [("dados/2020.json", "429608.08", "430608.08")], (1, 1, 0, 0)),
+    mut("13", "dados/2020.json: real da 4.3.07 + 0,002, sem regenerar",
+        [("dados/2020.json", "591910.668", "591910.67")], (1, 1, 0, 0)),
+    mut("14", "código de subconta trocado no pipeline (4.3.07 gravada como 4.3.08), valor certo",
+        [("pipeline.py", '[{"codigo": c, "nome": nomes[c],', '[{"codigo": ("4.3.08" if c == "4.3.07" else c), "nome": nomes[c],')],
+        (1, 1, 0, 0)),
+    mut("15", "código de subconta trocado à mão no dados/2020.json (4.3.07 -> 4.3.08), valor certo",
+        [("dados/2020.json", '"codigo": "4.3.07"', '"codigo": "4.3.08"')], (1, 1, 0, 0)),
+    mut("17", "referência do boletim: 4.3.07 + 0,4% (431.215,2)",
+        [("referencias/boletim-dez-2020.json", '"valor": 429497.2,', '"valor": 431215.2,')], (1, 1, 0, 0)),
+    mut("18", "Fundeb (Nota 18) com linha_rtn \"4\"",
+        [("notas.json", 'combate ao Covid-19",\n        "linha_rtn": "4.3.07"', 'combate ao Covid-19",\n        "linha_rtn": "4"')],
+        (1, 1, 1, 0)),
+    mut("19", "Bolsa Família (Nota 21) com linha_rtn \"4\"",
+        [("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "4",')], (1, 1, 1, 0)),
+    mut("20", "Fundeb (Nota 18) com linha_rtn \"4.3.05\"",
+        [("notas.json", 'combate ao Covid-19",\n        "linha_rtn": "4.3.07"', 'combate ao Covid-19",\n        "linha_rtn": "4.3.05"')],
+        (1, 1, 1, 0)),
+    mut("21", "Bolsa Família (Nota 21) com linha_rtn \"4.4.1.3\"",
+        [("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "4.4.1.3",')], (1, 1, 1, 0)),
+    mut("22", "nota de fatos do Fundeb com {linha:4.3.05}, com a 4.3.05 na fonte",
+        [("notas.json", '{nome:4.3.01}."', '{nome:4.3.01}. O BPC soma {linha:4.3.05}."'),
+         ("notas.json", '          "4.3.10"\n        ],', '          "4.3.10",\n          "4.3.05"\n        ],')],
+        (1, 1, 1, 0)),
+    # 3ª passada: esquema fechado, regras por campo, tipo desconhecido, quantificadores, valor de nó editado à mão
+    mut("N1", "citação da Nota 21 com tipo \"Boletim\" (maiúsculo)",
+        [("notas.json", '"tipo": "boletim",\n        "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",\n'
+                        '        "boletim": "v. 26, n. 12",\n        "base_precos": "R$ correntes (o boletim publica a preços correntes)",\n'
+                        '        "pagina": 9,\n        "nota": "Nota 21',
+          '"tipo": "Boletim",\n        "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",\n'
+          '        "boletim": "v. 26, n. 12",\n        "base_precos": "R$ correntes (o boletim publica a preços correntes)",\n'
+          '        "pagina": 9,\n        "nota": "Nota 21')], (1, 1, 1, 1)),
+    mut("N2", "observacao dentro da citação da Nota 21 (chave desconhecida)",
+        [("notas.json", NOTA21_ATE_TRECHO, NOTA21_ATE_TRECHO.replace('"trecho"', '"observacao": "x",\n        "trecho"'))],
+        (1, 1, 1, 0)),
+    mut("N3", "dígito na observacao (\"em 2020\")",
+        [("notas.json", "a tabela da p. 7 numera diferente\"", "a tabela da p. 7 numera diferente em 2020\"", "primeira")],
+        (1, 1, 1, 0)),
+    mut("N4", "dígito no trecho da Nota 16 (\"… e DF em 2020\")",
+        [("notas.json", "Estados, Municípios e DF\"", "Estados, Municípios e DF em 2020\"")], (1, 1, 1, 1)),
+    mut("N5", "nota da Nota 21 fora da forma \"Nota N …\" (\"21\")",
+        [("notas.json", '"nota": "Nota 21 das Notas Explicativas do resultado acumulado"', '"nota": "21"')], (1, 1, 1, 0)),
+    mut("N6", "verificado_em inexistente (2026-02-30) na Nota 21",
+        [("notas.json", '"verificado_em": "2026-10-26",\n        ' + NOTA21_ATE_TRECHO,
+          '"verificado_em": "2026-02-30",\n        ' + NOTA21_ATE_TRECHO)], (1, 1, 1, 0)),
+    mut("N7", "verificado_em no futuro (2999-01-01) na Nota 21",
+        [("notas.json", '"verificado_em": "2026-10-26",\n        ' + NOTA21_ATE_TRECHO,
+          '"verificado_em": "2999-01-01",\n        ' + NOTA21_ATE_TRECHO)], (1, 1, 1, 0)),
+    mut("N8", "quantificador novo: \"Boa parte\" no texto da nota da Nota 18",
+        [("notas.json", "Entre elas, o Tesouro destaca", "Boa parte vem delas; o Tesouro destaca")], (1, 1, 0, 0)),
+    mut("N9", "R13: dados/2020.json, real do nó Fundeb e outras + 1.000, sem regenerar",
+        [("dados/2020.json", "906938.601", "907938.601")], (1, 1, 0, 0)),
+    mut("N10", "R13b: dados/2020.json, nominal do nó Fundeb e outras + 1.000, sem regenerar",
+        [("dados/2020.json", "657775.789", "658775.789")], (1, 1, 0, 0)),
+    mut("N11", "linha_rtn válida trocada: Nota 21 com 4.4.1.2 (em L) — passa",
+        [("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "4.4.1.2",')], (0, 0, 0, 0)),
+    mut("C", "controle: referência do boletim: 4.3.07 + 0,05% (429.711,9) — passa",
+        [("referencias/boletim-dez-2020.json", '"valor": 429497.2,', '"valor": 429711.9,')], (0, 0, 0, 0)),
 ]
+
+
+# Esperado de cada mutação: (testes que caem no pytest, testes que caem no testes.py, arquivos que o diff do CI
+# acusaria). Observado com --esboco em c5ed586 e revisado um a um (ver o PR #18).
+NOTAS_INVALIDAS = sorted(QUANDO_O_PIPELINE_PARA + ["T22", "test_notas_e_dados_de_hoje_sao_validos",
+                                                "test_observacao_aceita_paginas_p_n"])
+CAEM = {
+    '1': (['T20', 'T21', 'test_subcontas_boletim_dez_2020', 'test_subcontas_oraculo', 'test_t21_tolerancia_de_0_1_por_cento[1.0005-True]'],
+           ['T20', 'T21'], ['2020.json']),
+    '2': (NOTAS_INVALIDAS + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T22'], '—'),
+    '3': (['T19'],
+           ['T19'], ['2020.json']),
+    '4': (NOTAS_INVALIDAS + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T22'], '—'),
+    '5': (['T23'],
+           ['T23'], []),
+    '6': (QUANDO_O_PIPELINE_PARA + ['A4', 'T13', 'test_a4_pulada_quando_o_t13_falha', 'test_pipeline_recusa_notas_invalidas_antes_de_gravar'],
+           ['A4', 'T11', 'T13'], '—'),
+    '7': (QUANDO_O_PIPELINE_PARA,
+           ['T11'], '—'),
+    '8': (QUANDO_O_PIPELINE_PARA,
+           ['T11'], '—'),
+    '9': (QUANDO_O_PIPELINE_PARA + ['A3', 'A4', 'T13', 'test_a4_pulada_quando_o_t13_falha', 'test_ano_incompleto_fica_fora_e_ultimo_trimestre_e_o_do_arquivo', 'test_pipeline_recusa_notas_invalidas_antes_de_gravar', 'test_trimestre_duplicado_levanta', 'test_valor_nulo_tira_o_ano_e_o_pipeline_falha'],
+           ['A3', 'A4', 'T11', 'T13'], '—'),
+    '10': (['T14'],
+           ['T14'], ['2018.json']),
+    '11': ([],
+           [], ['2020.json']),
+    '12': (['T20', 'T21', 'T24', 'test_dados_publicados_fecham', 'test_subcontas_boletim_dez_2020', 'test_subcontas_oraculo', 'test_t21_tolerancia_de_0_1_por_cento[1.0005-True]'],
+           ['T20', 'T21', 'T24'], ['2020.json']),
+    '13': (['T20', 'test_subcontas_oraculo'],
+           ['T20'], ['2020.json']),
+    '14': (['T14', 'T15'],
+           ['T14', 'T15'], ['2015.json', '2016.json', '2017.json', '2018.json', '2019.json', '2020.json', '2021.json', '2022.json', '2023.json', '2024.json', '2025.json']),
+    '15': (['T20', 'T21', 'test_subcontas_boletim_dez_2020', 'test_subcontas_oraculo', 'test_t21_tolerancia_de_0_1_por_cento[1.0005-True]', 'test_t21_tolerancia_de_0_1_por_cento[1.004-False]'],
+           ['T20', 'T21'], ['2020.json']),
+    '17': (['T21', 'test_subcontas_boletim_dez_2020', 'test_t21_tolerancia_de_0_1_por_cento[1.0005-True]'],
+           ['T21'], []),
+    '18': (NOTAS_INVALIDAS + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T22'], '—'),
+    '19': (NOTAS_INVALIDAS + ['T17'],
+           ['T11', 'T17', 'T22'], '—'),
+    '20': (NOTAS_INVALIDAS + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T22'], '—'),
+    '21': (NOTAS_INVALIDAS + ['T17'],
+           ['T11', 'T17', 'T22'], '—'),
+    '22': (NOTAS_INVALIDAS + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T22'], '—'),
+    'N1': (NOTAS_INVALIDAS + ['T17', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T19', 'T22'], '—'),
+    'N2': (NOTAS_INVALIDAS + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T22'], '—'),
+    'N3': (NOTAS_INVALIDAS + ['T16', 'T19', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
+           ['T11', 'T16', 'T19', 'T22'], '—'),
+    'N4': (NOTAS_INVALIDAS + ['T16', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
+           ['T11', 'T16', 'T22'], '—'),
+    'N5': (NOTAS_INVALIDAS + ['T16', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1', 'test_t17_regra_unica_rejeita[Bolsa com linha_rtn 4-mudar]', 'test_t17_regra_unica_rejeita[Bolsa com linha_rtn 4.4.1.3-mudar]', 'test_termos_com_digito_e_lista_fechada_so_com_covid', 'test_validar_notas_recusa[data_futura]', 'test_validar_notas_recusa[data_inexistente]', 'test_validar_notas_recusa[nota_na_tabela_numerica]', 'test_validar_notas_recusa[nota_sem_forma]', 'test_validar_notas_recusa[pagina_zero]', 'test_validar_notas_recusa[tipo_maiusculo]'],
+           ['T11', 'T16', 'T19', 'T22'], '—'),
+    'N6': (NOTAS_INVALIDAS + ['T16', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
+           ['T11', 'T16', 'T22'], '—'),
+    'N7': (NOTAS_INVALIDAS + ['T16', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
+           ['T11', 'T16', 'T22'], '—'),
+    'N8': (['T19'],
+           ['T19'], ['2020.json']),
+    'N9': (['T24', 'test_dados_publicados_fecham'],
+           ['T24'], ['2020.json']),
+    'N10': (['T24', 'test_dados_publicados_fecham'],
+           ['T24'], ['2020.json']),
+    'N11': ([],
+           [], ['2020.json']),
+    'C': ([],
+           [], []),
+}
+for _m in MUTACOES:
+    _p, _t, _d = CAEM[_m["id"]]
+    _m["caem"], _m["diff"] = {"pytest": _p, "testes": _t}, _d
 
 
 def aplicar(copia, edicoes):
@@ -116,20 +242,25 @@ def aplicar(copia, edicoes):
     return originais
 
 
+TIMEOUT_S = 300  # por comando
+
+
 def rodar(argv, cwd):
-    r = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
-                       env={**__import__("os").environ, "PYTHONIOENCODING": "utf-8"})
+    try:
+        r = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, encoding="utf-8", timeout=TIMEOUT_S,
+                           env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+    except subprocess.TimeoutExpired:
+        return "timeout", ""
     return r.returncode, r.stdout + r.stderr
 
 
 def caiu_no_pytest(saida):
     ids = re.findall(r"^(?:FAILED|ERROR) (.+?)(?: - .*)?$", saida, re.M)
-    curtos = [re.sub(r"^test_validacao\[(.+)\]$", r"\1", i.split("::")[-1]) for i in ids]
-    return ", ".join(dict.fromkeys(curtos)) or "—"
+    return sorted({re.sub(r"^test_validacao\[(.+)\]$", r"\1", i.split("::")[-1]) for i in ids})
 
 
 def caiu_no_testes(saida):
-    return ", ".join(re.findall(r"^\[FALHOU\] (\S+)", saida, re.M)) or "—"
+    return sorted(set(re.findall(r"^\[FALHOU\] (\S+)", saida, re.M)))
 
 
 def comparar_dados(a, b):
@@ -139,6 +270,46 @@ def comparar_dados(a, b):
     return [n for n in nomes if not (a / n).exists() or not (b / n).exists() or norm(a / n) != norm(b / n)]
 
 
+def observar(m, copia, base, py, pdf):
+    """Aplica a mutação, roda os quatro comandos e devolve o observado: códigos, o que caiu e o diff."""
+    originais = aplicar(copia, m["edicoes"])
+    try:
+        cod, obs = {}, {}
+        cod["pytest"], s = rodar([py, "-m", "pytest", "-q", "-p", "no:cacheprovider"], copia)
+        obs["pytest"] = caiu_no_pytest(s)
+        cod["testes"], s = rodar([py, "-X", "utf8", "testes.py"], copia)
+        obs["testes"] = caiu_no_testes(s)
+        saida = base / f"saida-{m['id']}"
+        shutil.rmtree(saida, ignore_errors=True)
+        cod["pipeline"], s = rodar([py, "-X", "utf8", "pipeline.py", "--saida", str(saida)], copia)
+        obs["erro_pipeline"] = (s.strip().splitlines() or ["—"])[-1][:100] if cod["pipeline"] else "—"
+        obs["diff"] = comparar_dados(copia / "dados", saida) if cod["pipeline"] == 0 else "—"
+        if pdf:
+            cod["verificar"], s = rodar([py, "-X", "utf8", "verificar_trechos.py", "--pdf", pdf], copia)
+            obs["verificar"] = [l[9:90] for l in s.splitlines() if l.startswith("[FALHOU]")]
+        else:
+            cod["verificar"], obs["verificar"] = None, None
+    finally:
+        for arquivo, b in originais.items():
+            (copia / arquivo).write_bytes(b)
+    return cod, obs
+
+
+def conferir(m, cod, obs):
+    """Diferenças entre o esperado e o observado (lista vazia se confere)."""
+    e, dif = m["esperado"], []
+    for k in ("pytest", "testes", "pipeline", "verificar"):
+        if cod[k] is not None and cod[k] != e[k]:
+            dif.append(f"saída de {k} {cod[k]} (esperado {e[k]})")
+    for k in ("pytest", "testes"):
+        if sorted(m["caem"][k]) != obs[k]:
+            dif.append(f"caem no {k}: {obs[k]} (esperado {sorted(m['caem'][k])})")
+    esperado_diff = m["diff"] if isinstance(m["diff"], str) else sorted(m["diff"])
+    if obs["diff"] != esperado_diff:
+        dif.append(f"diff {obs['diff']} (esperado {esperado_diff})")
+    return dif
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -146,9 +317,11 @@ def main():
     ap.add_argument("--so", help="ids separados por vírgula (padrão: todas)")
     ap.add_argument("--tabela", help="grava a tabela em Markdown neste arquivo")
     ap.add_argument("--ref", default="HEAD", help="commit a testar (padrão: HEAD)")
+    ap.add_argument("--esboco", action="store_true", help="imprime o observado no formato do manifesto (para revisar)")
     a = ap.parse_args()
-    if importlib.util.find_spec("pandas") is None:
-        raise SystemExit(f"{sys.executable} não tem pandas: rode com o Python do .venv")
+    venv = (RAIZ / ".venv").resolve()
+    if Path(sys.prefix).resolve() != venv:
+        raise SystemExit(f"rode com o Python do .venv ({venv}), não com {sys.executable}")
     py = sys.executable
     escolhidas = [m for m in MUTACOES if not a.so or m["id"] in a.so.split(",")]
     base = Path(tempfile.mkdtemp(prefix="sankey-mutacoes-"))
@@ -158,41 +331,26 @@ def main():
     try:
         print(f"cópia descartável: {copia} ({a.ref})")
         for m in escolhidas:
-            originais = aplicar(copia, m["edicoes"])
-            try:
-                cod, res = {}, {}
-                cod["pytest"], s = rodar([py, "-m", "pytest", "-q", "-p", "no:cacheprovider"], copia)
-                res["pytest"] = caiu_no_pytest(s)
-                cod["testes"], s = rodar([py, "-X", "utf8", "testes.py"], copia)
-                res["testes"] = caiu_no_testes(s)
-                saida = base / f"saida-{m['id']}"
-                shutil.rmtree(saida, ignore_errors=True)
-                cod["pipeline"], s = rodar([py, "-X", "utf8", "pipeline.py", "--saida", str(saida)], copia)
-                res["pipeline"] = (s.strip().splitlines() or ["—"])[-1][:90] if cod["pipeline"] else "—"
-                difere = comparar_dados(copia / "dados", saida) if cod["pipeline"] == 0 else []
-                res["diff"] = ("difere: " + ", ".join(difere)) if difere else ("igual" if cod["pipeline"] == 0 else "—")
-                if a.pdf:
-                    cod["verificar"], s = rodar([py, "-X", "utf8", "verificar_trechos.py", "--pdf", a.pdf], copia)
-                    res["verificar"] = "; ".join(l[9:80] for l in s.splitlines() if l.startswith("[FALHOU]")) or "—"
-                else:
-                    cod["verificar"], res["verificar"] = None, "não rodado (sem --pdf)"
-            finally:
-                for arquivo, b in originais.items():
-                    (copia / arquivo).write_bytes(b)
-            ok = all(cod[k] == v for k, v in m["esperado"].items() if cod[k] is not None)
-            if not ok:
+            cod, obs = observar(m, copia, base, py, a.pdf)
+            dif = conferir(m, cod, obs)
+            if dif:
                 divergentes.append(m["id"])
+            if a.esboco:
+                print(f'    # {m["id"]}: "caem": {{"pytest": {obs["pytest"]}, "testes": {obs["testes"]}}}, '
+                      f'"diff": {obs["diff"]!r}, códigos {cod}', flush=True)
             esp = "/".join(str(m["esperado"][k]) for k in ("pytest", "testes", "pipeline", "verificar"))
             obt = "/".join("—" if cod[k] is None else str(cod[k]) for k in ("pytest", "testes", "pipeline", "verificar"))
-            caiu = "; ".join(f"{k}: {res[k]}" for k in ("pytest", "testes", "verificar") if res[k] not in ("—",))
-            linhas.append(f"| {m['id']} | {m['nome']} | {esp} | {obt} | {'sim' if ok else '**NÃO**'} | {res['pipeline']} | "
-                          f"{res['diff']} | {caiu or '—'} |")
+            caiu = "; ".join(f"{k}: {', '.join(obs[k])}" for k in ("pytest", "testes", "verificar") if obs[k])
+            diff = obs["diff"] if isinstance(obs["diff"], str) else (", ".join(obs["diff"]) or "igual")
+            linhas.append(f"| {m['id']} | {m['nome']} | {esp} | {obt} | {'sim' if not dif else '**NÃO**: ' + '; '.join(dif)} | "
+                          f"{obs['erro_pipeline']} | {diff} | {caiu or '—'} |")
             print(linhas[-1], flush=True)
     finally:
         subprocess.run(["git", "worktree", "remove", "--force", str(copia)], cwd=RAIZ, capture_output=True)
+        subprocess.run(["git", "worktree", "prune"], cwd=RAIZ, capture_output=True)
         shutil.rmtree(base, ignore_errors=True)
-    cab = ("| # | Mutação | Esperado (pytest/testes/pipeline/verificar) | Obtido | Confere | Pipeline | Diff do CI sobre dados/ "
-           "| O que caiu |\n| --- | --- | --- | --- | --- | --- | --- | --- |")
+    cab = ("| # | Mutação | Esperado (pytest/testes/pipeline/verificar) | Obtido | Confere (códigos, testes que caem, diff) "
+           "| Erro do pipeline | Diff do CI sobre dados/ | O que caiu |\n| --- | --- | --- | --- | --- | --- | --- | --- |")
     tabela = cab + "\n" + "\n".join(linhas)
     if a.tabela:
         Path(a.tabela).write_text(tabela + "\n", encoding="utf-8")
