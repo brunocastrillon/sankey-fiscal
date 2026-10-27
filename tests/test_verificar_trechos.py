@@ -48,3 +48,16 @@ def test_notas_de_fatos_ficam_de_fora():
     fatos = {"ano": 2020, "no": "x", "classe": "fatos", "texto": "t",
              "fonte": [{"tipo": "serie", "titulo": "t", "linhas": [], "nota": None, "nota_na_tabela": None}]}
     assert V.conferir([fatos], {}.get, SHA) == []
+
+
+def test_tipo_desconhecido_e_erro():
+    nota = _nota("aumento resultante do Auxílio")
+    nota["fonte"][0]["tipo"] = "Boletim"
+    problemas = V.conferir([nota], {9: PAGINA}.get, SHA)
+    assert problemas and "tipo" in problemas[0]
+
+
+def test_resumo_conta_conferidas_e_ignoradas():
+    serie = {"tipo": "serie", "titulo": "t", "linhas": [], "nota": None, "nota_na_tabela": None}
+    fatos = {"ano": 2020, "no": "x", "classe": "fatos", "texto": "t", "fonte": [serie, dict(serie)]}
+    assert V.resumo([_nota("a"), _nota("b"), fatos]) == "2 conferidas, 2 ignoradas (tipo serie)"
