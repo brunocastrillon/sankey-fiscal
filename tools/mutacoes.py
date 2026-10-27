@@ -46,6 +46,7 @@ QUANDO_O_PIPELINE_PARA = ["test_bloco_pib_no_json_e_ultimo_trimestre_do_arquivo_
                           "T11", "test_notas_de_2020_com_os_valores_da_serie",
                           "test_notas_no_json_e_lista_vazia_nos_outros_anos", "test_textos_com_codigo_e_nome_da_linha",
                           "test_base_precos_em_toda_nota_com_valor"]
+NOTA21 = '"no": "bolsa_familia",\n    "classe": "contexto"'  # a nota de contexto da Nota 21
 NOTA21_ATE_TRECHO = ('"arquivo_sha256": "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef",\n'
                      '        "trecho": "houve migração')
 
@@ -61,7 +62,7 @@ MUTACOES = [
         [("notas.json", '"no": "bolsa_familia",\n    "classe": "fatos"', '"no": "saude_obrigatoria",\n    "classe": "fatos"')],
         (1, 1, 1, 0)),
     mut("3", "\"a maior fatia\" no texto da nota da Nota 18",
-        [("notas.json", "Entre elas, o Tesouro destaca", "A maior fatia vem delas; o Tesouro destaca")], (1, 1, 0, 0)),
+        [("notas.json", "Entre elas, o Tesouro destaca", "A maior fatia vem delas; o Tesouro destaca")], (1, 1, 1, 0)),
     mut("4", "{codigo:4.3.10} na nota 2, fora da fonte",
         [("notas.json", "esse está na linha {codigo:4.3.07} {nome:4.3.07}, segundo",
           "esse está na linha {codigo:4.3.07} {nome:4.3.07}, não na {codigo:4.3.10}, segundo")], (1, 1, 1, 0)),
@@ -136,40 +137,98 @@ MUTACOES = [
         [("notas.json", '"verificado_em": "2026-10-26",\n        ' + NOTA21_ATE_TRECHO,
           '"verificado_em": "2999-01-01",\n        ' + NOTA21_ATE_TRECHO)], (1, 1, 1, 0)),
     mut("N8", "quantificador novo: \"Boa parte\" no texto da nota da Nota 18",
-        [("notas.json", "Entre elas, o Tesouro destaca", "Boa parte vem delas; o Tesouro destaca")], (1, 1, 0, 0)),
+        [("notas.json", "Entre elas, o Tesouro destaca", "Boa parte vem delas; o Tesouro destaca")], (1, 1, 1, 0)),
     mut("N9", "R13: dados/2020.json, real do nó Fundeb e outras + 1.000, sem regenerar",
         [("dados/2020.json", "906938.601", "907938.601")], (1, 1, 0, 0)),
     mut("N10", "R13b: dados/2020.json, nominal do nó Fundeb e outras + 1.000, sem regenerar",
         [("dados/2020.json", "657775.789", "658775.789")], (1, 1, 0, 0)),
     mut("N11", "linha_rtn válida trocada: Nota 21 com 4.4.1.2 (em L) — passa",
         [("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "4.4.1.2",')], (0, 0, 0, 0)),
+    # 4ª passada (regressões): conjuntos fechados (X1–X3), comparação falsa (X9), esquema do AAAA.json sem regenerar
+    # (equivalentes a X4–X8 e X10), regra da mãe direta (M2), segunda série com nome sem data (B2)
+    mut("X1", "titulo da série com valor: \"Série histórica do RTN, aba 1.2 (R$ 293,1 bi)\"",
+        [("notas.json", '"titulo": "Série histórica do RTN, aba 1.2",', '"titulo": "Série histórica do RTN, aba 1.2 (R$ 293,1 bi)",')],
+        (1, 1, 1, 0)),
+    mut("X2", "boletim com valor: \"v. 26, n. 12 (R$ 293,1 bi)\" (1ª citação)",
+        [("notas.json", '"boletim": "v. 26, n. 12",', '"boletim": "v. 26, n. 12 (R$ 293,1 bi)",', "primeira")], (1, 1, 1, 0)),
+    mut("X3", "observacao com \"p. 2931\" (1ª nota de contexto)",
+        [("notas.json", "Notas Explicativas, p. 9;", "Notas Explicativas, p. 2931;", "primeira")], (1, 1, 1, 0)),
+    mut("X9", "comparação falsa: soma de abril a agosto > março (Bolsa Família)",
+        [("notas.json", '"{soma:4.4.1.2:04-08}",\n        "<",', '"{soma:4.4.1.2:04-08}",\n        ">",')], (1, 1, 1, 0)),
+    mut("X4e", "dados/2020.json: valor de nó em real.nos como texto (imposto_renda), sem regenerar",
+        [("dados/2020.json", '"imposto_renda": 384124.926,', '"imposto_renda": "384124.926",')], (1, 1, 0, 0)),
+    mut("X5e", "dados/2020.json: pib.valor_nominal como texto, sem regenerar",
+        [("dados/2020.json", '"valor_nominal": 7609597.0,', '"valor_nominal": "7609597.0",')], (1, 1, 0, 0)),
+    mut("X6e", "dados/2020.json: real de subconta como texto (4.3.07), sem regenerar",
+        [("dados/2020.json", '"real": 591910.668,', '"real": "591910.668",')], (1, 1, 0, 0)),
+    mut("X7e", "dados/2020.json: notas como objeto no lugar de lista, sem regenerar",
+        [("dados/2020.json", '"notas": [', '"notas": {"lista": ['), ("dados/2020.json", "  ]\n}", "  ]}\n}")], (1, 1, 0, 0)),
+    mut("X8e", "dados/2020.json: tipo de citação numérico na 1ª nota, sem regenerar",
+        [("dados/2020.json", '"tipo": "serie",', '"tipo": 7,', "primeira")], (1, 1, 0, 0)),
+    mut("X10e", "dados/2020.json: base_precos nulo numa nota com valores, sem regenerar",
+        [("dados/2020.json", '"base_precos": "R$ constantes de dez/2025 (IPCA)"', '"base_precos": null', "primeira")],
+        (1, 1, 0, 0)),
+    mut("M2a", "nota da Nota 21 no nó BPC com linha_rtn \"4.3\"",
+        [("notas.json", NOTA21, NOTA21.replace("bolsa_familia", "bpc")), ("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "4.3",')],
+        (1, 1, 1, 0)),
+    mut("M2b", "nota da Nota 21 no nó Imposto de Renda com linha_rtn \"1.1\"",
+        [("notas.json", NOTA21, NOTA21.replace("bolsa_familia", "imposto_renda")),
+         ("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "1.1",')], (1, 1, 1, 0)),
+    mut("M2c", "nota da Nota 21 no nó CSLL com linha_rtn \"1.1\"",
+        [("notas.json", NOTA21, NOTA21.replace("bolsa_familia", "csll")), ("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "1.1",')],
+        (1, 1, 1, 0)),
+    mut("M2d", "nota da Nota 21 no nó Cofins e PIS com linha_rtn \"1.1\"",
+        [("notas.json", NOTA21, NOTA21.replace("bolsa_familia", "cofins_pis")),
+         ("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "1.1",')], (1, 1, 1, 0)),
+    mut("M2e", "nota da Nota 21 no nó IOF, IPI e importação com linha_rtn \"1.1\"",
+        [("notas.json", NOTA21, NOTA21.replace("bolsa_familia", "iof_ipi_importacao")),
+         ("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "1.1",')], (1, 1, 1, 0)),
+    mut("M2f", "nota da Nota 21 no nó Saúde com linha_rtn \"4.4.1\" e sem menciona",
+        [("notas.json", NOTA21, NOTA21.replace("bolsa_familia", "saude_obrigatoria")),
+         ("notas.json", '"linha_rtn": "4.4.1",\n        "menciona": "4.4.1.2"', '"linha_rtn": "4.4.1"')], (1, 1, 1, 0)),
+    mut("M2g", "nota da Nota 21 no nó Demais com controle de fluxo com linha_rtn \"4.4.1\" e sem menciona",
+        [("notas.json", NOTA21, NOTA21.replace("bolsa_familia", "demais_controle_fluxo")),
+         ("notas.json", '"linha_rtn": "4.4.1",\n        "menciona": "4.4.1.2"', '"linha_rtn": "4.4.1"')], (1, 1, 1, 0)),
+    mut("M2h", "nota da Nota 21 no nó Discricionárias com linha_rtn \"4.4\"",
+        [("notas.json", NOTA21, NOTA21.replace("bolsa_familia", "discricionarias")),
+         ("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "4.4",')], (1, 1, 1, 0)),
+    mut("M2i", "Bolsa Família (Nota 21) com linha_rtn \"4.4.1.1\" (irmã)",
+        [("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "4.4.1.1",')], (1, 1, 1, 0)),
+    mut("M2j", "Bolsa Família (Nota 21) com linha_rtn \"4.3\" (outra mãe)",
+        [("notas.json", '"linha_rtn": "4.4.1",', '"linha_rtn": "4.3",')], (1, 1, 1, 0)),
+    mut("M2k", "mãe direta sem menciona: Bolsa Família (Nota 21) com linha_rtn \"4.4.1\" e sem menciona",
+        [("notas.json", '"linha_rtn": "4.4.1",\n        "menciona": "4.4.1.2"', '"linha_rtn": "4.4.1"')], (1, 1, 1, 0)),
+    mut("B2", "segunda série histórica com nome sem data em entrada/ (seriehistorica.xlsx)",
+        [("entrada/seriehistorica.xlsx", None, "")], (2, 2, 2, 0)),
     mut("C", "controle: referência do boletim: 4.3.07 + 0,05% (429.711,9) — passa",
         [("referencias/boletim-dez-2020.json", '"valor": 429497.2,', '"valor": 429711.9,')], (0, 0, 0, 0)),
 ]
 
 
 # Esperado de cada mutação: (testes que caem no pytest, testes que caem no testes.py, arquivos que o diff do CI
-# acusaria). Observado com --esboco em c5ed586 e revisado um a um (ver o PR #18).
-NOTAS_INVALIDAS = sorted(QUANDO_O_PIPELINE_PARA + ["T22", "test_notas_e_dados_de_hoje_sao_validos",
-                                                "test_observacao_aceita_paginas_p_n"])
+# acusaria). Observado com --esboco (4ª passada, em 096f196) e revisado um a um (ver o PR #18).
+# Quando as notas param o pipeline (a validação vem antes do PIB), o teste do PIB nulo também vê o erro das notas.
+QUANDO_AS_NOTAS_PARAM_O_PIPELINE = QUANDO_O_PIPELINE_PARA + ["test_valor_nulo_tira_o_ano_e_o_pipeline_falha"]
+NOTAS_INVALIDAS = sorted(QUANDO_AS_NOTAS_PARAM_O_PIPELINE + ["T22", "test_notas_e_dados_de_hoje_sao_validos",
+                                                          "test_observacao_aceita_paginas_p_n"])
 CAEM = {
     '1': (['T20', 'T21', 'test_subcontas_boletim_dez_2020', 'test_subcontas_oraculo', 'test_t21_tolerancia_de_0_1_por_cento[1.0005-True]'],
            ['T20', 'T21'], ['2020.json']),
     '2': (NOTAS_INVALIDAS + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
            ['T11', 'T17', 'T22'], '—'),
-    '3': (['T19'],
-           ['T19'], ['2020.json']),
+    '3': (QUANDO_AS_NOTAS_PARAM_O_PIPELINE + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17'], '—'),
     '4': (NOTAS_INVALIDAS + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
            ['T11', 'T17', 'T22'], '—'),
     '5': (['T23'],
            ['T23'], []),
-    '6': (QUANDO_O_PIPELINE_PARA + ['A4', 'T13', 'test_a4_pulada_quando_o_t13_falha', 'test_pipeline_recusa_notas_invalidas_antes_de_gravar'],
+    '6': (QUANDO_O_PIPELINE_PARA + ['A4', 'T13', 'test_a4_pulada_quando_o_t13_falha'],
            ['A4', 'T11', 'T13'], '—'),
-    '7': (QUANDO_O_PIPELINE_PARA,
-           ['T11'], '—'),
-    '8': (QUANDO_O_PIPELINE_PARA,
-           ['T11'], '—'),
-    '9': (QUANDO_O_PIPELINE_PARA + ['A3', 'A4', 'T13', 'test_a4_pulada_quando_o_t13_falha', 'test_ano_incompleto_fica_fora_e_ultimo_trimestre_e_o_do_arquivo', 'test_pipeline_recusa_notas_invalidas_antes_de_gravar', 'test_trimestre_duplicado_levanta', 'test_valor_nulo_tira_o_ano_e_o_pipeline_falha'],
+    '7': (NOTAS_INVALIDAS + ['T17', 'test_pipeline_recusa_conteudo_invalido_antes_de_gravar[compara\\xe7\\xe3o falsa (X9)]', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T22'], '—'),
+    '8': (NOTAS_INVALIDAS + ['T17', 'test_pipeline_recusa_conteudo_invalido_antes_de_gravar[compara\\xe7\\xe3o falsa (X9)]', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T22'], '—'),
+    '9': (QUANDO_AS_NOTAS_PARAM_O_PIPELINE + ['A3', 'A4', 'T13', 'test_a4_pulada_quando_o_t13_falha', 'test_ano_incompleto_fica_fora_e_ultimo_trimestre_e_o_do_arquivo', 'test_trimestre_duplicado_levanta'],
            ['A3', 'A4', 'T11', 'T13'], '—'),
     '10': (['T14'],
            ['T14'], ['2018.json']),
@@ -203,20 +262,64 @@ CAEM = {
            ['T11', 'T16', 'T19', 'T22'], '—'),
     'N4': (NOTAS_INVALIDAS + ['T16', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
            ['T11', 'T16', 'T22'], '—'),
-    'N5': (NOTAS_INVALIDAS + ['T16', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1', 'test_t17_regra_unica_rejeita[Bolsa com linha_rtn 4-mudar]', 'test_t17_regra_unica_rejeita[Bolsa com linha_rtn 4.4.1.3-mudar]', 'test_termos_com_digito_e_lista_fechada_so_com_covid', 'test_validar_notas_recusa[data_futura]', 'test_validar_notas_recusa[data_inexistente]', 'test_validar_notas_recusa[nota_na_tabela_numerica]', 'test_validar_notas_recusa[nota_sem_forma]', 'test_validar_notas_recusa[pagina_zero]', 'test_validar_notas_recusa[tipo_maiusculo]'],
+    'N5': (NOTAS_INVALIDAS + ['T16', 'T19', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
            ['T11', 'T16', 'T19', 'T22'], '—'),
     'N6': (NOTAS_INVALIDAS + ['T16', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
            ['T11', 'T16', 'T22'], '—'),
     'N7': (NOTAS_INVALIDAS + ['T16', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
            ['T11', 'T16', 'T22'], '—'),
-    'N8': (['T19'],
-           ['T19'], ['2020.json']),
+    'N8': (QUANDO_AS_NOTAS_PARAM_O_PIPELINE + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17'], '—'),
     'N9': (['T24', 'test_dados_publicados_fecham'],
            ['T24'], ['2020.json']),
     'N10': (['T24', 'test_dados_publicados_fecham'],
            ['T24'], ['2020.json']),
     'N11': ([],
            [], ['2020.json']),
+    'X1': (NOTAS_INVALIDAS + ['T16', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
+           ['T11', 'T16', 'T22'], '—'),
+    'X2': (NOTAS_INVALIDAS + ['T16', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
+           ['T11', 'T16', 'T22'], '—'),
+    'X3': (NOTAS_INVALIDAS + ['T16', 'T19', 'test_termos_com_digito_e_lista_fechada_so_com_covid'],
+           ['T11', 'T16', 'T19', 'T22'], '—'),
+    'X9': (QUANDO_AS_NOTAS_PARAM_O_PIPELINE + ['T17', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17'], '—'),
+    'X4e': (['T22', 'T24', 'test_dados_publicados_fecham', 'test_notas_e_dados_de_hoje_sao_validos'],
+           ['T22', 'T24'], ['2020.json']),
+    'X5e': (['T22', 'test_notas_e_dados_de_hoje_sao_validos'],
+           ['T22'], ['2020.json']),
+    'X6e': (['T20', 'T22', 'T24', 'test_dados_publicados_fecham', 'test_notas_e_dados_de_hoje_sao_validos', 'test_subcontas_oraculo'],
+           ['T20', 'T22', 'T24'], ['2020.json']),
+    'X7e': (['T22', 'test_b1_esquema_declarativo_do_ano[base_precos nulo com valores (X10)]', 'test_b1_esquema_declarativo_do_ano[fonte objeto (X8)]', 'test_b1_formas_erradas_viram_erros_e_nunca_excecao[fonte texto]', 'test_b1_formas_erradas_viram_erros_e_nunca_excecao[nota n\\xfamero]', 'test_notas_e_dados_de_hoje_sao_validos', 'test_validar_ano_recusa[base_precos de outro m\\xeas]', 'test_validar_ano_recusa[chave na cita\\xe7\\xe3o]', 'test_validar_ano_recusa[chave na nota]'],
+           ['T22'], ['2020.json']),
+    'X8e': (['T22', 'test_notas_e_dados_de_hoje_sao_validos'],
+           ['T22'], ['2020.json']),
+    'X10e': (['T22', 'test_notas_e_dados_de_hoje_sao_validos'],
+           ['T22'], ['2020.json']),
+    'M2a': (NOTAS_INVALIDAS + ['T17', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T19', 'T22'], '—'),
+    'M2b': (NOTAS_INVALIDAS + ['T17', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T19', 'T22'], '—'),
+    'M2c': (NOTAS_INVALIDAS + ['T17', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T19', 'T22'], '—'),
+    'M2d': (NOTAS_INVALIDAS + ['T17', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T19', 'T22'], '—'),
+    'M2e': (NOTAS_INVALIDAS + ['T17', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T19', 'T22'], '—'),
+    'M2f': (NOTAS_INVALIDAS + ['T17', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T19', 'T22'], '—'),
+    'M2g': (NOTAS_INVALIDAS + ['T17', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T19', 'T22'], '—'),
+    'M2h': (NOTAS_INVALIDAS + ['T17', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T19', 'T22'], '—'),
+    'M2i': (NOTAS_INVALIDAS + ['T17'],
+           ['T11', 'T17', 'T22'], '—'),
+    'M2j': (NOTAS_INVALIDAS + ['T17'],
+           ['T11', 'T17', 'T22'], '—'),
+    'M2k': (NOTAS_INVALIDAS + ['T17', 'T19', 'test_t17_regra_unica_aceita_bolsa_com_4_4_1'],
+           ['T11', 'T17', 'T19', 'T22'], '—'),
+    'B2': (['tests/test_notas.py', 'tests/test_pib.py', 'tests/test_referencia.py', 'tests/test_subcontas.py', 'tests/test_validacao.py', 'tests/test_validacoes.py'],
+           [], '—'),
     'C': ([],
            [], []),
 }
@@ -231,6 +334,12 @@ def aplicar(copia, edicoes):
     for e in edicoes:
         arquivo, trecho, subst = e[:3]
         f = copia / arquivo
+        if trecho is None:  # cria o arquivo (e a restauração o apaga)
+            if f.exists():
+                raise SystemExit(f"{arquivo} já existe na cópia")
+            originais[arquivo] = None
+            f.write_bytes(subst.encode("utf-8"))
+            continue
         originais.setdefault(arquivo, f.read_bytes())
         texto = f.read_bytes().decode("utf-8")
         nl = "\r\n" if "\r\n" in texto else "\n"
@@ -291,7 +400,10 @@ def observar(m, copia, base, py, pdf):
             cod["verificar"], obs["verificar"] = None, None
     finally:
         for arquivo, b in originais.items():
-            (copia / arquivo).write_bytes(b)
+            if b is None:
+                (copia / arquivo).unlink()
+            else:
+                (copia / arquivo).write_bytes(b)
     return cod, obs
 
 
