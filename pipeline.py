@@ -420,6 +420,21 @@ CHAVES_INDICE = {"ultimo_mes_publicado", "mes_base", "anos", "pib_ultimo_trimest
 # Formas fixas: "Nota N …" sem outro dígito; na tabela, também "(p. N)" no fim
 FORMA_NOTA = r"Nota [1-9]\d* [^\d()]+"
 FORMA_NOTA_NA_TABELA = r"Nota [1-9]\d* [^\d()]+(?: \(p\. [1-9]\d*\))?"
+# Conjuntos fechados: só estes textos são aceitos nestes campos (um valor ou um número escondido neles é erro). Uma
+# publicação nova entra aqui, de propósito, junto com as notas que a citam.
+TITULOS_SERIE = ("Série histórica do RTN, aba 1.2", "Série histórica do RTN, aba 1.2, mensal")
+PUBLICACOES = ("Resultado do Tesouro Nacional, dezembro de 2020",)
+BOLETINS = ("v. 26, n. 12",)
+ENDERECOS = ("https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12",)
+BASES_PRECOS_PUBLICACAO = ("R$ correntes (o boletim publica a preços correntes)",)
+CONJUNTOS_FECHADOS = {
+    "serie": {"titulo": TITULOS_SERIE},
+    "boletim": {"publicacao": PUBLICACOES, "boletim": BOLETINS, "endereco": ENDERECOS, "base_precos": BASES_PRECOS_PUBLICACAO},
+}
+# Quantificadores que as notas de contexto não usam (o boletim não diz que o auxílio é a maior parte de nada)
+QUANTIFICADORES_PROIBIDOS = (r"\b(maior parte|maioria|maior fatia|grande parte|boa parte|boa fatia|grande fatia|metade|"
+                             r"quase tudo|quase tod[oa]s?|praticamente tod[oa]s?)\b")
+PAGINA_NA_OBSERVACAO = r"\bp\. ([1-9]\d*)\b"
 
 
 def _tipo_ok(valor, tipo):
@@ -441,8 +456,15 @@ def erros_campos(n, quem, mes_base=None, publicada=False):
     if not publicada and isinstance(texto, str) and not _sem_digito(texto, [MARCADOR] + termos):
         erros.append(f"{quem}: texto com dígito fora dos marcadores e de {list(TERMOS_COM_DIGITO)}")
     obs = n.get("observacao")
-    if isinstance(obs, str) and not _sem_digito(obs, [r"\bp\. [1-9]\d*\b"]):
-        erros.append(f"{quem}: observacao com dígito fora de páginas \"p. N\"")
+    if isinstance(obs, str):
+        paginas = {c["pagina"] for c in n.get("fonte") or [] if isinstance(c, dict) and _tipo_ok(c.get("pagina"), int)}
+        paginas |= {int(x) for c in n.get("fonte") or [] if isinstance(c, dict) and isinstance(c.get("nota_na_tabela"), str)
+                    for x in re.findall(r"\(p\. ([1-9]\d*)\)", c["nota_na_tabela"])}
+        for x in re.findall(PAGINA_NA_OBSERVACAO, obs):
+            if int(x) not in paginas:
+                erros.append(f"{quem}: observacao cita a p. {x}, que não é página de citação da nota {sorted(paginas)}")
+        if not _sem_digito(obs, [PAGINA_NA_OBSERVACAO]):
+            erros.append(f"{quem}: observacao com dígito fora de \"p. N\"")
     if "base_precos" in n and n["base_precos"] is not None and (
             mes_base is None or n["base_precos"] != rotulo_base_precos(mes_base)):
         erros.append(f"{quem}: base_precos {n['base_precos']!r} não é a montada de mes_base {mes_base!r}")
@@ -450,6 +472,9 @@ def erros_campos(n, quem, mes_base=None, publicada=False):
         if not isinstance(c, dict):
             continue
         q = f"{quem} citação {i}"
+        for campo, aceitos in CONJUNTOS_FECHADOS.get(c.get("tipo"), {}).items():
+            if campo in c and c[campo] not in aceitos:
+                erros.append(f"{q}: {campo} fora da lista {list(aceitos)}: {c[campo]!r}")
         if c.get("tipo") == "serie":
             if c.get("nota") is not None or c.get("nota_na_tabela") is not None:
                 erros.append(f"{q}: nota e nota_na_tabela de uma citação da série são null")
@@ -472,8 +497,6 @@ def erros_campos(n, quem, mes_base=None, publicada=False):
             erros.append(f"{q}: verificado_em {v!r} não é data real AAAA-MM-DD até hoje")
         if not (isinstance(c.get("arquivo_sha256"), str) and re.fullmatch(r"[0-9a-f]{64}", c["arquivo_sha256"])):
             erros.append(f"{q}: arquivo_sha256 não é SHA256 em minúsculas")
-        if isinstance(c.get("base_precos"), str) and not _sem_digito(c["base_precos"]):
-            erros.append(f"{q}: base_precos da publicação com dígito")
     return erros
 
 
@@ -521,8 +544,12 @@ def erros_esquema_nota(n, quem, publicada=False):
     return erros
 
 
+def _nos_do_mapa(mapa):
+    return mapa["receita"] + ([mapa["repasse"]] if mapa.get("repasse") else []) + mapa["despesa"]
+
+
 def _no_do_mapa(mapa, no_id):
-    return next((n for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"] if n["id"] == no_id), None)
+    return next((n for n in _nos_do_mapa(mapa) if n["id"] == no_id), None)
 
 
 def _descendentes(raizes, codigos_aba):
@@ -553,8 +580,11 @@ def codigos_das_fontes(n):
 
 
 def erros_regra_linhas(n, quem, mapa, codigos_aba):
-    """O nó existe; marcadores e menciona em L e fora de X; linha_rtn em L ou mãe direta de uma linha de soma, nunca em
-    X; todo código de marcador está entre as linhas citadas pelas fontes."""
+    """O nó existe; marcadores e menciona em L e fora de X; todo código de marcador está entre as linhas das fontes.
+
+    linha_rtn: em L; ou mãe direta de uma linha de soma, e então a citação precisa de um menciona em L que descenda dessa
+    mãe (a Nota 21 trata da 4.4.1 e menciona a 4.4.1.2, do Bolsa Família); nunca em X (subtrai e totais).
+    """
     if _no_do_mapa(mapa, n["no"]) is None:
         return [f"{quem}: nó {n['no']!r} inexistente no mapeamento"]
     L, X = linhas_L(mapa, n["no"], codigos_aba), linhas_X(mapa, n["no"], codigos_aba)
@@ -566,26 +596,91 @@ def erros_regra_linhas(n, quem, mapa, codigos_aba):
     if not citadas <= das_fontes:
         erros.append(f"{quem}: marcadores com linhas fora da fonte {sorted(citadas - das_fontes)}")
     for i, c in enumerate(n["fonte"], 1):
-        if c.get("tipo") != "boletim":
+        if not isinstance(c, dict) or c.get("tipo") != "boletim":
             continue
-        if c.get("menciona") not in L or c.get("menciona") in X:
-            erros.append(f"{quem} citação {i}: menciona {c.get('menciona')} fora do nó")
-        if c.get("linha_rtn") not in L | maes_do_no(mapa, n["no"]) or c.get("linha_rtn") in X:
-            erros.append(f"{quem} citação {i}: linha_rtn {c.get('linha_rtn')} fora do nó e da linha-mãe, ou em subtrai/totais")
+        q, lr, men = f"{quem} citação {i}", c.get("linha_rtn"), c.get("menciona")
+        if men is not None and (men not in L or men in X):
+            erros.append(f"{q}: menciona {men} fora do nó")
+        if lr in X:
+            erros.append(f"{q}: linha_rtn {lr} está em subtrai ou nos totais")
+        elif lr in L:
+            continue
+        elif lr in maes_do_no(mapa, n["no"]):
+            if men is None:
+                erros.append(f"{q}: linha_rtn {lr} é mãe direta, mas a citação não tem menciona")
+            elif men in L and men not in X and not men.startswith(lr + "."):
+                erros.append(f"{q}: menciona {men} não descende de {lr}")
+        else:
+            erros.append(f"{q}: linha_rtn {lr} fora do nó e não é mãe direta de uma linha de soma")
     return erros
 
 
-def validar_notas(notas, mapa, codigos_aba):
-    """Todos os problemas de notas.json (lista vazia se nenhum): esquema fechado, campos e regra de linhas."""
+def erros_marcadores(n, quem):
+    """Sintaxe de cada marcador do texto e das comparações (tipo conhecido, código, mês de 01 a 12, intervalo em ordem)."""
+    cod = r"\d+(?:\.\d+)*"
+    formas = {"ano": r"", "linha": cod, "codigo": cod, "nome": cod, "total": r"[a-z_]+", "mes": cod + r":\d{2}",
+              "soma": cod + r"(?::\d{2}-\d{2}|(?:\+" + cod + r")+)"}
+    marcadores = re.findall(MARCADOR, n.get("texto") or "") + [x for comp in n.get("comparacoes") or []
+                                                               if isinstance(comp, list) and len(comp) == 3
+                                                               for x in (comp[0], comp[2]) if isinstance(x, str)]
+    erros = []
+    for m in marcadores:
+        try:
+            tipo, arg = _partes(m)
+        except ValueError:
+            erros.append(f"{quem}: marcador malformado {m}")
+            continue
+        if tipo not in formas:
+            erros.append(f"{quem}: marcador desconhecido {m}")
+        elif not re.fullmatch(formas[tipo], arg):
+            erros.append(f"{quem}: marcador malformado {m}")
+        elif tipo in ("mes", "soma") and ":" in arg:
+            try:
+                meses = [_mes(x, m) for x in arg.split(":")[1].split("-")]
+                if len(meses) == 2 and meses[0] > meses[1]:
+                    raise ValueError(f"marcador {m}: mês inicial maior que o final")
+            except ValueError as e:
+                erros.append(f"{quem}: {e}")
+    return erros
+
+
+def erros_conteudo(n, quem, R, nos_reais):
+    """Conteúdo que depende dos dados ou do sentido: comparações verdadeiras na série; sem quantificadores proibidos."""
+    erros = []
+    for a, op, b in n.get("comparacoes") or []:
+        try:
+            va, vb = (valor_marcador(x, n["ano"], R, nos_reais) for x in (a, b))
+        except (ValueError, KeyError) as e:
+            erros.append(f"{quem}: comparação {a} {op} {b} não pôde ser avaliada ({e})")
+            continue
+        if not {"<": va < vb, ">": va > vb}[op]:
+            erros.append(f"{quem}: comparação falsa: {a} {op} {b} ({va / 1000:.1f} {op} {vb / 1000:.1f} bi)")
+    if n.get("classe") == "contexto":
+        achados = re.findall(QUANTIFICADORES_PROIBIDOS, n.get("texto") or "", re.I)
+        if achados:
+            erros.append(f"{quem}: quantificador proibido {achados}")
+    return erros
+
+
+def validar_notas(notas, mapa, codigos_aba, R=None, nos_reais=None):
+    """Todos os problemas de notas.json (lista vazia se nenhum): esquema fechado, campos, sintaxe dos marcadores, regra
+    de linhas e, com os dados (R, nos_reais), as comparações e os quantificadores. O pipeline chama antes de gravar."""
     if not isinstance(notas, list):
         return ["notas.json não é uma lista"]
     erros = []
     for i, n in enumerate(notas):
         quem = f"notas.json[{i}]"
         esquema = erros_esquema_nota(n, quem)
-        erros += esquema + (erros_campos(n, quem) if isinstance(n, dict) else [])
-        if not esquema:
+        erros += esquema
+        if not isinstance(n, dict):
+            continue
+        erros += erros_campos(n, quem) + erros_marcadores(n, quem)
+        estrutura_ok = isinstance(n.get("no"), str) and isinstance(n.get("fonte"), list)
+        sintaxe_ok = not erros_marcadores(n, quem)
+        if estrutura_ok and sintaxe_ok:
             erros += erros_regra_linhas(n, quem, mapa, codigos_aba)
+        if R is not None and not esquema and sintaxe_ok:
+            erros += erros_conteudo(n, quem, R, nos_reais)
     return erros
 
 
@@ -644,6 +739,11 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
     fator = pd.Series(fator_deflacao(ipca, M.columns, base), index=M.columns)
 
     nos, totais = calcular_nos(M, mapa)
+    # As notas são validadas antes de ler o PIB: um erro nelas aparece mesmo com outro problema nas entradas
+    notas, R, nos_reais = carregar_notas(), M * fator, {k: s * fator for k, s in nos.items()}
+    erros = validar_notas(notas, mapa, M.index, R, nos_reais)
+    if erros:
+        raise ValueError("notas.json inválido:\n  " + "\n  ".join(erros))
     fin = {k: M.loc[c] for k, c in mapa["financiamento"].items()}
     pib, ultimo_trimestre_arquivo = ler_pib_ibge(pib_csv)
     faltam = [a for a in range(ano0, ano1 + 1) if a not in pib.index]
@@ -665,10 +765,6 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
     nomes = ler_nomes_linhas(xlsx)
     linhas = montar_linhas(mapa, nomes)
     subcontas = montar_subcontas(mapa, M, fator, nomes)
-    notas, R, nos_reais = carregar_notas(), M * fator, {k: s * fator for k, s in nos.items()}
-    erros = validar_notas(notas, mapa, M.index)
-    if erros:
-        raise ValueError("notas.json inválido:\n  " + "\n  ".join(erros))
     estrutura = montar_estrutura(mapa)
 
     saida = {}

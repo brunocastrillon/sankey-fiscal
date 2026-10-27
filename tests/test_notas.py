@@ -82,18 +82,21 @@ def test_t18_e_t19_usam_o_rtn_recebido(ctx, teste):
 @pytest.mark.parametrize("frase", ["a maior parte", "a maioria", "a maior fatia", "grande parte", "quase todo",
                                    "quase toda", "praticamente todos", "boa parte", "boa fatia", "grande fatia",
                                    "metade", "quase tudo"])
-def test_t19_recusa_quantificadores(ctx, frase):
+def test_recusa_quantificadores(ctx, frase):
     notas = P.carregar_notas()
-    (n,) = [n for n in notas if n["classe"] == "contexto" and P.citacoes(n["fonte"])[0]["nota"].startswith("Nota 18")]
-    n["texto"] += f" O auxílio é {frase} do grupo."
-    ok, detalhe = T.t19_notas_contexto(ctx, RTN, notas=notas)
-    assert not ok and "quantificador" in detalhe
+    notas[2]["texto"] += f" O auxílio é {frase} do grupo."  # a nota de contexto da Nota 18
+    ok, detalhe = T.t17_notas_comparacoes(ctx, RTN, notas=notas)
+    assert not ok and "quantificador proibido" in detalhe
 
 
-def _citacao(notas, nota_boletim):
-    """A citação do boletim com a nota dada (por exemplo, 'Nota 18'), em qualquer nota de contexto."""
-    return next(c for n in notas if n["classe"] == "contexto" for c in P.citacoes(n["fonte"])
-                if (c.get("nota") or "").startswith(nota_boletim + " "))
+# Posição de cada citação do boletim em notas.json (nota, citação): achar por posição, não pelo texto da `nota`, para que
+# uma mutação na própria `nota` não faça o ajudante falhar antes do teste
+POSICAO_CITACAO = {"Nota 18": (2, 0), "Nota 16": (3, 0), "Nota 21": (4, 0)}
+
+
+def _citacao(notas, nota):
+    i, j = POSICAO_CITACAO[nota]
+    return notas[i]["fonte"][j]
 
 
 def _fatos(notas, no):

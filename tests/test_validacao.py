@@ -26,8 +26,14 @@ def _ano(ano):
         return json.load(f)
 
 
+# Posição de cada citação do boletim em notas.json (nota, citação): achar por posição, não pelo texto da `nota`, para que
+# uma mutação na própria `nota` não faça o ajudante falhar antes do teste
+POSICAO_CITACAO = {"Nota 18": (2, 0), "Nota 16": (3, 0), "Nota 21": (4, 0)}
+
+
 def _citacao(notas, nota):
-    return next(c for n in notas if n["classe"] == "contexto" for c in n["fonte"] if c["nota"].startswith(nota + " "))
+    i, j = POSICAO_CITACAO[nota]
+    return notas[i]["fonte"][j]
 
 
 def test_notas_e_dados_de_hoje_sao_validos(codigos):
@@ -123,3 +129,24 @@ def test_pipeline_recusa_notas_invalidas_antes_de_gravar(monkeypatch):
     monkeypatch.setattr(P, "carregar_notas", lambda caminho=None: notas)
     with pytest.raises(ValueError, match="notas.json"):
         P.montar_anos(RTN, IPCA, PIB)
+
+
+@pytest.mark.parametrize("mudar,erro", [
+    (lambda notas: notas[1]["comparacoes"].__setitem__(0, ["{mes:4.4.1.2:03}", "<", "{soma:4.4.1.2:04-08}"]), "comparação falsa"),
+    (lambda notas: notas[2].update(texto=notas[2]["texto"].replace("Entre elas", "Boa parte vem delas; entre elas")),
+     "quantificador proibido"),
+], ids=["comparação falsa (X9)", "boa parte"])
+def test_pipeline_recusa_conteudo_invalido_antes_de_gravar(monkeypatch, mudar, erro):
+    notas = P.carregar_notas()
+    mudar(notas)
+    monkeypatch.setattr(P, "carregar_notas", lambda caminho=None: notas)
+    with pytest.raises(ValueError, match=erro):
+        P.montar_anos(RTN, IPCA, PIB)
+
+
+def test_b3_notas_validadas_antes_de_ler_o_pib(monkeypatch, tmp_path):
+    notas = P.carregar_notas()
+    _mudar_linha_rtn_4(notas)
+    monkeypatch.setattr(P, "carregar_notas", lambda caminho=None: notas)
+    with pytest.raises(ValueError, match="notas.json"):
+        P.montar_anos(RTN, IPCA, str(tmp_path / "pib-que-nao-existe.csv"))

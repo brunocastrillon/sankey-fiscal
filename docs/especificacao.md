@@ -135,7 +135,8 @@ A validação é a única etapa que barra a publicação: se qualquer teste falh
 
 ## Validações automáticas
 
-O pipeline roda a bateria de validação a cada carga e não publica nada se algum teste falhar: identidades contábeis (T1–T4),
+O pipeline valida os dados das notas antes de gravar (esquema, campos, marcadores, regra de linhas, comparações e
+quantificadores); a bateria completa roda no CI, e nada vai para a `main` se algum teste falhar: identidades contábeis (T1–T4),
 mensal × anual (T5), deflação (T6), sinais (T7), regressão contra o gráfico original (T8), linhas e estrutura (T9–T12), PIB
 do IBGE (T13), subcontas (T14, T15, T20, T21), notas (T16–T19, T22, T23) e as âncoras externas (A1–A4). A lista completa, com
 o que cada teste verifica e os limites, está em `lista_testes` (`testes.py`); `python testes.py` imprime o resultado de cada um.
