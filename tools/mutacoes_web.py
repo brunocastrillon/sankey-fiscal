@@ -112,6 +112,69 @@ CAEM = {
     "W4": (["test/carregar.test.ts > carregarTodos > um arquivo com 404 rejeita a carga, com o nome do arquivo"], [ERRO_DE_CARGA]),
     "W5": ([], [ERRO_DE_CARGA]),
     "W6": ([], ["sankey.spec.ts > foco da revisão > carregamento: texto enquanto os anos chegam, depois o desenho"]),
+    # B2 (agrupados: ano e fator normalizados, com a contagem)
+    "E1": ({
+        'test/escala.test.ts > altura do SVG > constantes da fase 3: 752 no desktop, 744 no celular, espessura mínima de 3 px': 1,
+        'test/escala.test.ts > altura do SVG > desktop 1100: a série de hoje cabe na altura declarada': 1,
+        'test/escala.test.ts > altura do SVG > desktop 1200: a série de hoje cabe na altura declarada': 1,
+        'test/layout-anos.test.ts > modo pib > desktop 1100, medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 3,
+        'test/layout-anos.test.ts > modo pib > desktop 1200, medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 3,
+        'test/layout-anos.test.ts > modo rs > desktop 1100, medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 3,
+        'test/layout-anos.test.ts > modo rs > desktop 1200, medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 3
+    }, {}),
+    "E2": ({
+        'test/escala.test.ts > altura do SVG > celular 390: a série de hoje cabe na altura declarada': 1,
+        'test/escala.test.ts > altura do SVG > constantes da fase 3: 752 no desktop, 744 no celular, espessura mínima de 3 px': 1,
+        'test/escala.test.ts > ano novo maior que todos (2025 sintético, como 2026) > × 1,3: a escala encolhe e tudo passa (extensão, colisões, espessura mínima) nos dois formatos e nos três modos': 1,
+        'test/layout-anos.test.ts > modo pib > celular 390, medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo pib > celular 768 (sem rolagem), medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo pib > celular 990 (sem rolagem), medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo rs > celular 390, medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo rs > celular 768 (sem rolagem), medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo rs > celular 990 (sem rolagem), medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1
+    }, {}),
+    "E3": ({}, {}),
+    "E4": ({
+        'test/escala.test.ts > altura do SVG > celular 390: a série de hoje cabe na altura declarada': 1
+    }, {}),
+    "E5": ({
+        'test/escala.test.ts > altura do SVG > celular 390: a série de hoje cabe na altura declarada': 1,
+        'test/escala.test.ts > altura do SVG > desktop 1100: a série de hoje cabe na altura declarada': 1,
+        'test/escala.test.ts > altura do SVG > desktop 1200: a série de hoje cabe na altura declarada': 1,
+        'test/escala.test.ts > ano novo maior que todos (2025 sintético, como 2026) > × 1,3: a escala encolhe e tudo passa (extensão, colisões, espessura mínima) nos dois formatos e nos três modos': 1,
+        'test/layout-anos.test.ts > modo desp > celular 390, medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 2,
+        'test/layout-anos.test.ts > modo desp > celular 768 (sem rolagem), medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 2,
+        'test/layout-anos.test.ts > modo desp > celular 990 (sem rolagem), medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 2,
+        'test/layout-anos.test.ts > modo desp > desktop 1100, medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 14,
+        'test/layout-anos.test.ts > modo desp > desktop 1200, medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 14,
+        'test/layout-anos.test.ts > modo pib > celular 390, medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo pib > celular 390, medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 10,
+        'test/layout-anos.test.ts > modo pib > celular 768 (sem rolagem), medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo pib > celular 768 (sem rolagem), medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 10,
+        'test/layout-anos.test.ts > modo pib > celular 990 (sem rolagem), medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo pib > celular 990 (sem rolagem), medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 10,
+        'test/layout-anos.test.ts > modo pib > desktop 1100, medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 3,
+        'test/layout-anos.test.ts > modo pib > desktop 1100, medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 27,
+        'test/layout-anos.test.ts > modo pib > desktop 1200, medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 3,
+        'test/layout-anos.test.ts > modo pib > desktop 1200, medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 27,
+        'test/layout-anos.test.ts > modo rs > celular 390, medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo rs > celular 390, medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 7,
+        'test/layout-anos.test.ts > modo rs > celular 768 (sem rolagem), medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo rs > celular 768 (sem rolagem), medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 7,
+        'test/layout-anos.test.ts > modo rs > celular 990 (sem rolagem), medidor ×F > AAAA > barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante': 1,
+        'test/layout-anos.test.ts > modo rs > celular 990 (sem rolagem), medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 7,
+        'test/layout-anos.test.ts > modo rs > desktop 1100, medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 24,
+        'test/layout-anos.test.ts > modo rs > desktop 1200, medidor ×F > AAAA > deslocamento máximo do rótulo dentro do limite declarado': 24
+    }, {}),
+    "E6": ({
+        'test/escala.test.ts > escala compartilhada > celular 390: colunas nas mesmas posições x nos três modos e nos 11 anos': 1,
+        'test/escala.test.ts > escala compartilhada > desktop 1100: colunas nas mesmas posições x nos três modos e nos 11 anos': 1
+    }, {}),
+    "E7": ({
+        'test/escala.test.ts > altura do SVG > celular 390: com a altura 20 px menor, a extensão falha': 1,
+        'test/escala.test.ts > altura do SVG > desktop 1100: com a altura 20 px menor, a extensão falha': 1,
+        'test/escala.test.ts > altura do SVG > desktop 1200: com a altura 20 px menor, a extensão falha': 1
+    }, {}),
 }
 for _m in MUTACOES:
     if _m["id"] in CAEM:
