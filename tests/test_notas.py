@@ -55,8 +55,7 @@ def test_formato_bi():
 
 def test_termos_com_digito_e_lista_fechada_so_com_covid():
     # uma fonte só: o pipeline define a lista, o testes.py a importa e o T16 confere que ela é a aprovada
-    assert T.TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO
-    assert P.TERMOS_COM_DIGITO == ("Covid-19",)
+    assert T.TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO  # a lista aprovada é conferida no T23, dentro do testes.py
     ok, detalhe = T.t16_notas_sem_digitos()
     assert ok and "lista fechada: True" in detalhe
 

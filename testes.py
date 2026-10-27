@@ -432,6 +432,14 @@ def _codigos_das_fontes(n):
     return {f.get(k) for f in P.citacoes(n["fonte"]) for k in ("linha_rtn", "menciona")} - {None}
 
 
+def t23_termos_com_digito():
+    # A lista fechada aprovada, escrita aqui de propósito: um termo novo no pipeline (e em TERMOS_COM_DIGITO_APROVADOS)
+    # derruba este teste, no testes.py e no pytest, até alguém aprovar e mudar esta linha.
+    aprovada = ("Covid-19",)
+    ok = P.TERMOS_COM_DIGITO == aprovada and TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO
+    return ok, f"termos com dígito no pipeline: {list(P.TERMOS_COM_DIGITO)}; aprovados: {list(aprovada)}; fonte única: "                f"{TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO}"
+
+
 def t17_notas_comparacoes(c, rtn, notas=None):
     mapa, M, *_ = c
     R, nos_reais = _reais(c)
@@ -720,6 +728,7 @@ def lista_testes(c, rtn, ipca, pib):
         ("T19 Notas de contexto de 2020: fonte completa, nó certo, auxílios separados", lambda: t19_notas_contexto(c, rtn)),
         ("T20 Subcontas do JSON contra um oráculo próprio (aba 1.2 e IPCA)", lambda: t20_subcontas_oraculo(rtn, ipca)),
         ("T21 Subcontas e Bolsa Família de 2020 contra o boletim de dez/2020", lambda: t21_subcontas_boletim()),
+        ("T23 Termos com dígito nas notas: lista fechada, só \"Covid-19\"", lambda: t23_termos_com_digito()),
     ]
 
 
