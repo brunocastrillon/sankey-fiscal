@@ -53,3 +53,19 @@ def test_t14_folga_so_para_aposentadorias_em_2015_e_2016(monkeypatch, no, codigo
     ok, detalhe = T.t14_subcontas_fecham(_contexto_com_residuo(codigo, mes, 0.03), RTN)
     assert not ok, detalhe
     assert f"'{no} {mes[:4]} real: " in detalhe  # o motivo é a soma acima da folga naquele nó e ano
+
+
+def _referencia_com_4307(tmp_path, fator):
+    ref = T._ler_json(T.BOLETIM_2020)
+    for v in ref["valores"]:
+        if v["codigo"] == "4.3.07":
+            v["valor"] = round(v["valor"] * fator, 1)
+    destino = tmp_path / "boletim.json"
+    destino.write_text(P.json.dumps(ref, ensure_ascii=False), encoding="utf-8")
+    return destino
+
+
+@pytest.mark.parametrize("fator,passa", [(1.004, False), (1.0005, True)])
+def test_t21_tolerancia_de_0_1_por_cento(tmp_path, fator, passa):
+    ok, detalhe = T.t21_subcontas_boletim(_referencia_com_4307(tmp_path, fator))
+    assert ok is passa, detalhe

@@ -9,8 +9,8 @@
   },
   "ano": 2020,
   "unidade": "R$ milhões correntes",
-  "tolerancia_relativa": 0.005,
-  "motivo_tolerancia": "revisões da série histórica entre o boletim de dez/2020 e a série de jul/2026",
+  "tolerancia_relativa": 0.001,
+  "motivo_tolerancia": "0,1%: as diferenças observadas são de 0,026% (4.3.07) e 0,040% (4.4.1.2); uma revisão do Tesouro acima de 0,1% entre o boletim de dez/2020 e a série histórica derruba o T21 de propósito, para ser conferida",
   "valores": [
     {"codigo": "4.3.01", "linha_boletim": "IV.3.1 Abono e Seguro Desemprego", "valor": 59570.8, "pagina": 7,
      "tabela": "Resultado Primário do Governo Central Acumulado"},

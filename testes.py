@@ -672,6 +672,8 @@ def _valor_no_json(d, codigo, chave="nominal"):
 
 
 def t21_subcontas_boletim(caminho=BOLETIM_2020, pasta=DADOS):
+    # Tolerância de 0,1% (tolerancia_relativa da referência); observado 0,026% e 0,040%. Uma revisão do Tesouro acima de
+    # 0,1% entre o boletim e a série histórica falha de propósito: é para ser conferida antes de publicar.
     ref = _ler_json(caminho)
     d = _ler_json(Path(pasta) / f"{ref['ano']}.json")
     tol, linhas, falhas = ref["tolerancia_relativa"], [], []
