@@ -732,17 +732,13 @@ def lista_testes(c, rtn, ipca, pib):
 def main():
     sys.stdout.reconfigure(encoding="utf-8")  # no Windows, a saída redirecionada usa cp1252 e quebra em "−" e "→"
     ap = argparse.ArgumentParser()
-    rtn0, ipca0, pib0 = P.entradas_padrao()
+    rtn0, ipca0, pib0, sem_rtn = P.entradas_da_linha_de_comando()
     ap.add_argument("--rtn", default=rtn0)
     ap.add_argument("--ipca", default=ipca0)
     ap.add_argument("--pib", default=pib0)
     a = ap.parse_args()
     if not a.rtn:
-        try:
-            P.escolher_rtn(P.AQUI / "entrada")
-        except ValueError as e:
-            ap.error(str(e))
-        ap.error("nenhum arquivo entrada/seriehistorica*.xlsx encontrado; passe --rtn")
+        ap.error(sem_rtn)
     c = contexto(a.rtn, a.ipca)
     testes = lista_testes(c, a.rtn, a.ipca, a.pib)
     falhas = 0

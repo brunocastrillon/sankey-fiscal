@@ -8,9 +8,10 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 import pipeline as P  # noqa: E402
+from conftest import entradas  # noqa: E402
 import testes as T  # noqa: E402
 
-RTN, IPCA, PIB = P.entradas_padrao()
+RTN, IPCA, PIB = entradas()
 CTX = T.contexto(RTN, IPCA)
 CASOS = T.lista_testes(CTX, RTN, IPCA, PIB)
 

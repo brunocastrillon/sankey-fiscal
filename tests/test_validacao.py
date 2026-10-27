@@ -10,8 +10,9 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 import pipeline as P  # noqa: E402
+from conftest import entradas  # noqa: E402
 
-RTN, IPCA, PIB = P.entradas_padrao()
+RTN, IPCA, PIB = entradas()
 MAPA = P.carregar_mapeamento()
 DADOS = RAIZ / "dados"
 

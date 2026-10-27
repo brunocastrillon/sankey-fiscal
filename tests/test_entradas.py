@@ -42,6 +42,19 @@ def test_um_arquivo_so_com_nome_ininterpretavel_e_usado(tmp_path):
 
 def test_nome_ininterpretavel_com_mais_de_um_arquivo_exige_rtn(tmp_path):
     pasta = _pasta(tmp_path, "seriehistorica.xlsx", "seriehistoricajul26.xlsx")
-    with pytest.raises(ValueError, match="--rtn"):
+    with pytest.raises(ValueError, match="passe --rtn"):
         P.escolher_rtn(pasta)
-    assert P.entradas_padrao(pasta)[0] is None
+    with pytest.raises(ValueError, match="passe --rtn"):  # nunca None em silêncio
+        P.entradas_padrao(pasta)
+
+
+def test_sem_serie_historica_levanta_em_vez_de_none(tmp_path):
+    with pytest.raises(ValueError, match="passe --rtn"):
+        P.entradas_padrao(_pasta(tmp_path))
+
+
+def test_no_pytest_a_ambiguidade_chega_com_a_mensagem(tmp_path):
+    import conftest
+    pasta = _pasta(tmp_path, "seriehistorica.xlsx", "seriehistoricajul26.xlsx")
+    with pytest.raises(pytest.fail.Exception, match="passe --rtn"):
+        conftest.entradas(pasta)

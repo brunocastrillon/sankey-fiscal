@@ -46,11 +46,13 @@ def data_do_nome(nome):
 def escolher_rtn(pasta):
     """A série histórica mais recente pela data do nome (jul26 = 2026-07), nunca pela ordem alfabética.
 
-    Um arquivo só é usado como está; com mais de um, um nome sem data é ValueError (passe --rtn).
+    Um arquivo só é usado como está; nenhum arquivo, ou mais de um com um nome sem data, é ValueError (passe --rtn).
     """
     arquivos = sorted(Path(pasta).glob("seriehistorica*.xlsx"))
-    if len(arquivos) <= 1:
-        return str(arquivos[0]) if arquivos else None
+    if not arquivos:
+        raise ValueError(f"nenhuma série histórica seriehistorica*.xlsx em {pasta}; passe --rtn")
+    if len(arquivos) == 1:
+        return str(arquivos[0])
     sem_data = [a.name for a in arquivos if data_do_nome(a.name) is None]
     if sem_data:
         raise ValueError(f"{len(arquivos)} séries em {pasta} e nome sem data (seriehistorica<mes><aa>): {sem_data}; "
@@ -61,14 +63,19 @@ def escolher_rtn(pasta):
 def entradas_padrao(pasta=None):
     """Arquivos de entrada (padrão: entrada/): a série histórica mais recente pela data do nome, o CSV do IPCA e o do PIB.
 
-    Se a escolha da série for ambígua, devolve None no lugar dela (escolher_rtn diz por quê).
+    Nunca devolve None: sem série, ou com escolha ambígua, levanta o ValueError de escolher_rtn ("passe --rtn").
     """
     pasta = Path(pasta) if pasta else AQUI / "entrada"
+    return escolher_rtn(pasta), str(pasta / "tabela1737.csv"), str(pasta / "tabela1846.csv")
+
+
+def entradas_da_linha_de_comando():
+    """Padrões para o argparse: (rtn ou None, ipca, pib, motivo). O motivo só é usado se a linha de comando não der --rtn."""
+    pasta = AQUI / "entrada"
     try:
-        rtn = escolher_rtn(pasta)
-    except ValueError:
-        rtn = None
-    return rtn, str(pasta / "tabela1737.csv"), str(pasta / "tabela1846.csv")
+        return (*entradas_padrao(pasta), None)
+    except ValueError as e:
+        return None, str(pasta / "tabela1737.csv"), str(pasta / "tabela1846.csv"), str(e)
 
 
 def carregar_mapeamento(caminho=None):
@@ -857,7 +864,7 @@ def gravar(saida, indice, pasta):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    rtn0, ipca0, pib0 = entradas_padrao()
+    rtn0, ipca0, pib0, sem_rtn = entradas_da_linha_de_comando()
     ap.add_argument("--rtn", default=rtn0, help="série histórica do RTN (xlsx); padrão: entrada/seriehistorica*.xlsx")
     ap.add_argument("--ipca", default=ipca0, help="IPCA do SIDRA 1737 (csv); padrão: entrada/tabela1737.csv")
     ap.add_argument("--pib", default=pib0, help="PIB do SIDRA 1846 (csv); padrão: entrada/tabela1846.csv")
@@ -865,11 +872,7 @@ if __name__ == "__main__":
     ap.add_argument("--base", default=None)
     a = ap.parse_args()
     if not a.rtn:
-        try:
-            escolher_rtn(AQUI / "entrada")
-        except ValueError as e:
-            ap.error(str(e))
-        ap.error("nenhum arquivo entrada/seriehistorica*.xlsx encontrado; passe --rtn")
+        ap.error(sem_rtn)
     s, idx = montar_anos(a.rtn, a.ipca, a.pib, a.base)
     gravar(s, idx, a.saida)
     print(f"{len(s)} anos gravados em {a.saida}/ (mês-base {idx['mes_base']}, dados até {idx['ultimo_mes_publicado']})")
