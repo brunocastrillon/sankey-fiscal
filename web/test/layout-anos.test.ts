@@ -1,26 +1,30 @@
-// Rótulos, guias, alvos e paradas sobre os 11 anos, desktop e celular, com fontes 15% mais estreitas e 25% mais largas.
-//
-// TESTE DE FUMAÇA: nesta fase a escala é de cada ano (cada ano preenche a mesma área de barras), então os anos diferem
-// pouco entre si. Na fase 3, com a escala compartilhada entre anos no modo R$, estes mesmos testes rodam de novo e só
-// então a prova vale de verdade.
+// Rótulos, guias, alvos e paradas sobre os 11 anos e os 3 modos, desktop e celular, com fontes 15% mais estreitas e 25% mais
+// largas, com a escala e a âncora compartilhadas entre os anos (uma por modo e formato, como no site) e a largura reservada
+// aos rótulos igual nos três modos. Com METRICAS_ESCALA=<arquivo>, grava a tabela de métricas por ano em Markdown.
+import { writeFileSync } from 'node:fs';
 import { afterAll, describe, expect, it } from 'vitest';
 import { montarGrafo } from '../src/grafo/grafo';
-import { CELULAR, DESKTOP, LARGURA_MIN_DESKTOP, type ConfigFormato } from '../src/layout/constantes';
+import type { Grafo, Modo } from '../src/grafo/tipos';
+import { CELULAR, DESKTOP, ESPESSURA_MINIMA, LARGURA_MIN_DESKTOP, type ConfigFormato } from '../src/layout/constantes';
+import { calcularEscalaCompartilhada, calcularReserva } from '../src/layout/escala';
 import { calcularLayout, type Layout } from '../src/layout/layout';
-import { anos, lerAno } from './apoio/dados';
-import { distanciaSegmentoCaixa, sobrepoe } from './apoio/geometria';
+import { dadosDosAnos } from './apoio/dados';
+import { colisoesDeRotulos, distanciaSegmentoCaixa, extensao, noMaisFino, sobrepoe } from './apoio/geometria';
 import { medidorDeterministico } from './apoio/medidor';
 
 const MARGEM = 12;
 const FOLGA = 2;
 const FATORES = [0.85, 1, 1.25];
-const FORMATOS: { nome: string; cfg: ConfigFormato; opcoes: { largura?: number; larguraVisivel?: number } }[] = [
+const MODOS: Modo[] = ['rs', 'desp', 'pib'];
+const FORMATOS: { nome: string; cfg: ConfigFormato; opcoes: { largura?: number; larguraVisivel?: number }; tabela?: boolean }[] = [
   { nome: 'desktop 1100', cfg: DESKTOP, opcoes: { largura: LARGURA_MIN_DESKTOP } },
-  { nome: 'desktop 1200', cfg: DESKTOP, opcoes: { largura: 1200 } },
-  { nome: 'celular 390', cfg: CELULAR, opcoes: { larguraVisivel: 390 } },
+  { nome: 'desktop 1200', cfg: DESKTOP, opcoes: { largura: 1200 }, tabela: true },
+  { nome: 'celular 390', cfg: CELULAR, opcoes: { larguraVisivel: 390 }, tabela: true },
   { nome: 'celular 768 (sem rolagem)', cfg: CELULAR, opcoes: { larguraVisivel: 768 } },
   { nome: 'celular 990 (sem rolagem)', cfg: CELULAR, opcoes: { larguraVisivel: 990 } },
 ];
+const DADOS = dadosDosAnos();
+const GRAFOS = Object.fromEntries(MODOS.map((m) => [m, DADOS.map((d) => montarGrafo(d, m))])) as Record<Modo, Grafo[]>;
 
 const lateral = (L: Layout) => L.rotulos.filter((r) => r.lado !== 'meio');
 const centroNo = (L: Layout, id: string) => {
@@ -63,131 +67,151 @@ function distanciaEntreGuias(L: Layout): number {
 }
 const cortes = (L: Layout) =>
   L.paradas ? L.rotulos.filter((r) => L.paradas!.bordas.some((b) => r.caixa.x0 < b && r.caixa.x1 > b)).length : 0;
+/** Altura da terceira coluna (repasse + receita líquida + déficit, com os espaços), do topo da primeira barra ao fundo da última. */
+function colunaDoMeio(L: Layout, g: Grafo): number {
+  const x = L.nos.find((n) => n.id === g.nos.find((m) => m.papel === 'repasse')!.id)!.x0;
+  const nos = L.nos.filter((n) => n.x0 === x);
+  return Math.max(...nos.map((n) => n.y1)) - Math.min(...nos.map((n) => n.y0));
+}
 
-const relato: Record<string, unknown>[] = [];
+const tabela: string[] = [];
+const resumo: Record<string, unknown>[] = [];
 afterAll(() => {
-  console.log('\nRelatório por ano (medidor ×1,00):');
-  console.table(relato);
+  console.log('\nRelatório por ano (modo R$, medidor ×1,00; a tabela completa sai com METRICAS_ESCALA=<arquivo>):');
+  console.table(resumo);
+  if (process.env.METRICAS_ESCALA) {
+    const cab =
+      '| Modo | Formato | Fator | Ano | Coluna do meio (px) | Resultado (px) | Folha mais fina (px) | Vazio abaixo (px) | ' +
+      'Desloc. máx. de rótulo (px) | Folga até a altura (px) |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |';
+    writeFileSync(process.env.METRICAS_ESCALA, `${cab}\n${tabela.join('\n')}\n`, 'utf8');
+  }
 });
 
-describe.each(anos())('%i', (ano) => {
-  const g = montarGrafo(lerAno(ano));
-
-  for (const { nome, cfg, opcoes } of FORMATOS) {
+describe.each(MODOS)('modo %s', (modo) => {
+  for (const { nome, cfg, opcoes, tabela: naTabela } of FORMATOS) {
     describe.each(FATORES)(`${nome}, medidor ×%s`, (fator) => {
-      const L = calcularLayout(g, cfg, medidorDeterministico(fator), opcoes);
+      const medir = medidorDeterministico(fator);
+      const reservaLargura = calcularReserva(MODOS.flatMap((m) => GRAFOS[m]), cfg, medir);
+      const comp = calcularEscalaCompartilhada(GRAFOS[modo], cfg, medir, { ...opcoes, reservaLargura });
 
-      it('nenhum par de rótulos a menos de 2 px', () => {
-        const colisoes: string[] = [];
-        for (let i = 0; i < L.rotulos.length; i++)
-          for (let j = i + 1; j < L.rotulos.length; j++)
-            if (sobrepoe(L.rotulos[i].caixa, L.rotulos[j].caixa, FOLGA)) colisoes.push(`${L.rotulos[i].id} × ${L.rotulos[j].id}`);
-        expect(colisoes).toEqual([]);
-      });
+      describe.each(GRAFOS[modo].map((g) => [g.ano, g] as const))('%i', (ano, g) => {
+        const L = calcularLayout(g, cfg, medir, { ...opcoes, ...comp });
 
-      it('nenhum rótulo sobre a barra de outro nó', () => {
-        const sobre: string[] = [];
-        for (const r of L.rotulos)
-          for (const n of L.nos)
-            if (n.id !== r.id && sobrepoe(r.caixa, { x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 }, FOLGA)) sobre.push(`${r.id} sobre ${n.id}`);
-        expect(sobre).toEqual([]);
-      });
-
-      it('o desenho não passa da largura pedida', () => {
-        if (opcoes.largura) expect(L.largura).toBeLessThanOrEqual(opcoes.largura + 1e-9);
-        if (opcoes.larguraVisivel && !L.paradas) expect(L.largura).toBeLessThanOrEqual(opcoes.larguraVisivel);
-      });
-
-      it('todo rótulo a pelo menos 12 px da borda do SVG, e a altura é a constante', () => {
-        expect(L.altura).toBe(cfg.alturaSvg);
-        const fora = L.rotulos.filter(
-          (r) => r.caixa.x0 < MARGEM || r.caixa.x1 > L.largura - MARGEM || r.caixa.y0 < MARGEM || r.caixa.y1 > L.altura - MARGEM,
-        );
-        expect(fora.map((r) => r.id)).toEqual([]);
-        const fundoBarras = Math.max(...L.nos.map((n) => n.y1));
-        expect(fundoBarras).toBeLessThanOrEqual(L.altura - MARGEM);
-      });
-
-      it('guias ligam a barra ao rótulo do mesmo nó e não cruzam outra barra nem outro rótulo', () => {
-        for (const gd of L.guias) {
-          const n = L.nos.find((x) => x.id === gd.id)!;
-          const r = L.rotulos.find((x) => x.id === gd.id)!;
-          const [px, py] = gd.pontos[0];
-          expect(px === n.x1 + 1 || px === n.x0 - 1, `${gd.id}: início na borda`).toBe(true);
-          expect(py).toBeCloseTo((n.y0 + n.y1) / 2, 6);
-          const [, uy] = gd.pontos[gd.pontos.length - 1];
-          expect(uy >= r.caixa.y0 && uy <= r.caixa.y1, `${gd.id}: fim na altura do próprio rótulo`).toBe(true);
-          expect(r.deslocado).toBe(true);
-        }
-        expect(lateral(L).filter((r) => r.deslocado && !L.guias.some((gd) => gd.id === r.id))).toEqual([]);
-        expect(menorDistanciaGuia(L)).toBeGreaterThan(0);
-      });
-
-      it('guias de nós diferentes a pelo menos 3 px uma da outra', () => {
-        expect(distanciaEntreGuias(L)).toBeGreaterThanOrEqual(3);
-      });
-
-      it('deslocamento máximo do rótulo dentro do limite declarado', () => {
-        expect(deslocamentoMax(L)).toBeLessThanOrEqual(cfg.deslocamentoMax);
-      });
-
-      if (cfg.alvoToque > 0) {
-        it('alvos de toque de pelo menos 44 px, sem sobreposição entre vizinhos do mesmo lado', () => {
-          for (const a of L.alvos) {
-            expect(a.caixa.x1 - a.caixa.x0, a.id).toBeGreaterThanOrEqual(cfg.alvoToque - 1e-9);
-            expect(a.caixa.y1 - a.caixa.y0, a.id).toBeGreaterThanOrEqual(cfg.alvoToque - 1e-9);
-          }
-          for (const lado of ['esquerda', 'direita'] as const) {
-            const ids = L.rotulos.filter((r) => r.lado === lado).map((r) => r.id);
-            const caixas = L.alvos.filter((a) => ids.includes(a.id)).sort((a, b) => a.caixa.y0 - b.caixa.y0);
-            expect(caixas).toHaveLength(ids.length);
-            for (let i = 1; i < caixas.length; i++) expect(caixas[i].caixa.y0).toBeGreaterThanOrEqual(caixas[i - 1].caixa.y1);
-          }
+        it('escala e âncora compartilhadas: a do modo e o topo da terceira coluna na âncora', () => {
+          expect(L.escala).toBe(comp.escala);
+          const repasse = L.nos.find((n) => n.id === g.nos.find((m) => m.papel === 'repasse')!.id)!;
+          expect(Math.abs(repasse.y0 - comp.ancoraY)).toBeLessThanOrEqual(0.01);
         });
 
-        it('nenhum alvo de toque cobre a barra de outro nó', () => {
-          const cobre: string[] = [];
-          for (const al of L.alvos)
+        it('nenhum par de rótulos a menos de 2 px', () => {
+          expect(colisoesDeRotulos(L, FOLGA)).toEqual([]);
+        });
+
+        it('nenhum rótulo sobre a barra de outro nó', () => {
+          const sobre: string[] = [];
+          for (const r of L.rotulos)
             for (const n of L.nos)
-              if (n.id !== al.id && sobrepoe(al.caixa, { x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 })) cobre.push(`${al.id} cobre ${n.id}`);
-          expect(cobre).toEqual([]);
+              if (n.id !== r.id && sobrepoe(r.caixa, { x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 }, FOLGA)) sobre.push(`${r.id} sobre ${n.id}`);
+          expect(sobre).toEqual([]);
         });
 
-        it('nenhum alvo de toque cobre o alvo ou o rótulo de outro nó', () => {
-          const cobre: string[] = [];
-          for (const a of L.alvos) {
-            for (const b of L.alvos) if (a.id < b.id && sobrepoe(a.caixa, b.caixa)) cobre.push(`alvo ${a.id} × alvo ${b.id}`);
-            for (const r of L.rotulos) if (r.id !== a.id && sobrepoe(a.caixa, r.caixa)) cobre.push(`alvo ${a.id} × rótulo ${r.id}`);
+        it('o desenho não passa da largura pedida', () => {
+          if (opcoes.largura) expect(L.largura).toBeLessThanOrEqual(opcoes.largura + 1e-9);
+          if (opcoes.larguraVisivel && !L.paradas) expect(L.largura).toBeLessThanOrEqual(opcoes.larguraVisivel);
+        });
+
+        it('barras, rótulos, alvos e guias dentro de [12, alturaSvg − 12], sem a fila de rótulos empurrada; a altura é a constante', () => {
+          expect(L.altura).toBe(cfg.alturaSvg);
+          expect(L.filaApertada, 'a fila de rótulos laterais encostou no limite do SVG').toBe(false);
+          const { topo, fundo } = extensao(L);
+          expect(topo).toBeGreaterThanOrEqual(MARGEM);
+          expect(fundo).toBeLessThanOrEqual(L.altura - MARGEM);
+          const fora = L.rotulos.filter((r) => r.caixa.x0 < MARGEM || r.caixa.x1 > L.largura - MARGEM);
+          expect(fora.map((r) => r.id)).toEqual([]);
+        });
+
+        it(`todo nó com valor positivo tem pelo menos ${ESPESSURA_MINIMA} px`, () => {
+          expect(noMaisFino(L, g).px).toBeGreaterThanOrEqual(ESPESSURA_MINIMA);
+        });
+
+        it('guias ligam a barra ao rótulo do mesmo nó e não cruzam outra barra nem outro rótulo', () => {
+          for (const gd of L.guias) {
+            const n = L.nos.find((x) => x.id === gd.id)!;
+            const r = L.rotulos.find((x) => x.id === gd.id)!;
+            const [px, py] = gd.pontos[0];
+            expect(px === n.x1 + 1 || px === n.x0 - 1, `${gd.id}: início na borda`).toBe(true);
+            expect(py).toBeCloseTo((n.y0 + n.y1) / 2, 6);
+            const [, uy] = gd.pontos[gd.pontos.length - 1];
+            expect(uy >= r.caixa.y0 && uy <= r.caixa.y1, `${gd.id}: fim na altura do próprio rótulo`).toBe(true);
+            expect(r.deslocado).toBe(true);
           }
-          expect(cobre).toEqual([]);
+          expect(lateral(L).filter((r) => r.deslocado && !L.guias.some((gd) => gd.id === r.id))).toEqual([]);
+          expect(menorDistanciaGuia(L)).toBeGreaterThan(0);
         });
 
-        if (opcoes.larguraVisivel === 390) it('paradas a 390 px: viável e nenhum rótulo atravessa as bordas', () => {
-          expect(L.paradas?.viavel).toBe(true);
-          expect(cortes(L)).toBe(0);
+        it('guias de nós diferentes a pelo menos 3 px uma da outra', () => {
+          expect(distanciaEntreGuias(L)).toBeGreaterThanOrEqual(3);
         });
-      }
 
-      if (fator === 1 && !nome.includes('sem rolagem')) {
-        it('relato', () => {
-          const linha: Record<string, unknown> = {
-            ano,
-            formato: nome,
-            'desloc. máx (px)': Number(deslocamentoMax(L).toFixed(1)),
-            'guia–outras colunas (px)': L.guias.length ? Number(menorDistanciaGuia(L, 'outrasColunas').toFixed(1)) : '—',
-            'guia–mesma coluna (px, fixa)': L.guias.length ? Number(menorDistanciaGuia(L, 'mesmaColuna').toFixed(1)) : '—',
-            'guia–guia (px)': L.guias.length > 1 ? Number(distanciaEntreGuias(L).toFixed(1)) : '—',
-          };
-          if (cfg.alvoToque > 0) {
-            linha.viavel = L.paradas?.viavel;
-            for (const v of [360, 768]) {
-              const Lv = calcularLayout(g, cfg, medidorDeterministico(1), { larguraVisivel: v });
-              linha[`cortes ${v}`] = Lv.paradas ? `${cortes(Lv)}${Lv.paradas.viavel ? '' : ' (inviável)'}` : 'sem rolagem';
+        it('deslocamento máximo do rótulo dentro do limite declarado', () => {
+          expect(deslocamentoMax(L)).toBeLessThanOrEqual(cfg.deslocamentoMax);
+        });
+
+        if (cfg.alvoToque > 0) {
+          it('alvos de toque de pelo menos 44 px, sem sobreposição entre vizinhos do mesmo lado', () => {
+            for (const a of L.alvos) {
+              expect(a.caixa.x1 - a.caixa.x0, a.id).toBeGreaterThanOrEqual(cfg.alvoToque - 1e-9);
+              expect(a.caixa.y1 - a.caixa.y0, a.id).toBeGreaterThanOrEqual(cfg.alvoToque - 1e-9);
             }
-          }
-          relato.push(linha);
-        });
-      }
+            for (const lado of ['esquerda', 'direita'] as const) {
+              const ids = L.rotulos.filter((r) => r.lado === lado).map((r) => r.id);
+              const caixas = L.alvos.filter((a) => ids.includes(a.id)).sort((a, b) => a.caixa.y0 - b.caixa.y0);
+              expect(caixas).toHaveLength(ids.length);
+              for (let i = 1; i < caixas.length; i++) expect(caixas[i].caixa.y0).toBeGreaterThanOrEqual(caixas[i - 1].caixa.y1);
+            }
+          });
+
+          it('nenhum alvo de toque cobre a barra de outro nó', () => {
+            const cobre: string[] = [];
+            for (const al of L.alvos)
+              for (const n of L.nos)
+                if (n.id !== al.id && sobrepoe(al.caixa, { x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 })) cobre.push(`${al.id} cobre ${n.id}`);
+            expect(cobre).toEqual([]);
+          });
+
+          it('nenhum alvo de toque cobre o alvo ou o rótulo de outro nó', () => {
+            const cobre: string[] = [];
+            for (const a of L.alvos) {
+              for (const b of L.alvos) if (a.id < b.id && sobrepoe(a.caixa, b.caixa)) cobre.push(`alvo ${a.id} × alvo ${b.id}`);
+              for (const r of L.rotulos) if (r.id !== a.id && sobrepoe(a.caixa, r.caixa)) cobre.push(`alvo ${a.id} × rótulo ${r.id}`);
+            }
+            expect(cobre).toEqual([]);
+          });
+
+          if (opcoes.larguraVisivel === 390)
+            it('paradas a 390 px: viável e nenhum rótulo atravessa as bordas', () => {
+              expect(L.paradas?.viavel).toBe(true);
+              expect(cortes(L)).toBe(0);
+            });
+        }
+
+        if (naTabela)
+          it('relato', () => {
+            const fino = noMaisFino(L, g);
+            const res = L.nos.find((n) => n.id === 'resultado_primario')!;
+            const fundoBarras = Math.max(...L.nos.map((n) => n.y1));
+            const linha = {
+              colunaDoMeio: colunaDoMeio(L, g).toFixed(1),
+              resultado: (res.y1 - res.y0).toFixed(2),
+              fino: `${fino.px.toFixed(2)} (${fino.id})`,
+              vazio: (L.altura - fundoBarras).toFixed(1),
+              desloc: deslocamentoMax(L).toFixed(1),
+              folga: (L.altura - MARGEM - extensao(L).fundo).toFixed(1),
+            };
+            tabela.push(`| ${modo} | ${nome} | ${fator} | ${ano} | ${Object.values(linha).join(' | ')} |`);
+            if (modo === 'rs' && fator === 1) resumo.push({ ano, formato: nome, ...linha });
+          });
+      });
     });
   }
 });

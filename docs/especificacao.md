@@ -93,8 +93,12 @@ tratadas antes da primeira versão.
   líquida excede a despesa). Regra de layout: um único nó "Resultado primário" que fica do lado da entrada em déficit e do lado da
   saída em superávit, com o rótulo trocando entre "Déficit" e "Superávit". Em 2015–2025, 2022 é o único ano de superávit primário
   (R$ 54,1 bi); os demais anos fecharam em déficit.
-- **Escala em 2020.** O déficit primário de 2020 foi de R$ 743,3 bi, cerca de 12 vezes o de 2025. Com escala compartilhada entre
-  os anos, os fluxos de 2025 ficam finos perto do pico, o que é correto e deve ser explicado na tela. No modo % da despesa não há esse efeito.
+- **Escala compartilhada.** O déficit primário de 2020 foi de R$ 743,3 bi, cerca de 12 vezes o de 2025. Em cada modo, a escala é
+  a da maior coluna da série (hoje, as origens de 2025), recalculada a cada build: um ano novo maior faz todos encolherem. O topo da
+  terceira coluna (repasse, receita líquida e déficit) fica na mesma linha em todos os anos e o vazio dos anos menores fica
+  embaixo. A altura do desenho é fixa (752 px no desktop, 744 no celular) e testada nos 11 anos, nos três modos e com fontes 15%
+  mais estreitas e 25% mais largas; todo nó com valor positivo tem pelo menos 3 px (teste, não piso). O pico de 2020 aparece como é,
+  sem aviso na tela.
 - **Valores negativos.** Sankey não desenha fluxo negativo, e o RTN tem linhas que podem ficar negativas, como "Superávit dos
   Fundos" (−R$ 10,2 bi em 2025) e "Incentivos fiscais". Regra: agregar no nível do nó, de modo que todo fluxo desenhado seja não
   negativo; se um nó fechar negativo no ano, ele é netado com o nó irmão e o tooltip explica. Nos nós atuais nenhum fecha negativo
@@ -128,7 +132,11 @@ A validação é a única etapa que barra a publicação: se qualquer teste falh
 **Regras do frontend**
 
 - Ordem dos nós fixa entre os anos, definida no mapeamento, para a animação mexer só na espessura e não reordenar nós.
-- Escala compartilhada entre os anos no modo R$ constantes, para a espessura ser comparável; escala própria por ano nos modos percentuais.
+- Escala compartilhada entre os anos em cada modo, para a espessura ser comparável: a da maior coluna da série, com a altura do
+  desenho fixa. Nos modos percentuais a escala também é fixa: em % da despesa, a despesa total tem a mesma altura em todos os anos;
+  em % do PIB, 2020 aparece maior que 2025. As colunas ficam no mesmo lugar nos três modos e nos 11 anos.
+- Modos de leitura: R$ constantes do mês-base (IPCA); % da despesa, sobre os valores em R$ constantes (a despesa total do ano é a
+  base); % do PIB, com os valores correntes sobre o PIB corrente do IBGE. % da despesa com uma casa decimal; % do PIB com duas.
 - Layout próprio em SVG (função pura, sem d3-sankey), calculado uma vez e fixado, evitando que os nós "pulem" quando o ano muda.
 - Tooltip com valor, participação, as linhas do RTN que formam o nó e o boletim de origem.
 - O site vive em `castrillon.dev/sankey-fiscal`: caminhos de JSON e de arquivos devem funcionar a partir desse subcaminho.
@@ -195,7 +203,9 @@ descobrir isso antes de construir a linha do tempo. **Estado:** a fase 1 está c
 - **Nome do produto.** Decidido: `sankey-fiscal` (nome do repositório e da URL). Sem a marca gov.br e sem sugerir origem oficial.
 - **Fonte e versão do PIB.** Decidido e carregado (fase 3a): IBGE, Contas Nacionais Trimestrais, SIDRA tabela 1846, PIB a preços de mercado, valores correntes (R$ 12,7 trilhões em 2025); o PIB do ano é a soma dos quatro trimestres. O CSV fica em `entrada/tabela1846.csv`, com a data do download em `entrada/LEIAME.md`, e o `indice.json` guarda o último trimestre do arquivo como versão da série (cada `AAAA.json` guarda o último trimestre somado no ano). O PIB implícito nas abas anuais do RTN continua como conferência (âncora A4). Teste de âncora: R$ 61,7 bi sobre o PIB do IBGE dá 0,48%, o valor do RTN.
 - **Abrir "Bolsa Família, saúde e outros".** Confirmado: abrir em Bolsa Família, Saúde e Demais já na versão 1.
-- **Escala em 2020.** Confirmado: escala compartilhada entre anos no modo R$ constantes, com aviso na tela.
+- **Escala compartilhada (fase 3b).** Decidido: em cada modo, a escala da maior coluna da série (hoje, as origens de 2025), com o
+  topo da terceira coluna fixo e a altura fixa (752 px no desktop, 744 no celular); sem aviso na tela para 2020. Revoga a escala
+  própria por ano nos modos percentuais.
 - **Juros e resultado nominal do Governo Central.** Resolvido: os valores vêm da série histórica do RTN.
 - **Painel e dica (fase 2).** Decidido: só clique, toque ou Enter abrem o painel de detalhes abaixo do desenho; o foco no nó
   (Tab) não abre o painel, e o hover de mouse mostra apenas uma dica curta (rótulo, valor, participação), sem mover o foco. No desktop o painel tem altura reservada; no desenho do celular, automática.

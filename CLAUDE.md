@@ -38,7 +38,7 @@ npm run e2e               # Playwright (build de teste com ?ano=); PW_CANAL=chro
 
 - Escopo: Governo Central. Resultado primário "acima da linha" no desenho; "abaixo da linha" e deduções só no tooltip/módulo de financiamento.
 - Valores em R$ constantes por IPCA, deflacionados mês a mês, mês-base dez/2025. Modos: R$ constantes, % da despesa, % do PIB.
-- Escala compartilhada entre anos no modo R$ (aviso na tela para 2020).
+- Escala compartilhada entre anos em cada modo: a da maior coluna da série (hoje, as origens de 2025), com altura fixa testada.
 - "Bolsa Família, saúde e outros" aparece aberto: Bolsa Família, Saúde e Demais.
 - Rótulo do déficit: "Déficit primário (financiado com dívida)", nunca "dívida nova". Juros ficam no módulo de financiamento.
 - Sem marca ou título que sugiram origem oficial (nada de "gov.br").

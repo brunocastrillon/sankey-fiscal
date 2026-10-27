@@ -1,4 +1,4 @@
-import { formatarBi } from '../formatar';
+import { formatarValor } from '../formatar';
 import type { Grafo, No } from '../grafo/tipos';
 import { TEXTOS } from '../textos';
 import { ALTURA_LINHA, ASCENDENTE, DESCENDENTE, FOLGA_ROTULOS, LARGURA_MAX_DESKTOP, type ConfigFormato, type IdMeio, type PosicaoMeio } from './constantes';
@@ -57,14 +57,18 @@ export interface Layout {
   /** Tamanho da fonte dos rótulos (px). */
   fonte: number;
   altura: number;
-  /** px por R$ milhão. */
+  /** px por unidade do modo (R$ milhão ou ponto percentual). */
   escala: number;
+  /** y do topo da terceira coluna (repasse + receita líquida + déficit). */
+  ancoraY: number;
   nos: NoLayout[];
   fluxos: FluxoLayout[];
   rotulos: RotuloLayout[];
   guias: GuiaLayout[];
   alvos: AlvoLayout[];
   paradas: { bordas: [number, number]; viavel: boolean } | null;
+  /** A fila de rótulos laterais encostou em [margem + 4, alturaSvg − margem − 4] e foi empurrada: falta altura. */
+  filaApertada: boolean;
 }
 
 const ID_MEIO: Record<string, IdMeio> = {
@@ -157,34 +161,41 @@ interface Texto {
 }
 
 /**
- * Grafo + formato + medidor de texto → geometria do Sankey. Colunas fixas; Receita total centrada em repasse +
- * receita líquida; Gasto total e Obrigatórias alinhados ao topo da receita líquida; folhas centradas em Obrigatórias;
- * rótulos laterais em fila sem colisão, com guia em cotovelo quando saem do lugar.
+ * Larguras de rótulo que fixam as posições x: as maiores entre os anos e os modos. Com elas, as colunas ficam no mesmo lugar
+ * em todos os anos e modos. `esquerda` e `direita`: rótulos laterais; `porNo`: rótulos do meio, por id.
  */
-export function calcularLayout(
-  g: Grafo,
-  cfg: ConfigFormato,
-  medir: MedirTexto,
-  opcoes: { largura?: number; larguraVisivel?: number } = {},
-): Layout {
-  const nw = cfg.larguraNo;
-  const pad = cfg.espacoEntreNos;
+export interface ReservaLargura {
+  esquerda: number;
+  direita: number;
+  porNo: Record<string, number>;
+}
+
+export interface OpcoesLayout {
+  largura?: number;
+  larguraVisivel?: number;
+  /** Escala compartilhada entre os anos (px por unidade do modo); sem ela, a escala própria do ano. */
+  escala?: number;
+  /** y do topo da terceira coluna, comum aos anos; sem ela, o conteúdo do ano encosta em `margem + 4`. */
+  ancoraY?: number;
+  reservaLargura?: ReservaLargura;
+}
+
+const ladoDo = (n: No): Texto['lado'] => (n.coluna === 0 ? 'esquerda' : n.coluna === 5 ? 'direita' : 'meio');
+
+/** Linhas, largura e altura do rótulo de cada nó, com o valor escrito no modo do grafo. */
+function textosDoGrafo(g: Grafo, cfg: ConfigFormato, medir: MedirTexto): Map<string, Texto> {
   const alturaLinha = Math.round(cfg.fonte * ALTURA_LINHA);
   const normal: EstiloTexto = { tamanho: cfg.fonte, negrito: false };
   const negrito: EstiloTexto = { tamanho: cfg.fonte, negrito: true };
-  const porId = new Map(g.nos.map((n) => [n.id, n]));
-  const colunas: No[][] = [0, 1, 2, 3, 4, 5].map((c) => g.nos.filter((n) => n.coluna === c));
-
-  // textos dos rótulos
   const textos = new Map<string, Texto>();
   for (const n of g.nos) {
-    const lado = n.coluna === 0 ? 'esquerda' : n.coluna === 5 ? 'direita' : 'meio';
+    const lado = ladoDo(n);
     const posicao = lado === 'meio' ? cfg.posicaoMeio[ID_MEIO[n.papel]] : null;
     const deficit = n.papel === 'resultado' && g.resultado === 'deficit';
     const max = lado !== 'meio' ? cfg.larguraMaxRotulo.lado : n.papel === 'resultado' ? cfg.larguraMaxRotulo.deficit : cfg.larguraMaxRotulo.meio;
     const linhas: LinhaRotulo[] = [
       ...quebrarPorLargura(n.rotulo, max, normal, medir).map((texto) => ({ texto, negrito: false, secundario: false })),
-      { texto: formatarBi(n.valor), negrito: true, secundario: false },
+      { texto: formatarValor(n.valor, g.modo), negrito: true, secundario: false },
       ...(deficit ? [{ texto: TEXTOS.naoIncluiJuros, negrito: false, secundario: true }] : []),
     ];
     const largura = Math.max(...linhas.map((l) => medir(l.texto, l.negrito ? negrito : normal)));
@@ -192,15 +203,63 @@ export function calcularLayout(
     const altura = (linhas.length - 1) * alturaLinha + (ASCENDENTE + DESCENDENTE) * cfg.fonte;
     textos.set(n.id, { linhas, largura, altura, lado, posicao });
   }
+  return textos;
+}
+
+/** As maiores larguras de rótulo entre os grafos (anos e modos): laterais por lado e as do meio por nó. */
+export function reservaDosGrafos(grafos: Grafo[], cfg: ConfigFormato, medir: MedirTexto): ReservaLargura {
+  const reserva: ReservaLargura = { esquerda: 0, direita: 0, porNo: {} };
+  for (const g of grafos)
+    for (const [id, t] of textosDoGrafo(g, cfg, medir)) {
+      if (t.lado === 'esquerda') reserva.esquerda = Math.max(reserva.esquerda, t.largura);
+      else if (t.lado === 'direita') reserva.direita = Math.max(reserva.direita, t.largura);
+      else reserva.porNo[id] = Math.max(reserva.porNo[id] ?? 0, t.largura);
+    }
+  return reserva;
+}
+
+/** Escala própria do ano: a menor, entre as colunas, de (alturaBarras − espaços da coluna) / soma da coluna. */
+export function escalaDoAno(g: Grafo, cfg: ConfigFormato): number {
+  const pad = cfg.espacoEntreNos;
+  const colunas: No[][] = [0, 1, 2, 3, 4, 5].map((c) => g.nos.filter((n) => n.coluna === c));
+  const soma = (c: No[]) => c.reduce((s, n) => s + n.valor, 0);
+  // índice da coluna (não da lista filtrada): a coluna das folhas tem um espaço extra antes da discricionária
+  return Math.min(
+    ...colunas
+      .map((c, coluna) => ({ c, coluna }))
+      .filter(({ c }) => soma(c) > 0)
+      .map(({ c, coluna }) => (cfg.alturaBarras - (c.length - 1) * pad - (coluna === 5 ? pad : 0)) / soma(c)),
+  );
+}
+
+/**
+ * Grafo + formato + medidor de texto → geometria do Sankey. Colunas fixas; Receita total centrada em repasse +
+ * receita líquida; Gasto total e Obrigatórias alinhados ao topo da receita líquida; folhas centradas em Obrigatórias;
+ * rótulos laterais em fila sem colisão, com guia em cotovelo quando saem do lugar. Com `escala`, `ancoraY` e
+ * `reservaLargura` (escala.ts), os anos dividem a escala, o topo da terceira coluna e as posições x.
+ */
+export function calcularLayout(g: Grafo, cfg: ConfigFormato, medir: MedirTexto, opcoes: OpcoesLayout = {}): Layout {
+  const nw = cfg.larguraNo;
+  const pad = cfg.espacoEntreNos;
+  const alturaLinha = Math.round(cfg.fonte * ALTURA_LINHA);
+  const porId = new Map(g.nos.map((n) => [n.id, n]));
+  const colunas: No[][] = [0, 1, 2, 3, 4, 5].map((c) => g.nos.filter((n) => n.coluna === c));
+
+  const textos = textosDoGrafo(g, cfg, medir);
+  const reserva = opcoes.reservaLargura;
   const maiorLargura = (c: No[]) => Math.max(0, ...c.map((n) => textos.get(n.id)!.largura));
+  // largura que posiciona as colunas: a do próprio rótulo ou a reservada (a maior da série), se houver
+  const larguraX = (id: string) => Math.max(textos.get(id)!.largura, reserva?.porNo[id] ?? 0);
 
   // posições x
   // arredondadas para cima, com 1 px de folga, para o texto nunca ficar a menos de `margem` da borda
-  const mE = Math.ceil(cfg.margem + cfg.guiaDx + maiorLargura(colunas[0])) + 1;
-  const mD = Math.ceil(cfg.margem + cfg.guiaDx + maiorLargura(colunas[5])) + 1;
+  const larguraEsquerda = Math.max(maiorLargura(colunas[0]), reserva?.esquerda ?? 0);
+  const larguraDireita = Math.max(maiorLargura(colunas[5]), reserva?.direita ?? 0);
+  const mE = Math.ceil(cfg.margem + cfg.guiaDx + larguraEsquerda) + 1;
+  const mD = Math.ceil(cfg.margem + cfg.guiaDx + larguraDireita) + 1;
   // vão mínimo depois de cada coluna: o rótulo à direita da barra não pode chegar à barra da coluna seguinte
   const vaoMinimo = [0, 1, 2, 3, 4].map((c) => {
-    const larguras = colunas[c].filter((n) => textos.get(n.id)!.posicao === 'direita').map((n) => textos.get(n.id)!.largura);
+    const larguras = colunas[c].filter((n) => textos.get(n.id)!.posicao === 'direita').map((n) => larguraX(n.id));
     return larguras.length ? 6 + Math.max(...larguras) + FOLGA_ROTULOS + 1 : 0;
   });
   const vaos = cfg.vaos
@@ -215,15 +274,16 @@ export function calcularLayout(
   for (const n of g.nos) {
     const t = textos.get(n.id)!;
     if (n.coluna === 5 || !t.posicao?.startsWith('acima')) continue;
-    const direita = t.posicao === 'acimaInicio' ? xs[n.coluna] + t.largura : xs[n.coluna] + nw / 2 + t.largura / 2;
+    const w = larguraX(n.id);
+    const direita = t.posicao === 'acimaInicio' ? xs[n.coluna] + w : xs[n.coluna] + nw / 2 + w / 2;
     xs[5] = Math.max(xs[5], direita + FOLGA_ROTULOS + 1);
   }
   let paradas: Layout['paradas'] = null;
   if (cfg.vaos && opcoes.larguraVisivel && xs[5] + nw + mD > opcoes.larguraVisivel) {
     // duas paradas: as bordas [V, largura − V] caem no vão entre o rótulo de Receita total e a coluna 2
     const V = opcoes.larguraVisivel;
-    const fimRT = xs[1] + nw + 6 + textos.get('receita_total')!.largura;
-    const span2 = xs[5] - xs[2] + nw + cfg.guiaDx + maiorLargura(colunas[5]) + cfg.margem + 6;
+    const fimRT = xs[1] + nw + 6 + larguraX('receita_total');
+    const span2 = xs[5] - xs[2] + nw + cfg.guiaDx + larguraDireita + cfg.margem + 6;
     const x2 = Math.max(V + 6, fimRT + 10 + V - span2, xs[1] + nw + 30);
     const dx = x2 - xs[2];
     for (let c = 2; c < 6; c++) xs[c] += dx;
@@ -232,15 +292,8 @@ export function calcularLayout(
   }
   const largura = xs[5] + nw + mD;
 
-  // escala e posições y das barras (coordenadas locais; deslocadas no fim)
-  const soma = (c: No[]) => c.reduce((s, n) => s + n.valor, 0);
-  // índice da coluna (não da lista filtrada): a coluna das folhas tem um espaço extra antes da discricionária
-  const escala = Math.min(
-    ...colunas
-      .map((c, coluna) => ({ c, coluna }))
-      .filter(({ c }) => soma(c) > 0)
-      .map(({ c, coluna }) => (cfg.alturaBarras - (c.length - 1) * pad - (coluna === 5 ? pad : 0)) / soma(c)),
-  );
+  // escala e posições y das barras (coordenadas locais, com o topo da terceira coluna em 0; deslocadas no fim)
+  const escala = opcoes.escala ?? escalaDoAno(g, cfg);
   const nos = new Map<string, NoLayout>();
   for (const n of g.nos) nos.set(n.id, { id: n.id, x0: xs[n.coluna], x1: xs[n.coluna] + nw, y0: 0, y1: 0 });
   const pos = (id: string, y0: number) => {
@@ -336,9 +389,29 @@ export function calcularLayout(
       .map((n) => ({ id: n.id, centro: (nos.get(n.id)!.y0 + nos.get(n.id)!.y1) / 2, altura: Math.max(textos.get(n.id)!.altura, cfg.alvoToque) })),
   }));
   const semLimites = { min: -1e9, max: 1e9 };
-  const topos0 = filas.flatMap((f) => [...resolverFila(f.itens, FOLGA_ROTULOS, semLimites).values()]);
-  const minY = Math.min(...[...nos.values()].map((n) => n.y0), ...rotulos.map((r) => r.caixa.y0), ...topos0);
-  const dy = cfg.margem + 4 - minY;
+  const livres = filas.map((f) => resolverFila(f.itens, FOLGA_ROTULOS, semLimites));
+  const topos0 = livres.flatMap((m) => [...m.values()]);
+  // nós do meio: o alvo de toque é o rótulo, ampliado até o mínimo (a barra continua tocável por si)
+  const alvoDoMeio = (r: RotuloLayout): Caixa => {
+    const c = r.caixa;
+    const cx = (c.x0 + c.x1) / 2;
+    const cy = (c.y0 + c.y1) / 2;
+    const w = Math.max(cfg.alvoToque, c.x1 - c.x0);
+    const h = Math.max(cfg.alvoToque, c.y1 - c.y0);
+    // cresce para longe da barra: para cima nos rótulos acima dela, para baixo nos de baixo
+    const posicao = textos.get(r.id)!.posicao;
+    const y0 = posicao?.startsWith('acima') ? c.y1 - h : posicao === 'abaixo' ? c.y0 : cy - h / 2;
+    return { x0: cx - w / 2, x1: cx + w / 2, y0, y1: y0 + h };
+  };
+  // o conteúdo mais alto: barras, rótulos do meio e os alvos deles, e as faixas da fila de rótulos laterais
+  const minY = Math.min(
+    ...[...nos.values()].map((n) => n.y0),
+    ...rotulos.map((r) => r.caixa.y0),
+    ...(cfg.alvoToque > 0 ? rotulos.map((r) => alvoDoMeio(r).y0) : []),
+    ...topos0,
+  );
+  // a terceira coluna começa em 0: o deslocamento é o y do topo dela (a âncora)
+  const dy = opcoes.ancoraY ?? cfg.margem + 4 - minY;
   for (const nl of nos.values()) {
     nl.y0 += dy;
     nl.y1 += dy;
@@ -355,10 +428,13 @@ export function calcularLayout(
   const guias: GuiaLayout[] = [];
   const alvos: AlvoLayout[] = [];
   const limites = { min: cfg.margem + 4, max: cfg.alturaSvg - cfg.margem - 4 };
-  for (const fila of filas) {
+  let filaApertada = false;
+  for (const [i, fila] of filas.entries()) {
     const pendentes: GuiaPendente[] = [];
     for (const item of fila.itens) item.centro += dy;
     const topos = resolverFila(fila.itens, FOLGA_ROTULOS, limites);
+    // os limites só deveriam valer como rede de segurança: se empurram a fila, o desenho precisava de mais altura
+    if (fila.itens.some((item) => Math.abs(topos.get(item.id)! - (livres[i].get(item.id)! + dy)) > 1e-6)) filaApertada = true;
     for (const item of fila.itens) {
       const t = textos.get(item.id)!;
       const nl = nos.get(item.id)!;
@@ -384,31 +460,20 @@ export function calcularLayout(
     }
     guias.push(...tracarGuias(pendentes, fila.lado === 'direita' ? 1 : -1));
   }
-  if (cfg.alvoToque > 0) {
-    // nós do meio: o rótulo, ampliado até o mínimo do alvo de toque (a barra continua tocável por si)
-    for (const r of rotulos.filter((x) => x.lado === 'meio')) {
-      const c = r.caixa;
-      const cx = (c.x0 + c.x1) / 2;
-      const cy = (c.y0 + c.y1) / 2;
-      const w = Math.max(cfg.alvoToque, c.x1 - c.x0);
-      const h = Math.max(cfg.alvoToque, c.y1 - c.y0);
-      // cresce para longe da barra: para cima nos rótulos acima dela, para baixo nos de baixo
-      const posicao = textos.get(r.id)!.posicao;
-      const y0 = posicao?.startsWith('acima') ? c.y1 - h : posicao === 'abaixo' ? c.y0 : cy - h / 2;
-      alvos.push({ id: r.id, caixa: { x0: cx - w / 2, x1: cx + w / 2, y0, y1: y0 + h } });
-    }
-  }
+  if (cfg.alvoToque > 0) for (const r of rotulos.filter((x) => x.lado === 'meio')) alvos.push({ id: r.id, caixa: alvoDoMeio(r) });
 
   return {
     largura,
     fonte: cfg.fonte,
     altura: cfg.alturaSvg,
     escala,
+    ancoraY: dy,
     nos: g.nos.map((n) => nos.get(n.id)!),
     fluxos,
     rotulos,
     guias,
     alvos,
     paradas,
+    filaApertada,
   };
 }

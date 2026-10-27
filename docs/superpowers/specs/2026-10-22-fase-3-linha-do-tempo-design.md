@@ -158,6 +158,11 @@ JSON antigos e novos, sem as chaves `pib.fonte`/`pib.trimestres`/`pib.ultimo_tri
 - **Espessura mínima visível [decidido]:** `ESPESSURA_MINIMA = 3` px para todo nó com valor positivo, nos layouts estáticos
   (não nos quadros da animação). Não é piso: é teste. Hoje o mais fino é Bolsa Família 2020 (4,69 px desktop, 4,24 celular, no
   modo R$). Mutações: ano sintético 2025 × 1,5 derruba (2,83 px no celular); 2025 × 1,3 passa.
+- **Deslocamento de rótulo no celular [decidido em 27/10/2026, na 3b]:** limite de 110 px (`CELULAR.deslocamentoMax`; era 90
+  na fase 2). A escala compartilhada encurta as folhas dos anos menores; os rótulos do celular, em faixas de toque de 44 px, se
+  afastam mais das barras. Pior caso medido: 105,6 px (% do PIB, 2021, medidor ×1,25), mais folga. No desktop, 45,5 px (% do
+  PIB, 2021, ×1,25; limite 48). O teste vale nos 3 fatores, nos 11 anos e nos 3 modos; no ano sintético × 1,3 o deslocamento
+  entra só na tabela (119,7 px no celular, modo R$, 2017, ×1,25).
 - **Rótulo do modo R$ [decidido]:** "R$ constantes de dez/2025 (IPCA) · mesma escala para todos os anos", em `TEXTOS`, sem
   dígitos (o mês-base vem de `mes_base`). O "aviso de 2020" deixa de existir.
 

@@ -6,9 +6,9 @@ export type IdMeio = 'receita_total' | 'repasse' | 'receita_liquida' | 'despesa_
 export interface ConfigFormato {
   nome: 'desktop' | 'celular';
   fonte: number;
-  /** Altura única do SVG, igual em todos os anos. */
+  /** Altura única do SVG, igual em todos os anos e modos (a do pior modo, com folga; provada pelos testes de escala). */
   alturaSvg: number;
-  /** Altura disponível para a coluna mais alta de barras (define a escala de cada ano). */
+  /** Altura disponível para a coluna mais alta de barras da série (define a escala compartilhada de cada modo). */
   alturaBarras: number;
   larguraNo: number;
   espacoEntreNos: number;
@@ -27,7 +27,7 @@ export interface ConfigFormato {
 export const DESKTOP: ConfigFormato = {
   nome: 'desktop',
   fonte: 13,
-  alturaSvg: 738,
+  alturaSvg: 752,
   alturaBarras: 600,
   larguraNo: 12,
   espacoEntreNos: 14,
@@ -50,7 +50,7 @@ export const DESKTOP: ConfigFormato = {
 export const CELULAR: ConfigFormato = {
   nome: 'celular',
   fonte: 11,
-  alturaSvg: 727,
+  alturaSvg: 744,
   alturaBarras: 540,
   larguraNo: 10,
   espacoEntreNos: 12,
@@ -67,12 +67,17 @@ export const CELULAR: ConfigFormato = {
   },
   vaos: [100, 60, 80, 44, 44],
   alvoToque: 44,
-  deslocamentoMax: 90,
+  // A escala compartilhada encurta as folhas dos anos menores; os rótulos do celular, em faixas de toque de 44 px, se afastam
+  // mais das barras. Pior caso medido na fase 3b: 105,6 px (% do PIB, 2021, medidor ×1,25); 110 = esse caso + folga.
+  // Na fase 2 (escala própria por ano) o limite era 90.
+  deslocamentoMax: 110,
 };
 
 export const LARGURA_MIN_DESKTOP = 1100;
 export const LARGURA_MAX_DESKTOP = 1200;
 export const FOLGA_ROTULOS = 3;
+/** Espessura mínima visível (px) de todo nó com valor positivo nos layouts estáticos. Não é piso: é teste. */
+export const ESPESSURA_MINIMA = 3;
 export const OPACIDADE_FLUXO = 0.36;
 export const ALTURA_LINHA = 1.27; // em múltiplos do tamanho da fonte
 // Extremos da caixa do texto (getBBox) em relação à linha de base, em múltiplos da fonte. Medido: Segoe UI 1,094 e 0,27;

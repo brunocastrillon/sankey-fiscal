@@ -1,7 +1,7 @@
 // Leitura dos JSON do repositório para os testes (nada em src/ importa ../dados nem ../referencias).
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { DadosAno, Indice } from '../../src/dados/tipos';
+import type { Bloco, DadosAno, Indice } from '../../src/dados/tipos';
 
 export const PASTA_DADOS = fileURLToPath(new URL('../../../dados/', import.meta.url));
 export const PASTA_REFERENCIAS = fileURLToPath(new URL('../../../referencias/', import.meta.url));
@@ -20,6 +20,21 @@ export function anos(): number[] {
 
 export function lerAno(ano: number): DadosAno {
   return lerJson<DadosAno>(`${PASTA_DADOS}${ano}.json`);
+}
+
+/** Os dados de todos os anos do índice, em ordem: a série sobre a qual a escala compartilhada é calculada. */
+export function dadosDosAnos(): DadosAno[] {
+  return anos().map(lerAno);
+}
+
+/** Ano sintético para os testes de escala: os blocos real e nominal de `d` multiplicados por `k` (o PIB não muda). */
+export function anoSintetico(d: DadosAno, k: number, ano: number): DadosAno {
+  const vezes = (b: Bloco): Bloco => ({
+    nos: Object.fromEntries(Object.entries(b.nos).map(([id, v]) => [id, v * k])),
+    totais: Object.fromEntries(Object.entries(b.totais).map(([id, v]) => [id, v * k])) as Bloco['totais'],
+    financiamento: b.financiamento,
+  });
+  return { ...structuredClone(d), ano, real: vezes(d.real), nominal: vezes(d.nominal) };
 }
 
 export interface Referencia {

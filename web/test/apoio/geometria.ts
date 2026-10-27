@@ -1,4 +1,47 @@
-import type { Caixa } from '../../src/layout/layout';
+import type { Grafo } from '../../src/grafo/tipos';
+import type { Caixa, Layout } from '../../src/layout/layout';
+
+/** Extremos verticais de tudo o que se desenha: barras, rótulos, alvos de toque e guias. */
+export function extensao(L: Layout): { topo: number; fundo: number } {
+  const ys = [
+    ...L.nos.flatMap((n) => [n.y0, n.y1]),
+    ...L.rotulos.flatMap((r) => [r.caixa.y0, r.caixa.y1]),
+    ...L.alvos.flatMap((a) => [a.caixa.y0, a.caixa.y1]),
+    ...L.guias.flatMap((g) => g.pontos.map(([, y]) => y)),
+  ];
+  return { topo: Math.min(...ys), fundo: Math.max(...ys) };
+}
+
+/** Pares de rótulos a menos de `folga` px um do outro. */
+export function colisoesDeRotulos(L: Layout, folga: number): string[] {
+  const colisoes: string[] = [];
+  for (let i = 0; i < L.rotulos.length; i++)
+    for (let j = i + 1; j < L.rotulos.length; j++)
+      if (sobrepoe(L.rotulos[i].caixa, L.rotulos[j].caixa, folga)) colisoes.push(`${L.rotulos[i].id} × ${L.rotulos[j].id}`);
+  return colisoes;
+}
+
+/** Maior distância vertical entre o centro de um rótulo lateral e o centro da barra do nó. */
+export function deslocamentoMaximo(L: Layout): number {
+  return Math.max(
+    0,
+    ...L.rotulos
+      .filter((r) => r.lado !== 'meio')
+      .map((r) => {
+        const n = L.nos.find((x) => x.id === r.id)!;
+        return Math.abs((r.caixa.y0 + r.caixa.y1) / 2 - (n.y0 + n.y1) / 2);
+      }),
+  );
+}
+
+/** Barra mais fina entre os nós com valor positivo no grafo. */
+export function noMaisFino(L: Layout, g: Grafo): { id: string; px: number } {
+  const positivos = new Set(g.nos.filter((n) => n.valor > 0).map((n) => n.id));
+  return L.nos
+    .filter((n) => positivos.has(n.id))
+    .map((n) => ({ id: n.id, px: n.y1 - n.y0 }))
+    .reduce((a, b) => (b.px < a.px ? b : a));
+}
 
 /** Lê o `d` de uma faixa no formato de caminhoFaixa e devolve a espessura nas duas pontas. */
 export function espessurasDaFaixa(d: string): { saida: number; entrada: number; fechado: boolean } {
