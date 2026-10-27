@@ -15,8 +15,19 @@ linhas do RTN ele vem e quais metodologias foram usadas.
 ```bash
 pip install -r requirements.txt
 python pipeline.py     # lê entrada/ e grava dados/AAAA.json
-pytest -q              # 18 testes de validação
+pytest -q              # testes de validação
 ```
+
+**Notas de contexto:** antes de qualquer merge que toque em notas de contexto (`notas.json`, classe `contexto`), confira os
+trechos citados contra o PDF da publicação, que não é versionado (ver `entrada/LEIAME.md`):
+
+```bash
+python verificar_trechos.py --pdf C:/caminho/RTN_Boletim_2020_12.pdf
+```
+
+O script confere que o PDF é o citado (SHA256 igual a `arquivo_sha256`), que cada `trecho` aparece na página citada
+(espaços e hifenização de fim de linha normalizados) e que tem menos de 15 palavras; sai com código 1 se algo não conferir.
+Precisa do `pdftotext` (do xpdf ou do Poppler) no PATH. Fica fora do CI porque o PDF não está no repositório.
 
 O site (Node 24):
 
@@ -51,10 +62,12 @@ build. Cada merge na `main` vira produção; cada PR ganha uma prévia, protegid
 | `docs/como-conduzir.md` | Como conduzir o projeto com Claude Code e Superpowers |
 | `CLAUDE.md` | Contexto e regras para o Claude Code |
 | `mapeamento.json` | Linhas do RTN → nós do Sankey |
+| `notas.json` | Notas por ano e nó, escritas à mão sem números: os valores entram por marcadores calculados sobre a série |
 | `pipeline.py` | Leitura do RTN e do IPCA, mapeamento, deflação, JSON por ano |
 | `testes.py`, `tests/` | Testes de validação (identidades contábeis, deflação, regressão contra o gráfico original) |
-| `referencias/` | Valores impressos no gráfico original (2025), usados pelos testes do pipeline e do site |
-| `entrada/` | Arquivos públicos de entrada (RTN e IPCA) e a fonte de cada um |
+| `verificar_trechos.py` | Confere os trechos das notas de contexto contra o PDF citado (fora do CI) |
+| `referencias/` | Valores impressos no gráfico original (2025), usados pelos testes do pipeline e do site, e valores nominais de 2020 do boletim do RTN de dez/2020 (`boletim-dez-2020.json`, com página e SHA256 do PDF), que conferem as subcontas (T21) |
+| `entrada/` | Arquivos públicos de entrada (RTN, IPCA e PIB) e a fonte de cada um |
 | `dados/` | JSON gerados, um por ano, com valores nominais e em R$ constantes |
 | `web/` | O site: grafo, layout próprio em SVG e interface React, com testes (Vitest e Playwright) |
 | `vercel.json` | Publicação na Vercel: comandos de build, reescrita do subcaminho e cache |
@@ -62,7 +75,7 @@ build. Cada merge na `main` vira produção; cada PR ganha uma prévia, protegid
 ## Formato de cada AAAA.json
 
 Um arquivo por ano em `dados/`, gerado pelo pipeline (não edite à mão), mais `dados/indice.json` com o intervalo de anos, o
-mês-base e o último mês publicado.
+mês-base, o último mês publicado e o último trimestre do CSV do PIB (`pib_ultimo_trimestre`, que identifica a versão da série do IBGE).
 
 | Campo | Conteúdo |
 | --- | --- |
@@ -76,7 +89,9 @@ mês-base e o último mês publicado.
 | `linhas` | Id do nó ou do total → linhas do RTN que o formam, na ordem do mapeamento |
 | `estrutura` | Papéis e ordem de desenho: `receita` (origens), `repasse`, `obrigatorias` (ordem fixa de `mapeamento.json → desenho`) e `discricionarias` |
 | `nominal`, `real` | Valores do ano em R$ correntes e em R$ constantes do mês-base: `nos`, `totais` e `financiamento` |
-| `pib` | PIB nominal do ano e a fonte |
+| `pib` | PIB nominal do ano (R$ milhões correntes, soma dos 4 trimestres do IBGE): `valor_nominal`, `fonte`, `trimestres` e `ultimo_trimestre` (o último trimestre somado no ano, por exemplo `2025T4`) |
+| `subcontas` | Id do nó → linhas filhas diretas (aba 1.2) das linhas que o formam, menos as que subtraem, na ordem da aba: `codigo`, `nome`, `real` e `nominal` (R$ milhões); só nós com duas ou mais |
+| `notas` | Notas do ano (lista vazia se não há), cada uma com `no`, `classe` (`fatos`, derivada da série do RTN; `contexto`, de uma publicação do Tesouro), `texto` com os marcadores de `notas.json` já substituídos (valores em R$ constantes, "R$ x,y bi"), `observacao` (texto ou `null`, uma vez por nota), `base_precos` ("R$ constantes de dez/2025 (IPCA)", montada do `mes_base`, nas notas que escrevem valores; `null` nas outras) e `fonte`, **sempre uma lista de citações**. Cada citação tem `tipo` e os campos do tipo, mais `nota` e `nota_na_tabela` (texto ou `null`): `serie` (notas de fatos) tem `titulo` e `linhas`; `boletim` (notas de contexto) tem `publicacao`, `boletim`, `base_precos` (o boletim publica a preços correntes, outra base que a nossa), `pagina`, `nota` (a numeração do texto das Notas Explicativas), `nota_na_tabela` (a numeração da tabela, que é outra), `endereco`, `verificado_em`, `arquivo_sha256` (SHA256 do PDF conferido), `trecho` (menos de 15 palavras), `linha_rtn` (o código da linha na série histórica, aba 1.2, da conta de que a nota do boletim trata; não é a numeração do boletim) e `menciona` (a linha do RTN de que a citação fala). Regra de linhas (T17): marcadores e `menciona` ficam nas linhas de soma do nó e suas descendentes, fora das de subtrai e dos totais; `linha_rtn` também pode ser a mãe direta de uma linha de soma. O esquema é fechado (chave desconhecida é erro, em `notas.json` e em cada `AAAA.json`) e cada campo tem regra própria (dígitos só nos marcadores do texto, em `TERMOS_COM_DIGITO` e em páginas "p. N" da observação; `nota` e `nota_na_tabela` na forma "Nota N …"; `pagina` inteiro ≥ 1; `verificado_em` data real até hoje; `base_precos` montado do `mes_base`; `titulo`, `publicacao`, `boletim`, `endereco` e o `base_precos` da citação só em listas fechadas do código; "p. N" da observação só com páginas citadas pela própria nota; marcadores com sintaxe válida; comparações verdadeiras na série; sem quantificadores proibidos). Tudo isso vive em `validar_notas` e `validar_ano` (`pipeline.py`): o pipeline as chama antes de gravar (as notas antes de ler o PIB) e sai com erro se algo não confere, e os testes (T16, T17, T22) chamam as mesmas funções |
 
 Cada item de `linhas` traz o código da aba 1.2 da série histórica, o nome oficial da linha (sem o código, sem marcadores de
 nota) e se ela soma ou subtrai no nó:
@@ -96,5 +111,5 @@ valores constantes do próprio Tesouro.
 
 ## Fontes e licença
 
-Dados: Secretaria do Tesouro Nacional (Resultado do Tesouro Nacional) e IBGE (IPCA, SIDRA 1737). Veja `entrada/LEIAME.md`.
+Dados: Secretaria do Tesouro Nacional (Resultado do Tesouro Nacional) e IBGE (IPCA, SIDRA 1737; PIB, SIDRA 1846). Veja `entrada/LEIAME.md`.
 Código: licença MIT (`LICENSE`).

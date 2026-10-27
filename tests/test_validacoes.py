@@ -8,11 +8,12 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 import pipeline as P  # noqa: E402
+from conftest import entradas  # noqa: E402
 import testes as T  # noqa: E402
 
-RTN, IPCA = P.entradas_padrao()
+RTN, IPCA, PIB = entradas()
 CTX = T.contexto(RTN, IPCA)
-CASOS = T.lista_testes(CTX, RTN, IPCA)
+CASOS = T.lista_testes(CTX, RTN, IPCA, PIB)
 
 
 @pytest.mark.parametrize("nome,fn", CASOS, ids=[n.split()[0] for n, _ in CASOS])

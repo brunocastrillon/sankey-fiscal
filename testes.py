@@ -2,12 +2,14 @@
 
 Uso (com os arquivos em entrada/):
     python testes.py
-    python testes.py --rtn outro.xlsx --ipca outro.csv
+    python testes.py --rtn outro.xlsx --ipca outro.csv --pib outro.csv
 Sai com código 1 se qualquer teste falhar (o pipeline não deve publicar nesse caso).
 """
 import argparse
 import json
+import re
 import sys
+from pathlib import Path
 
 import pandas as pd
 
@@ -173,13 +175,51 @@ def a2_financiamento(c, rtn):
                 f"juros 2025 = {a(fin['juros_nominais']):,.1f}; resultado nominal 2025 = {a(fin['resultado_nominal']):,.1f}")
 
 
-def a3_pib(c, rtn):
+def a3_pib(c, pib_csv):
     _, M, nos, totais, _ = c
-    pib = P.pib_implicito(rtn)[2025]
+    pib = P.ler_pib_ibge(pib_csv)[0][2025]
     deficit = -float(totais["primario_acima"].groupby(totais["primario_acima"].index.year).sum()[2025])
     pct = 100 * deficit / pib
     ok = abs(pib / 1e6 - 12.7) < 0.1 and round(pct, 2) == 0.48
-    return ok, f"PIB implícito 2025 = R$ {pib/1e6:.3f} tri (IBGE: R$ 12,7 tri); déficit/PIB = {pct:.3f}% (RTN: 0,48%)"
+    return ok, f"PIB do IBGE 2025 = R$ {pib/1e6:.3f} tri (IBGE: R$ 12,7 tri); déficit/PIB = {pct:.3f}% (RTN: 0,48%)"
+
+
+def t13_pib_ibge(pib_csv):
+    ano0, ano1 = P.carregar_mapeamento()["anos"]
+    tri = P.ler_pib_trimestral(pib_csv)
+    anos = range(ano0, ano1 + 1)
+    no_intervalo = tri[(tri.index.year >= ano0) & (tri.index.year <= ano1)]
+    contagem = {a: int((no_intervalo.index.year == a).sum()) for a in anos}
+    incompletos = {a: n for a, n in contagem.items() if n != 4}
+    nulos = [P.rotulo_trimestre(t) for t in no_intervalo.index[no_intervalo.isna()]]
+    ok = not incompletos and not nulos
+    return ok, (f"{len(tri)} trimestres no arquivo ({P.rotulo_trimestre(tri.index.min())} a "
+                f"{P.rotulo_trimestre(tri.index.max())}); {ano0}–{ano1}: anos sem 4 trimestres: {incompletos or 'nenhum'}; "
+                f"valores nulos: {nulos or 'nenhum'}")
+
+
+def a4_pib_ancora(c, rtn, pib_csv):
+    ok13, det13 = t13_pib_ibge(pib_csv)
+    if not ok13:
+        return False, f"pulado: T13 falhou ({det13})"
+    mapa, M, nos, totais, _ = c
+    anos = range(mapa["anos"][0], mapa["anos"][1] + 1)
+    pib = P.ler_pib_ibge(pib_csv)[0]
+    implicito = P.pib_implicito(rtn)
+    publicado = P.ler_rtn_anual(rtn, "2.2-A").loc["5"] * 100  # % do PIB publicado pelo Tesouro
+    primario = totais["primario_acima"].groupby(totais["primario_acima"].index.year).sum()
+    pct, rel = {}, {}
+    for a in anos:
+        p, p0 = 100 * float(primario[a]) / float(pib[a]), float(publicado[a])
+        pct[a] = (abs(p - p0), 0.005 * abs(p0) + 0.001)
+        rel[a] = abs(float(pib[a]) / float(implicito[a]) - 1)
+    a_p = max(pct, key=lambda a: pct[a][0])
+    a_f = min(pct, key=lambda a: pct[a][1] - pct[a][0])
+    a_r = max(rel, key=rel.get)
+    ok = all(d <= t for d, t in pct.values()) and all(r <= 0.005 for r in rel.values())
+    return ok, (f"primário/PIB IBGE contra a aba 2.2-A: maior diferença {pct[a_p][0]:.5f} p.p. ({a_p}, tolerância "
+                f"{pct[a_p][1]:.5f}); menor folga {pct[a_f][1] - pct[a_f][0]:.5f} p.p. ({a_f}); "
+                f"PIB IBGE / implícito − 1: maior {100 * rel[a_r]:.5f}% ({a_r}), folga {100 * (0.005 - rel[a_r]):.5f}%")
 
 
 CASOS_NOME = {
@@ -243,13 +283,420 @@ def t12_estrutura(c):
     return not falhas, f"{len(checagens)} checagens; falharam: {falhas or 'nenhuma'}; ordem: {e['obrigatorias']}"
 
 
-def t11_determinismo(rtn, ipca):
-    a =json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
-    b = json.dumps(P.montar_anos(rtn, ipca)[0], ensure_ascii=False)
+# Nós com 2 ou mais subcontas e quantas são (design da fase 3, "Subcontas")
+SUBCONTAS_ESPERADAS = {
+    "imposto_renda": 3, "contribuicao_inss": 2, "cofins_pis": 2, "iof_ipi_importacao": 7,
+    "royalties_dividendos_outras": 12, "repasse_estados_municipios": 6, "aposentadorias_pensoes": 2,
+    "demais_controle_fluxo": 3, "fundeb_seguro_desemprego_outras": 19, "discricionarias": 9,
+}
+TOL_SUBCONTAS = 0.02  # R$ milhões: 3 casas por valor, até 0,0005 por subconta, 19 × 0,0005 = 0,0095
+# Meses em que a própria aba 1.2 não fecha: a linha-pai difere da soma das filhas diretas. O resíduo vem da planilha do
+# Tesouro (seriehistoricajul26.xlsx), não do arredondamento do pipeline. Medido em 26/10/2026, R$ milhões correntes:
+#   4.1 − (4.1.1 + 4.1.2) em ago/2016 = +0,0176 (vira R$ 0,028 mi em 2016, a preços de dez/2025, acima dos 0,02 do
+#   arredondamento); em mai/2015 = −0,0001.
+# Um mês com resíduo fora desta lista derruba o T14 de propósito: é uma revisão da série a conferir antes de publicar.
+RESIDUOS_FONTE = {("aposentadorias_pensoes", "2015-05"), ("aposentadorias_pensoes", "2016-08")}
+# A folga pelo resíduo vale só nestes nós e anos; em qualquer outro, |Σ subcontas − nó| ≤ TOL_SUBCONTAS, sem folga.
+FOLGA_RESIDUO = {("aposentadorias_pensoes", 2015), ("aposentadorias_pensoes", 2016)}
+
+
+def _subcontas(c, rtn):
+    mapa, M, nos, totais, ipca = c
+    fator = pd.Series(P.fator_deflacao(ipca, M.columns, mapa["mes_base_padrao"]), index=M.columns)
+    return P.montar_subcontas(mapa, M, fator, P.ler_nomes_linhas(rtn)), fator
+
+
+def t14_subcontas_fecham(c, rtn):
+    mapa, M, nos, totais, _ = c
+    sub, fator = _subcontas(c, rtn)
+    residuos, residuo_mes = {}, {}
+    for no, itens in sub.get(mapa["anos"][1], {}).items():
+        r = nos[no] - sum(M.loc[i["codigo"]] for i in itens)
+        for m, v in r[r.abs() > 1e-6].items():
+            residuos[(no, f"{m:%Y-%m}")] = float(v)
+            residuo_mes[(no, m)] = float(v)
+    pior, onde, pior_arred, excedeu = 0.0, None, 0.0, []
+    for ano, por_no in sub.items():
+        for no, itens in por_no.items():
+            for chave, f in (("real", fator), ("nominal", 1.0)):
+                arred = sum(i[chave] for i in itens)
+                bruto = sum(float(P.por_ano(M.loc[i["codigo"]] * f)[ano]) for i in itens)
+                pior_arred = max(pior_arred, abs(arred - bruto))
+                dif = abs(arred - float(P.por_ano(nos[no] * f)[ano]))
+                folga = TOL_SUBCONTAS
+                if (no, ano) in FOLGA_RESIDUO:
+                    folga += sum(abs(v) * (float(fator[m]) if chave == "real" else 1.0)
+                                 for (n2, m), v in residuo_mes.items() if n2 == no and m.year == ano)
+                if dif > folga:
+                    excedeu.append(f"{no} {ano} {chave}: {dif:.4f} > {folga:.4f}")
+                if dif > pior:
+                    pior, onde = dif, f"{no} {ano} {chave}"
+    anos = list(range(mapa["anos"][0], mapa["anos"][1] + 1))
+    contagens = {ano: {no: len(v) for no, v in por_no.items()} for ano, por_no in sub.items()}
+    fundeb = [i["codigo"] for i in sub[2025]["fundeb_seguro_desemprego_outras"]] if 2025 in sub else []
+    ir = [i["codigo"] for i in sub[2025].get("imposto_renda", [])] if 2025 in sub else []
+    checagens = {
+        "11 anos": sorted(sub) == anos,
+        "10 nós com as contagens do design, em todos os anos": all(v == SUBCONTAS_ESPERADAS for v in contagens.values()),
+        "Fundeb sem 4.3.05": "4.3.05" not in fundeb,
+        "Imposto de Renda = 1.1.03.1, 1.1.03.2, 1.1.03.3": ir == ["1.1.03.1", "1.1.03.2", "1.1.03.3"],
+        f"arredondamento das subcontas ≤ {TOL_SUBCONTAS}": pior_arred <= TOL_SUBCONTAS,
+        "resíduo da aba 1.2 só nos meses conhecidos": set(residuos) <= RESIDUOS_FONTE,
+        "meses conhecidos só nos nós e anos com folga": all((no, int(m[:4])) in FOLGA_RESIDUO for no, m in RESIDUOS_FONTE),
+        f"somas fecham com o nó (≤ {TOL_SUBCONTAS}; + o resíduo do mês só em {sorted(FOLGA_RESIDUO)})": not excedeu,
+    }
+    falhas = [k for k, ok in checagens.items() if not ok]
+    det_res = "; ".join(f"{no} {m}: {v:+.4f}" for (no, m), v in sorted(residuos.items())) or "nenhum"
+    return not falhas, (f"{sum(len(v) for v in sub.get(2025, {}).values())} subcontas em {len(sub.get(2025, {}))} nós; "
+                        f"maior |Σ subcontas − nó| R$ {pior:.4f} mi ({onde}); arredondamento até R$ {pior_arred:.4f} mi; "
+                        f"resíduo mensal da aba 1.2 (R$ mi correntes): {det_res}; acima da folga: {excedeu[:4] or 'nenhum'}; "
+                        f"falharam: {falhas or 'nenhuma'}")
+
+
+def t15_subcontas_codigos(c, rtn):
+    mapa, M, *_ = c
+    nomes = P.ler_nomes_linhas(rtn)
+    sub, _ = _subcontas(c, rtn)
+    subtrai = {cod for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"] for cod in n.get("subtrai", [])}
+    codigos = {i["codigo"] for por_no in sub.values() for itens in por_no.values() for i in itens}
+    sem_nome = sorted(cod for cod in codigos if not nomes.get(cod, "").strip())
+    nome_errado = sorted({i["codigo"] for por_no in sub.values() for itens in por_no.values() for i in itens
+                          if i["nome"] != nomes.get(i["codigo"])})
+    de_subtrai = sorted(codigos & subtrai)
+    posicao = {cod: k for k, cod in enumerate(M.index)}
+    fora_de_ordem = sorted({no for por_no in sub.values() for no, itens in por_no.items()
+                            if [posicao[i["codigo"]] for i in itens] != sorted(posicao[i["codigo"]] for i in itens)})
+    ok = bool(codigos) and not sem_nome and not nome_errado and not de_subtrai and not fora_de_ordem
+    return ok, (f"{len(codigos)} códigos; sem nome na aba 1.2: {sem_nome or 'nenhum'}; nome diferente do da aba 1.2: "
+                f"{nome_errado or 'nenhum'}; de subtrai: {de_subtrai or 'nenhum'}; fora da ordem da aba 1.2: "
+                f"{fora_de_ordem or 'nenhum'}")
+
+
+def _reais(c):
+    """Séries mensais em R$ constantes do mês-base: linhas do RTN (código x mês) e nós."""
+    mapa, M, nos, totais, ipca = c
+    fator = pd.Series(P.fator_deflacao(ipca, M.columns, mapa["mes_base_padrao"]), index=M.columns)
+    return M * fator, {k: v * fator for k, v in nos.items()}
+
+
+# Nomes próprios com dígito aceitos no texto das notas: a lista fechada vem do pipeline (fonte única). Cada termo sai do
+# texto, exatamente como escrito, antes da procura por dígitos; qualquer outro dígito numa nota derruba o T16.
+TERMOS_COM_DIGITO = P.TERMOS_COM_DIGITO
+TERMOS_COM_DIGITO_APROVADOS = ("Covid-19",)  # a conferência: a lista do pipeline tem de ser exatamente esta
+
+
+def t16_notas_campos(notas=None):
+    notas = P.carregar_notas() if notas is None else notas
+    erros = [e for i, n in enumerate(notas) if isinstance(n, dict) for e in P.erros_campos(n, f"notas.json[{i}]")]
+    lista_fechada = TERMOS_COM_DIGITO == TERMOS_COM_DIGITO_APROVADOS
+    return bool(notas) and not erros and lista_fechada, (
+        f"{len(notas)} notas; problemas nos campos (P.erros_campos): {erros or 'nenhum'}; termos com dígito aceitos: "
+        f"{list(TERMOS_COM_DIGITO)} (lista fechada: {lista_fechada})")
+
+
+def t23_termos_com_digito():
+    # A lista fechada aprovada, escrita aqui de propósito: um termo novo no pipeline (e em TERMOS_COM_DIGITO_APROVADOS)
+    # derruba este teste, no testes.py e no pytest, até alguém aprovar e mudar esta linha.
+    aprovada = ("Covid-19",)
+    ok = P.TERMOS_COM_DIGITO == aprovada and TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO
+    return ok, (f"termos com dígito no pipeline: {list(P.TERMOS_COM_DIGITO)}; aprovados: {list(aprovada)}; "
+                f"fonte única: {TERMOS_COM_DIGITO is P.TERMOS_COM_DIGITO}")
+
+
+def t17_notas_comparacoes(c, rtn, notas=None):
+    """Comparações, quantificadores e regra de linhas, pela validação do pipeline (erros_conteudo, erros_regra_linhas)."""
+    mapa, M, *_ = c
+    R, nos_reais = _reais(c)
+    erros, n_comparacoes = [], 0
+    for i, n in enumerate(P.carregar_notas() if notas is None else notas):
+        quem = f"notas.json[{i}] {n.get('ano')} {n.get('no')}"
+        if P.erros_esquema_nota(n, quem) or P.erros_marcadores(n, quem):
+            erros.append(f"{quem}: fora do esquema ou com marcador malformado (ver T16 e T22)")
+            continue
+        n_comparacoes += len(n.get("comparacoes", []))
+        erros += P.erros_conteudo(n, quem, R, nos_reais) + P.erros_regra_linhas(n, quem, mapa, M.index)
+    ok = n_comparacoes > 0 and not erros
+    return ok, (f"{n_comparacoes} comparações avaliadas na série; comparações, quantificadores, nó, linhas e fontes "
+                f"(P.erros_conteudo, P.erros_regra_linhas): {erros or 'tudo certo'}")
+
+
+def t18_notas_fontes(c, rtn):
+    R, nos_reais = _reais(c)
+    nomes = P.ler_nomes_linhas(rtn)
+    citacao = {"tipo": "boletim", "publicacao": "Publicação", "pagina": 1, "nota": "Nota 1", "endereco": "https://exemplo",
+               "verificado_em": "2026-01-01"}
+
+    def nota(fonte):
+        return {"ano": 2020, "no": "bolsa_familia", "classe": "contexto", "texto": "Texto.", "fonte": fonte}
+
+    def levanta(fonte):
+        try:
+            P.aplicar_notas([nota(fonte)], 2020, R, nomes, nos_reais)
+            return False
+        except ValueError:
+            return True
+
+    # a fonte é sempre lista: uma citação fora de lista é ValueError, e também sem página ou sem nota em qualquer citação
+    levantou = {f"{falta} na citação {i + 1} de 2": levanta([{k: v for k, v in citacao.items() if not (j == i and k == falta)}
+                                                          for j in range(2)])
+                for falta in ("pagina", "nota") for i in range(2)}
+    levantou["citação fora de lista"] = levanta(citacao)
+    completas = {"lista de 1": nota([citacao]), "lista de 2": nota([citacao, dict(citacao, nota="Nota 2")])}
+    gravadas = {k: P.aplicar_notas([n], 2020, R, nomes, nos_reais)[0]["fonte"] for k, n in completas.items()}
+    em_lista = all(isinstance(f, list) and all(c["pagina"] and c["nota"] for c in f) for f in gravadas.values())
+    classes = sorted({n["classe"] for n in P.carregar_notas()})
+    ok = all(levantou.values()) and em_lista and set(classes) <= set(P.CLASSES_NOTA)
+    return ok, (f"fonte de contexto incompleta levanta ValueError: {levantou}; fonte completa gravada como lista: "
+                f"{em_lista}; classes em notas.json: {classes}")
+
+
+# Notas de contexto de 2020: boletim do RTN de dezembro de 2020, Notas Explicativas do resultado acumulado (página 9 do PDF)
+PUBLICACAO_RTN_2020 = "Resultado do Tesouro Nacional, dezembro de 2020"
+ENDERECO_RTN_2020 = "https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12"
+# nó -> notas do boletim citadas pela nota, em ordem
+NOTAS_CONTEXTO_2020 = {("fundeb_seguro_desemprego_outras", ("Nota 18",)),
+                       ("fundeb_seguro_desemprego_outras", ("Nota 16", "Nota 18")),
+                       ("bolsa_familia", ("Nota 21",))}
+CAMPOS_FONTE_T19 = ("tipo", "publicacao", "boletim", "pagina", "nota", "nota_na_tabela", "endereco", "verificado_em",
+                    "arquivo_sha256", "trecho", "linha_rtn", "menciona")
+# O texto das Notas Explicativas (p. 9) e a tabela do resultado acumulado (p. 7) numeram as notas de jeitos diferentes
+NOTA_NA_TABELA = {f"Nota {texto}": f"Nota {tabela} da tabela do resultado acumulado (p. 7)"
+                  for texto, tabela in (("16", "15"), ("18", "17"), ("21", "20"))}
+OBSERVACAO_NUMERACAO = "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente"
+# SHA256 do PDF do boletim baixado pelo Bruno (Get-FileHash), o mesmo de referencias/boletim-dez-2020.json
+SHA256_PDF_RTN_2020 = "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef"
+# Nota 21 do boletim: queda real do Bolsa Família de 2019 para 2020, em % (preços de dez/2020; a nossa série usa dez/2025,
+# mas a variação real entre dois anos não depende do mês-base)
+QUEDA_REAL_BOLSA_FAMILIA_NOTA_21 = -44.3
+TOL_QUEDA_BOLSA_FAMILIA = 0.2  # pontos percentuais
+
+
+def no_da_linha(mapa, codigo):
+    """Id do nó cujas linhas de soma contêm o código (ele mesmo ou um ancestral), fora das linhas de subtrai."""
+    dentro = lambda c, raizes: any(c == r or c.startswith(r + ".") for r in raizes)
+    nos = [n["id"] for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"]
+           if dentro(codigo, n["soma"]) and not dentro(codigo, n.get("subtrai", []))]
+    return nos[0] if len(nos) == 1 else None
+
+
+def t19_notas_contexto(c, rtn, notas=None):
+    mapa, M, nos, *_ = c
+    nomes = P.ler_nomes_linhas(rtn)
+    contexto = [n for n in (P.carregar_notas() if notas is None else notas) if n["classe"] == "contexto"]
+    erros = []
+    for n in contexto:
+        for f in P.citacoes(n["fonte"]):
+            quem = f"{n['ano']} {n['no']} {f.get('nota')}"
+            faltam = [k for k in CAMPOS_FONTE_T19 if f.get(k) in (None, "")]
+            if faltam:
+                erros.append(f"{quem}: sem {faltam}")
+                continue
+            if len(f["trecho"]) > 200 or len(f["trecho"].split()) >= 15:
+                erros.append(f"{quem}: trecho longo")
+            if f["publicacao"] != PUBLICACAO_RTN_2020 or f["endereco"] != ENDERECO_RTN_2020:
+                erros.append(f"{quem}: publicação ou endereço")
+            if f["nota_na_tabela"] != NOTA_NA_TABELA.get(f["nota"].split(" das ")[0]):
+                erros.append(f"{quem}: nota_na_tabela {f['nota_na_tabela']}")
+            if f["tipo"] != "boletim":
+                erros.append(f"{quem}: tipo {f['tipo']} numa nota de contexto")
+            if f["arquivo_sha256"] != SHA256_PDF_RTN_2020 or f["arquivo_sha256"] != _ler_json(BOLETIM_2020)["fonte"]["arquivo_sha256"]:
+                erros.append(f"{quem}: arquivo_sha256")
+            if f["linha_rtn"] not in nomes or f["menciona"] not in nomes:
+                erros.append(f"{quem}: linha_rtn ou menciona fora da aba 1.2")
+            elif no_da_linha(mapa, f["menciona"]) != n["no"]:
+                erros.append(f"{quem}: menciona {f['menciona']} é do nó {no_da_linha(mapa, f['menciona'])}")
+        if n.get("observacao") != OBSERVACAO_NUMERACAO:
+            erros.append(f"{n['ano']} {n['no']}: observação da numeração (uma vez por nota)")
+    frases = [fr for n in contexto if n["ano"] == 2020 for fr in re.split(r"(?<=[.!?])\s+", n["texto"])]
+    pessoas = [fr for fr in frases if "pessoas" in fr and "{codigo:4.3.07}" in fr]
+    governos = [fr for fr in frases if "Estados" in fr and "{codigo:4.3.03}" in fr]
+    juntos = [fr for fr in frases if "pessoas" in fr and "Estados" in fr]
+    if not pessoas or not governos or juntos:
+        erros.append(f"auxílio a pessoas e a Estados e Municípios em frases separadas: pessoas {len(pessoas)}, "
+                     f"Estados {len(governos)}, na mesma frase {len(juntos)}")
+    presentes = {(n["no"], tuple(f.get("nota", "").split(" das ")[0] for f in P.citacoes(n["fonte"])))
+                 for n in contexto if n["ano"] == 2020}
+    if presentes != NOTAS_CONTEXTO_2020:
+        erros.append(f"notas de 2020: {sorted(presentes)} (esperadas {sorted(NOTAS_CONTEXTO_2020)})")
+    bf = P.por_ano(nos["bolsa_familia"] * pd.Series(P.fator_deflacao(c[4], M.columns, mapa["mes_base_padrao"]), index=M.columns))
+    queda = 100 * (float(bf[2020]) / float(bf[2019]) - 1)
+    if abs(queda - QUEDA_REAL_BOLSA_FAMILIA_NOTA_21) > TOL_QUEDA_BOLSA_FAMILIA:
+        erros.append(f"queda real do Bolsa Família {queda:.3f}% contra {QUEDA_REAL_BOLSA_FAMILIA_NOTA_21}% da Nota 21")
+    return not erros, (f"{len(contexto)} notas de contexto; queda real do Bolsa Família 2019→2020 na série {queda:.3f}% "
+                       f"(Nota 21: {QUEDA_REAL_BOLSA_FAMILIA_NOTA_21}%, tolerância {TOL_QUEDA_BOLSA_FAMILIA}); "
+                       f"problemas: {erros or 'nenhum'}")
+
+
+DADOS = P.AQUI / "dados"
+BOLETIM_2020 = P.AQUI / "referencias" / "boletim-dez-2020.json"
+TOL_ORACULO = 0.001  # R$ milhões: o JSON grava 3 casas (erro de até 0,0005)
+_MESES_ORACULO = {"janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4, "maio": 5, "junho": 6, "julho": 7, "agosto": 8,
+                  "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12}
+
+
+def _ler_json(caminho):
+    with open(caminho, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _oraculo_aba12(rtn):
+    """Leitura própria da aba 1.2, sem o pipeline: código -> {mês: valor em R$ milhões correntes} e a ordem dos códigos."""
+    bruto = pd.read_excel(rtn, sheet_name="1.2", header=None)
+    rotulos = bruto[0].astype(str)
+    h = rotulos[rotulos.str.startswith("Discriminação")].index[0]
+    meses = pd.to_datetime(bruto.iloc[h, 1:], errors="coerce")
+    serie, ordem = {}, []
+    for i in range(h + 1, len(bruto)):
+        if pd.isna(bruto.iloc[i, 0]):
+            continue
+        cod = str(bruto.iloc[i, 0]).split()[0].rstrip(".")
+        if cod in serie:
+            continue
+        valores = pd.to_numeric(bruto.iloc[i, 1:], errors="coerce")
+        serie[cod] = {m: (0.0 if pd.isna(v) else float(v)) for m, v in zip(meses, valores) if pd.notna(m)}
+        ordem.append(cod)
+    return serie, ordem
+
+
+def _oraculo_ipca(csv):
+    """Leitura própria do IPCA do SIDRA (tabela 1737): {mês: número-índice}."""
+    with open(csv, encoding="utf-8-sig") as f:
+        linhas = [[c.strip('"') for c in l.split(";")] for l in f.read().splitlines()]
+    i = next(k for k, l in enumerate(linhas) if len(l) > 2 and l[1].split(" ")[0].lower() in _MESES_ORACULO)
+    return {pd.Timestamp(int(m.split()[1]), _MESES_ORACULO[m.split()[0].lower()], 1):
+            float(v.replace(".", "").replace(",", ".")) for m, v in zip(linhas[i][1:], linhas[i + 1][1:])}
+
+
+def _oraculo_codigos(n, ordem):
+    """Filhas diretas de cada linha de soma (ou a própria linha), menos subtrai, na ordem da aba; None se menos de 2."""
+    codigos = []
+    for s in n["soma"]:
+        filhas = [c for c in ordem if c.startswith(s + ".") and c.count(".") == s.count(".") + 1]
+        codigos += filhas or [s]
+    codigos = sorted((c for c in codigos if c not in n.get("subtrai", [])), key=ordem.index)
+    return codigos if len(codigos) >= 2 else None
+
+
+def t20_subcontas_oraculo(rtn, ipca_csv, pasta=DADOS):
+    mapa = P.carregar_mapeamento()
+    serie, ordem = _oraculo_aba12(rtn)
+    ipca = _oraculo_ipca(ipca_csv)
+    erros, pior, n_val = [], 0.0, 0
+    for ano in range(mapa["anos"][0], mapa["anos"][1] + 1):
+        d = _ler_json(Path(pasta) / f"{ano}.json")
+        base = pd.Timestamp(d["mes_base"])
+        esperados = {n["id"]: _oraculo_codigos(n, ordem) for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"]}
+        esperados = {k: v for k, v in esperados.items() if v}
+        gravados = {no: [i["codigo"] for i in itens] for no, itens in d["subcontas"].items()}
+        if gravados != esperados:
+            erros.append(f"{ano}: códigos {gravados} != {esperados}")
+            continue
+        for no, itens in d["subcontas"].items():
+            for i in itens:
+                meses = {m: v for m, v in serie[i["codigo"]].items() if m.year == ano}
+                nominal = sum(meses.values())
+                real = sum(v * ipca[base] / ipca[m] for m, v in meses.items())
+                for chave, x in (("nominal", nominal), ("real", real)):
+                    dif = abs(i[chave] - x)
+                    n_val += 1
+                    if dif > pior:
+                        pior = dif
+                    if dif > TOL_ORACULO:
+                        erros.append(f"{ano} {no} {i['codigo']} {chave}: JSON {i[chave]} × oráculo {x:.3f}")
+    return not erros and n_val > 0, (f"{n_val} valores (subconta × real/nominal × ano) recalculados; maior diferença "
+                                     f"R$ {pior:.4f} mi (limite {TOL_ORACULO}); erros: {erros[:5] or 'nenhum'}")
+
+
+def _valor_no_json(d, codigo, chave="nominal"):
+    """Valor de uma linha do RTN no AAAA.json: como subconta, ou como nó formado só por ela."""
+    for itens in d["subcontas"].values():
+        for i in itens:
+            if i["codigo"] == codigo:
+                return i[chave]
+    for no, linhas in d["linhas"].items():
+        if [(l["codigo"], l["operacao"]) for l in linhas] == [(codigo, "soma")] and no in d[chave]["nos"]:
+            return d[chave]["nos"][no]
+    raise KeyError(codigo)
+
+
+def t21_subcontas_boletim(caminho=BOLETIM_2020, pasta=DADOS):
+    # Tolerância de 0,1% (tolerancia_relativa da referência); observado 0,026% e 0,040%. Uma revisão do Tesouro acima de
+    # 0,1% entre o boletim e a série histórica falha de propósito: é para ser conferida antes de publicar.
+    ref = _ler_json(caminho)
+    d = _ler_json(Path(pasta) / f"{ref['ano']}.json")
+    tol, linhas, falhas = ref["tolerancia_relativa"], [], []
+    for v in ref["valores"]:
+        x = _valor_no_json(d, v["codigo"])
+        rel = x / v["valor"] - 1
+        linhas.append(f"{v['codigo']} {x:,.1f} × {v['valor']:,.1f} (p. {v['pagina']}, {100 * rel:+.3f}%)")
+        if abs(rel) > tol:
+            falhas.append(v["codigo"])
+    return bool(ref["valores"]) and not falhas, (f"{len(ref['valores'])} linhas de {ref['ano']} contra o boletim (limite "
+                                                f"{100 * tol:.1f}%): {'; '.join(linhas)}; fora: {falhas or 'nenhuma'}")
+
+
+def t22_esquema(c, pasta=DADOS, notas=None):
+    mapa, M, *_ = c
+    notas = P.carregar_notas() if notas is None else notas
+    erros = P.validar_notas(notas, mapa, M.index)
+    indice = _ler_json(Path(pasta) / "indice.json")
+    erros += P.validar_indice(indice)
+    for ano in range(indice["anos"][0], indice["anos"][1] + 1):
+        erros += P.validar_ano(_ler_json(Path(pasta) / f"{ano}.json"))
+    return not erros, (f"notas.json ({len(notas)} notas) e {indice['anos'][1] - indice['anos'][0] + 1} AAAA.json pela "
+                       f"validação do pipeline (validar_notas, validar_ano, validar_indice): {erros[:6] or 'esquema certo'}")
+
+
+TOL_DADOS = 0.02  # R$ milhões: valores gravados com 3 casas; somas de até 19 parcelas
+
+
+def _folga_do_residuo(c, no, ano, codigos, real):
+    """Folga pelo resíduo da própria aba 1.2 (só nos nós e anos de FOLGA_RESIDUO), em R$ milhões."""
+    if (no, ano) not in FOLGA_RESIDUO:
+        return 0.0
+    mapa, M, nos, _, ipca = c
+    fator = pd.Series(P.fator_deflacao(ipca, M.columns, mapa["mes_base_padrao"]), index=M.columns)
+    r = (nos[no] - sum(M.loc[cod] for cod in codigos)).abs() * (fator if real else 1.0)
+    return float(r[r.index.year == ano].sum())
+
+
+def t24_dados_fecham(c, pasta=DADOS):
+    """O dados/AAAA.json publicado fecha sozinho: subcontas = nó e identidades dos totais, em real e nominal."""
+    mapa = c[0]
+    receita = [n["id"] for n in mapa["receita"]]
+    despesa = [n["id"] for n in mapa["despesa"]]
+    erros, pior = [], 0.0
+    for ano in range(mapa["anos"][0], mapa["anos"][1] + 1):
+        d = _ler_json(Path(pasta) / f"{ano}.json")
+        for chave in ("real", "nominal"):
+            v, t = d[chave]["nos"], d[chave]["totais"]
+            identidades = {
+                "receita_total = Σ receita": (t["receita_total"], sum(v[k] for k in receita)),
+                "transferencias = repasse": (t["transferencias"], v[mapa["repasse"]["id"]]),
+                "receita_liquida = receita_total − transferencias": (t["receita_liquida"], t["receita_total"] - t["transferencias"]),
+                "despesa_total = Σ despesa": (t["despesa_total"], sum(v[k] for k in despesa)),
+                "primario_acima = receita_liquida − despesa_total": (t["primario_acima"], t["receita_liquida"] - t["despesa_total"]),
+            }
+            for nome, (x, y) in identidades.items():
+                pior = max(pior, abs(x - y))
+                if abs(x - y) > TOL_DADOS:
+                    erros.append(f"{ano} {chave}: {nome} ({x:.3f} × {y:.3f})")
+            for no, itens in d["subcontas"].items():
+                soma = sum(i[chave] for i in itens)
+                folga = TOL_DADOS + _folga_do_residuo(c, no, ano, [i["codigo"] for i in itens], chave == "real")
+                if abs(soma - v[no]) > folga:
+                    erros.append(f"{ano} {chave}: Σ subcontas de {no} {soma:.3f} × nó {v[no]:.3f} (folga {folga:.4f})")
+    return not erros, (f"11 anos × real/nominal: identidades dos totais (maior diferença R$ {pior:.4f} mi, limite {TOL_DADOS}) "
+                       f"e subcontas = nó (folga do resíduo da fonte só em {sorted(FOLGA_RESIDUO)}); erros: {erros[:5] or 'nenhum'}")
+
+
+def t11_determinismo(rtn, ipca, pib):
+    a = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
+    b = json.dumps(P.montar_anos(rtn, ipca, pib)[0], ensure_ascii=False)
     return a == b, f"duas gerações: {len(a)} caracteres, idênticas: {a == b}"
 
 
-def lista_testes(c, rtn, ipca):
+def lista_testes(c, rtn, ipca, pib):
     return [
         ("T1  Receita: soma dos 6 nós = receita total", lambda: t1_receita(c)),
         ("T2  Receita total − repasses = receita líquida", lambda: t2_receita_liquida(c)),
@@ -261,27 +708,45 @@ def lista_testes(c, rtn, ipca):
         ("T8  Regressão: 2025 real bate com o gráfico original", lambda: t8_regressao(c)),
         ("A1  Âncora: boletim RTN de dez/2025 (2025 nominal)", lambda: a1_boletim(c)),
         ("A2  Âncora: financiamento (BC) e identidades 5+6+7=8, 8+9=10", lambda: a2_financiamento(c, rtn)),
-        ("A3  Âncora: PIB implícito e déficit de 0,48% do PIB", lambda: a3_pib(c, rtn)),
+        ("A3  Âncora: PIB do IBGE e déficit de 0,48% do PIB", lambda: a3_pib(c, pib)),
+        ("A4  Âncora: primário/PIB contra a aba 2.2-A e PIB contra o implícito", lambda: a4_pib_ancora(c, rtn, pib)),
         ("T9  Linhas: códigos existem na aba 1.2 e nomes normalizados", lambda: t9_linhas_nomes(c, rtn)),
         ("T10 Linhas reproduzem soma/subtrai do mapeamento e os totais", lambda: t10_linhas_mapeamento(c, rtn)),
-        ("T11 Gerar duas vezes dá JSON idêntico", lambda: t11_determinismo(rtn, ipca)),
+        ("T11 Gerar duas vezes dá JSON idêntico", lambda: t11_determinismo(rtn, ipca, pib)),
         ("T12 Estrutura: papéis e ordem fixa das obrigatórias", lambda: t12_estrutura(c)),
+        ("T13 PIB do IBGE: 4 trimestres por ano, sem nulos", lambda: t13_pib_ibge(pib)),
+        ("T14 Subcontas fecham com o nó, nos 11 anos (real e nominal)", lambda: t14_subcontas_fecham(c, rtn)),
+        ("T15 Subcontas: códigos da aba 1.2, com nome, na ordem dela, nenhum de subtrai", lambda: t15_subcontas_codigos(c, rtn)),
+        ("T16 Notas: regras de campo (dígitos por campo, formas de nota, página, data, base de preços)", lambda: t16_notas_campos()),
+        ("T17 Notas: comparações, quantificadores e regra de linhas (validação do pipeline)", lambda: t17_notas_comparacoes(c, rtn)),
+        ("T18 Notas: contexto sem página ou nota na fonte falha", lambda: t18_notas_fontes(c, rtn)),
+        ("T19 Notas de contexto de 2020: fonte completa, nó certo, auxílios separados", lambda: t19_notas_contexto(c, rtn)),
+        ("T20 Subcontas do JSON contra um oráculo próprio (aba 1.2 e IPCA)", lambda: t20_subcontas_oraculo(rtn, ipca)),
+        ("T21 Subcontas e Bolsa Família de 2020 contra o boletim de dez/2020", lambda: t21_subcontas_boletim()),
+        ("T22 Esquema fechado de notas.json e dos AAAA.json (validação do pipeline)", lambda: t22_esquema(c)),
+        ("T24 dados/AAAA.json fecha: subcontas = nó e identidades dos totais (real e nominal)", lambda: t24_dados_fecham(c)),
+        ("T23 Termos com dígito nas notas: lista fechada, só \"Covid-19\"", lambda: t23_termos_com_digito()),
     ]
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")  # no Windows, a saída redirecionada usa cp1252 e quebra em "−" e "→"
     ap = argparse.ArgumentParser()
-    rtn0, ipca0 = P.entradas_padrao()
+    rtn0, ipca0, pib0, sem_rtn = P.entradas_da_linha_de_comando()
     ap.add_argument("--rtn", default=rtn0)
     ap.add_argument("--ipca", default=ipca0)
+    ap.add_argument("--pib", default=pib0)
     a = ap.parse_args()
     if not a.rtn:
-        ap.error("nenhum arquivo entrada/seriehistorica*.xlsx encontrado; passe --rtn")
+        ap.error(sem_rtn)
     c = contexto(a.rtn, a.ipca)
-    testes = lista_testes(c, a.rtn, a.ipca)
+    testes = lista_testes(c, a.rtn, a.ipca, a.pib)
     falhas = 0
     for nome, fn in testes:
-        ok, det = fn()
+        try:
+            ok, det = fn()
+        except Exception as e:  # um teste que quebra conta como falha, e a bateria segue
+            ok, det = False, f"exceção {type(e).__name__}: {e}"
         falhas += (not ok)
         print(f"[{'OK ' if ok else 'FALHOU'}] {nome}\n         {det}")
     print(f"\n{len(testes) - falhas}/{len(testes)} testes passaram")

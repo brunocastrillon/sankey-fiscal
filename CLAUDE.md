@@ -44,11 +44,7 @@ npm run e2e               # Playwright (build de teste com ?ano=); PW_CANAL=chro
 - Sem marca ou título que sugiram origem oficial (nada de "gov.br").
 - Nome do produto: `sankey-fiscal` (repositório e URL).
 - O site roda em subcaminho (`/sankey-fiscal/`): configure o `base` do bundler para esse subcaminho e não use caminhos absolutos a partir da raiz do domínio.
-- PIB: fonte é o IBGE. Enquanto a série não é carregada, o pipeline usa o PIB implícito nas abas anuais do RTN.
-
-## Em aberto
-
-- Carregar a série do PIB do IBGE no pipeline.
+- PIB: fonte é o IBGE (SIDRA 1846, soma dos 4 trimestres), em `entrada/tabela1846.csv`. O PIB implícito no RTN só confere (âncora A4).
 
 ## Regras de trabalho
 

@@ -307,6 +307,548 @@
   },
   "pib": {
     "valor_nominal": 7609597.0,
-    "fonte": "implícito nas abas 2.2 e 2.2-A do RTN (provisório até carregar a série do IBGE)"
-  }
+    "fonte": "IBGE, Contas Nacionais Trimestrais, tabela 1846",
+    "trimestres": 4,
+    "ultimo_trimestre": "2020T4"
+  },
+  "subcontas": {
+    "imposto_renda": [
+      {
+        "codigo": "1.1.03.1",
+        "nome": "I.R. - Pessoa Física",
+        "real": 57274.489,
+        "nominal": 41655.641
+      },
+      {
+        "codigo": "1.1.03.2",
+        "nome": "I.R. - Pessoa Jurídica",
+        "real": 174325.011,
+        "nominal": 126635.387
+      },
+      {
+        "codigo": "1.1.03.3",
+        "nome": "I.R. - Retido na fonte",
+        "real": 296522.169,
+        "nominal": 215833.899
+      }
+    ],
+    "contribuicao_inss": [
+      {
+        "codigo": "1.3.1",
+        "nome": "Arrecadação Líquida para o RGPS - Urbana",
+        "real": 543299.181,
+        "nominal": 396172.868
+      },
+      {
+        "codigo": "1.3.2",
+        "nome": "Arrecadação Líquida para o RGPS - Rural",
+        "real": 11807.667,
+        "nominal": 8599.646
+      }
+    ],
+    "cofins_pis": [
+      {
+        "codigo": "1.1.05",
+        "nome": "Cofins",
+        "real": 304561.525,
+        "nominal": 221964.226
+      },
+      {
+        "codigo": "1.1.06",
+        "nome": "PIS/Pasep",
+        "real": 85907.63,
+        "nominal": 62593.696
+      }
+    ],
+    "iof_ipi_importacao": [
+      {
+        "codigo": "1.1.01",
+        "nome": "Imposto sobre a Importação",
+        "real": 62828.645,
+        "nominal": 45743.696
+      },
+      {
+        "codigo": "1.1.02.1",
+        "nome": "IPI - Fumo",
+        "real": 8219.945,
+        "nominal": 5974.963
+      },
+      {
+        "codigo": "1.1.02.2",
+        "nome": "IPI - Bebidas",
+        "real": 4099.525,
+        "nominal": 2985.16
+      },
+      {
+        "codigo": "1.1.02.3",
+        "nome": "IPI - Automóveis",
+        "real": 4728.796,
+        "nominal": 3446.167
+      },
+      {
+        "codigo": "1.1.02.4",
+        "nome": "IPI - Vinculado à importação",
+        "real": 30123.507,
+        "nominal": 21941.957
+      },
+      {
+        "codigo": "1.1.02.5",
+        "nome": "IPI - Outros",
+        "real": 30596.745,
+        "nominal": 22346.305
+      },
+      {
+        "codigo": "1.1.04",
+        "nome": "IOF",
+        "real": 30376.725,
+        "nominal": 22047.586
+      }
+    ],
+    "royalties_dividendos_outras": [
+      {
+        "codigo": "1.1.08",
+        "nome": "CPMF",
+        "real": 0.0,
+        "nominal": 0.0
+      },
+      {
+        "codigo": "1.1.09",
+        "nome": "CIDE - Combustíveis",
+        "real": 2743.335,
+        "nominal": 1988.067
+      },
+      {
+        "codigo": "1.1.10",
+        "nome": "Outras Receitas Administradas pela RFB",
+        "real": 34405.289,
+        "nominal": 25046.415
+      },
+      {
+        "codigo": "1.2",
+        "nome": "Incentivos Fiscais",
+        "real": -191.288,
+        "nominal": -137.515
+      },
+      {
+        "codigo": "1.4.1",
+        "nome": "Concessões e Permissões",
+        "real": 11226.871,
+        "nominal": 8178.654
+      },
+      {
+        "codigo": "1.4.2",
+        "nome": "Dividendos e Participações",
+        "real": 9029.344,
+        "nominal": 6576.814
+      },
+      {
+        "codigo": "1.4.3",
+        "nome": "Contr. Plano de Seguridade Social do Servidor",
+        "real": 23888.694,
+        "nominal": 17397.46
+      },
+      {
+        "codigo": "1.4.4",
+        "nome": "Receitas de Exploração de Recursos Naturais",
+        "real": 77781.789,
+        "nominal": 56488.563
+      },
+      {
+        "codigo": "1.4.5",
+        "nome": "Receitas Próprias (fontes 50, 81 e 82)",
+        "real": 18216.602,
+        "nominal": 13250.483
+      },
+      {
+        "codigo": "1.4.6",
+        "nome": "Contribuição do Salário Educação",
+        "real": 29199.444,
+        "nominal": 21260.857
+      },
+      {
+        "codigo": "1.4.7",
+        "nome": "Complemento para o FGTS (LC nº 110/01)",
+        "real": 49.506,
+        "nominal": 35.812
+      },
+      {
+        "codigo": "1.4.8",
+        "nome": "Demais Receitas Não Administradas pela RFB",
+        "real": 56059.343,
+        "nominal": 40749.988
+      }
+    ],
+    "repasse_estados_municipios": [
+      {
+        "codigo": "2.1",
+        "nome": "FPM / FPE / IPI-EE",
+        "real": 281098.035,
+        "nominal": 204616.858
+      },
+      {
+        "codigo": "2.2",
+        "nome": "Fundos Constitucionais",
+        "real": 11793.584,
+        "nominal": 8553.24
+      },
+      {
+        "codigo": "2.3",
+        "nome": "Transferência de Contribuição do Salário Educação",
+        "real": 17372.129,
+        "nominal": 12621.581
+      },
+      {
+        "codigo": "2.4",
+        "nome": "Transferências de Exploração de Recursos Naturais",
+        "real": 48988.923,
+        "nominal": 35630.636
+      },
+      {
+        "codigo": "2.5",
+        "nome": "Transferência da CIDE - Combustíveis",
+        "real": 952.943,
+        "nominal": 690.046
+      },
+      {
+        "codigo": "2.6",
+        "nome": "Demais Transferências por Repartição de Receita",
+        "real": 2297.179,
+        "nominal": 1685.688
+      }
+    ],
+    "aposentadorias_pensoes": [
+      {
+        "codigo": "4.1.1",
+        "nome": "Benefícios Previdenciários - Urbano",
+        "real": 728780.591,
+        "nominal": 529172.776
+      },
+      {
+        "codigo": "4.1.2",
+        "nome": "Benefícios Previdenciários - Rural",
+        "real": 185525.747,
+        "nominal": 134731.617
+      }
+    ],
+    "demais_controle_fluxo": [
+      {
+        "codigo": "4.4.1.1",
+        "nome": "Benefícios a servidores públicos",
+        "real": 18421.403,
+        "nominal": 13395.402
+      },
+      {
+        "codigo": "4.4.1.4",
+        "nome": "Educação",
+        "real": 9377.353,
+        "nominal": 6825.855
+      },
+      {
+        "codigo": "4.4.1.5",
+        "nome": "Demais",
+        "real": 7490.438,
+        "nominal": 5503.057
+      }
+    ],
+    "fundeb_seguro_desemprego_outras": [
+      {
+        "codigo": "4.3.01",
+        "nome": "Abono e Seguro Desemprego",
+        "real": 82097.236,
+        "nominal": 59570.766
+      },
+      {
+        "codigo": "4.3.02",
+        "nome": "Anistiados",
+        "real": 220.614,
+        "nominal": 160.439
+      },
+      {
+        "codigo": "4.3.03",
+        "nome": "Apoio Fin. EE/MM",
+        "real": 108120.886,
+        "nominal": 78247.026
+      },
+      {
+        "codigo": "4.3.04",
+        "nome": "Benefícios de Legislação Especial e Indenizações",
+        "real": 881.837,
+        "nominal": 640.677
+      },
+      {
+        "codigo": "4.3.06",
+        "nome": "Complemento para o FGTS (LC nº 110/01)",
+        "real": 49.506,
+        "nominal": 35.812
+      },
+      {
+        "codigo": "4.3.07",
+        "nome": "Créditos Extraordinários",
+        "real": 591910.668,
+        "nominal": 429608.08
+      },
+      {
+        "codigo": "4.3.08",
+        "nome": "Compensação ao RGPS pelas Desonerações da Folha",
+        "real": 12964.547,
+        "nominal": 9407.21
+      },
+      {
+        "codigo": "4.3.09",
+        "nome": "Fabricação de Cédulas e Moedas",
+        "real": 1435.742,
+        "nominal": 1047.617
+      },
+      {
+        "codigo": "4.3.10",
+        "nome": "FUNDEB (Complem. União)",
+        "real": 20704.604,
+        "nominal": 15003.535
+      },
+      {
+        "codigo": "4.3.11",
+        "nome": "Fundo Constitucional DF (Custeio e Capital)",
+        "real": 2706.643,
+        "nominal": 1969.677
+      },
+      {
+        "codigo": "4.3.12",
+        "nome": "Legislativo/Judiciário/MPU/DPU (Custeio e Capital)",
+        "real": 15308.823,
+        "nominal": 11166.571
+      },
+      {
+        "codigo": "4.3.13",
+        "nome": "Lei Kandir (LC nº 87/96 e 102/00) e LC nº 176 de 2020",
+        "real": 4152.865,
+        "nominal": 3119.205
+      },
+      {
+        "codigo": "4.3.14",
+        "nome": "Sentenças Judiciais e Precatórios (Custeio e Capital)",
+        "real": 31751.828,
+        "nominal": 22876.662
+      },
+      {
+        "codigo": "4.3.15",
+        "nome": "Subsídios, Subvenções e Proagro",
+        "real": 29334.58,
+        "nominal": 21067.133
+      },
+      {
+        "codigo": "4.3.16",
+        "nome": "Transferências ANA",
+        "real": 104.169,
+        "nominal": 77.028
+      },
+      {
+        "codigo": "4.3.17",
+        "nome": "Transferências Multas ANEEL",
+        "real": 2658.67,
+        "nominal": 1924.983
+      },
+      {
+        "codigo": "4.3.18",
+        "nome": "Impacto Primário do FIES",
+        "real": -259.182,
+        "nominal": -181.588
+      },
+      {
+        "codigo": "4.3.19",
+        "nome": "Financiamento de Campanha Eleitoral",
+        "real": 2794.564,
+        "nominal": 2034.955
+      },
+      {
+        "codigo": "4.3.20",
+        "nome": "Demais Despesas Obrigatórias",
+        "real": 0.0,
+        "nominal": 0.0
+      }
+    ],
+    "discricionarias": [
+      {
+        "codigo": "4.4.2.1",
+        "nome": "Saúde",
+        "real": 32562.059,
+        "nominal": 23669.05
+      },
+      {
+        "codigo": "4.4.2.2",
+        "nome": "Educação",
+        "real": 26488.937,
+        "nominal": 19311.625
+      },
+      {
+        "codigo": "4.4.2.3",
+        "nome": "Defesa",
+        "real": 16223.941,
+        "nominal": 11871.809
+      },
+      {
+        "codigo": "4.4.2.4",
+        "nome": "Transporte",
+        "real": 12508.321,
+        "nominal": 9113.805
+      },
+      {
+        "codigo": "4.4.2.5",
+        "nome": "Administração",
+        "real": 8099.757,
+        "nominal": 5901.916
+      },
+      {
+        "codigo": "4.4.2.6",
+        "nome": "Ciência e Tecnologia",
+        "real": 4371.352,
+        "nominal": 3185.52
+      },
+      {
+        "codigo": "4.4.2.7",
+        "nome": "Segurança Pública",
+        "real": 4159.128,
+        "nominal": 3023.993
+      },
+      {
+        "codigo": "4.4.2.8",
+        "nome": "Assistência Social",
+        "real": 3449.459,
+        "nominal": 2516.838
+      },
+      {
+        "codigo": "4.4.2.9",
+        "nome": "Demais",
+        "real": 40689.028,
+        "nominal": 29756.322
+      }
+    ]
+  },
+  "notas": [
+    {
+      "no": "fundeb_seguro_desemprego_outras",
+      "classe": "fatos",
+      "texto": "Em 2020, R$ 591,9 bi dos R$ 906,9 bi deste grupo estão na linha 4.3.07 Créditos Extraordinários, e R$ 108,1 bi na linha 4.3.03 Apoio Fin. EE/MM. Fundeb e seguro-desemprego, que dão nome ao grupo, somam R$ 102,8 bi nas linhas 4.3.10 FUNDEB (Complem. União) e 4.3.01 Abono e Seguro Desemprego.",
+      "fonte": [
+        {
+          "tipo": "serie",
+          "titulo": "Série histórica do RTN, aba 1.2",
+          "linhas": [
+            "4.3.07",
+            "4.3.03",
+            "4.3.01",
+            "4.3.10"
+          ],
+          "nota": null,
+          "nota_na_tabela": null
+        }
+      ],
+      "observacao": null,
+      "base_precos": "R$ constantes de dez/2025 (IPCA)"
+    },
+    {
+      "no": "bolsa_familia",
+      "classe": "fatos",
+      "texto": "Em 2020, a linha 4.4.1.2 Bolsa Família e Auxílio Brasil somou R$ 0,6 bi entre abril e agosto, contra R$ 3,6 bi só em março.",
+      "fonte": [
+        {
+          "tipo": "serie",
+          "titulo": "Série histórica do RTN, aba 1.2, mensal",
+          "linhas": [
+            "4.4.1.2"
+          ],
+          "nota": null,
+          "nota_na_tabela": null
+        }
+      ],
+      "observacao": null,
+      "base_precos": "R$ constantes de dez/2025 (IPCA)"
+    },
+    {
+      "no": "fundeb_seguro_desemprego_outras",
+      "classe": "contexto",
+      "texto": "Segundo o Tesouro, a linha 4.3.07 Créditos Extraordinários foi influenciada, em 2020, pelas medidas de combate à Covid-19. Entre elas, o Tesouro destaca o Auxílio Emergencial a pessoas em situação de vulnerabilidade, as despesas adicionais do Ministério da Saúde e de outros ministérios, o Benefício Emergencial de Manutenção do Emprego e da Renda e as cotas dos fundos garantidores de operações e de crédito.",
+      "fonte": [
+        {
+          "tipo": "boletim",
+          "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
+          "boletim": "v. 26, n. 12",
+          "base_precos": "R$ correntes (o boletim publica a preços correntes)",
+          "pagina": 9,
+          "nota": "Nota 18 das Notas Explicativas do resultado acumulado",
+          "nota_na_tabela": "Nota 17 da tabela do resultado acumulado (p. 7)",
+          "endereco": "https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12",
+          "verificado_em": "2026-10-26",
+          "arquivo_sha256": "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef",
+          "trecho": "resultado influenciado pela implementação de medidas de combate ao Covid-19",
+          "linha_rtn": "4.3.07",
+          "menciona": "4.3.07"
+        }
+      ],
+      "observacao": "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente",
+      "base_precos": null
+    },
+    {
+      "no": "fundeb_seguro_desemprego_outras",
+      "classe": "contexto",
+      "texto": "Segundo o Tesouro, a linha 4.3.03 Apoio Fin. EE/MM (Estados e Municípios) subiu em 2020 por causa do Auxílio Emergencial aos Estados, aos Municípios e ao Distrito Federal, uma das medidas para enfrentar as consequências econômicas e sociais da pandemia de Covid-19. Não é o auxílio pago às pessoas: esse está na linha 4.3.07 Créditos Extraordinários, segundo o Tesouro.",
+      "fonte": [
+        {
+          "tipo": "boletim",
+          "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
+          "boletim": "v. 26, n. 12",
+          "base_precos": "R$ correntes (o boletim publica a preços correntes)",
+          "pagina": 9,
+          "nota": "Nota 16 das Notas Explicativas do resultado acumulado",
+          "nota_na_tabela": "Nota 15 da tabela do resultado acumulado (p. 7)",
+          "endereco": "https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12",
+          "verificado_em": "2026-10-26",
+          "arquivo_sha256": "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef",
+          "trecho": "aumento resultante do Auxílio Emergencial aos Estados, Municípios e DF",
+          "linha_rtn": "4.3.03",
+          "menciona": "4.3.03"
+        },
+        {
+          "tipo": "boletim",
+          "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
+          "boletim": "v. 26, n. 12",
+          "base_precos": "R$ correntes (o boletim publica a preços correntes)",
+          "pagina": 9,
+          "nota": "Nota 18 das Notas Explicativas do resultado acumulado",
+          "nota_na_tabela": "Nota 17 da tabela do resultado acumulado (p. 7)",
+          "endereco": "https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12",
+          "verificado_em": "2026-10-26",
+          "arquivo_sha256": "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef",
+          "trecho": "Auxílio Emergencial a Pessoas em Situação de Vulnerabilidade",
+          "linha_rtn": "4.3.07",
+          "menciona": "4.3.07"
+        }
+      ],
+      "observacao": "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente",
+      "base_precos": null
+    },
+    {
+      "no": "bolsa_familia",
+      "classe": "contexto",
+      "texto": "Segundo o Tesouro, o valor pago pelo Programa Bolsa Família caiu em 2020, em termos reais, em relação ao ano anterior, porque os benefícios migraram temporariamente para o auxílio emergencial, uma das medidas de combate à Covid-19. A explicação do Tesouro se refere ao total do ano, não a cada mês.",
+      "fonte": [
+        {
+          "tipo": "boletim",
+          "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
+          "boletim": "v. 26, n. 12",
+          "base_precos": "R$ correntes (o boletim publica a preços correntes)",
+          "pagina": 9,
+          "nota": "Nota 21 das Notas Explicativas do resultado acumulado",
+          "nota_na_tabela": "Nota 20 da tabela do resultado acumulado (p. 7)",
+          "endereco": "https://www.tesourotransparente.gov.br/publicacoes/boletim-resultado-do-tesouro-nacional-rtn/2020/12",
+          "verificado_em": "2026-10-26",
+          "arquivo_sha256": "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fcda423ef",
+          "trecho": "houve migração temporária desses benefícios para os benefícios de auxílio emergencial",
+          "linha_rtn": "4.4.1",
+          "menciona": "4.4.1.2"
+        }
+      ],
+      "observacao": "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente",
+      "base_precos": null
+    }
+  ]
 }
