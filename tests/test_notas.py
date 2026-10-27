@@ -37,7 +37,7 @@ def test_notas_no_json_e_lista_vazia_nos_outros_anos(saida):
     for ano, d in saida.items():
         assert isinstance(d["notas"], list)
         for n in d["notas"]:
-            assert set(n) == {"no", "classe", "texto", "fonte", "observacao"}
+            assert set(n) == {"no", "classe", "texto", "fonte", "observacao", "base_precos"}
     assert {ano for ano, d in saida.items() if d["notas"]} == {n["ano"] for n in P.carregar_notas()}
 
 
@@ -138,3 +138,24 @@ def test_textos_com_codigo_e_nome_da_linha(saida):
     assert "a linha 4.4.1.2 Bolsa Família e Auxílio Brasil somou" in bolsa
     nota2 = next(n for n in saida[2020]["notas"] if n["classe"] == "contexto" and "Apoio Fin." in n["texto"])
     assert "esse está na linha 4.3.07 Créditos Extraordinários, segundo o Tesouro." in nota2["texto"]
+
+
+VALOR_FORMATADO = r"R\$ -?[\d.]+,\d bi"
+
+
+def test_base_precos_em_toda_nota_com_valor(saida):
+    import re
+    com_valor = sem_valor = 0
+    for ano, d in saida.items():
+        assert d["mes_base"] == "2025-12"
+        for n in d["notas"]:
+            if re.search(VALOR_FORMATADO, n["texto"]):
+                com_valor += 1
+                assert n["base_precos"] == "R$ constantes de dez/2025 (IPCA)", n
+            else:
+                sem_valor += 1
+                assert n["base_precos"] is None, n
+            for c in n["fonte"]:
+                if c["tipo"] == "boletim":
+                    assert c["base_precos"] == "R$ correntes (o boletim publica a preços correntes)", c
+    assert com_valor == 2 and sem_valor == 3

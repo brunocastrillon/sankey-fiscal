@@ -20,6 +20,8 @@ MESES = {
     "janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4, "maio": 5, "junho": 6,
     "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12,
 }
+MESES_ABREV = ("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")
+MARCADORES_COM_VALOR = ("linha", "total", "soma", "mes")
 SIMBOLOS_SIDRA = {"-", "..", "...", "X"}  # valor ausente, inibido ou que não se aplica (legenda do SIDRA)
 CATEGORIA_PIB = "PIB a preços de mercado"
 FONTE_PIB = "IBGE, Contas Nacionais Trimestrais, tabela 1846"
@@ -315,12 +317,19 @@ def citacoes(fonte):
     return fonte
 
 
-def aplicar_notas(notas, ano, R, nomes, nos_reais):
+def rotulo_base_precos(mes_base):
+    """'2025-12' -> 'R$ constantes de dez/2025 (IPCA)': a base dos valores escritos nas notas."""
+    ano, mes = mes_base.split("-")
+    return f"R$ constantes de {MESES_ABREV[int(mes) - 1]}/{ano} (IPCA)"
+
+
+def aplicar_notas(notas, ano, R, nomes, nos_reais, mes_base=None):
     """Notas do ano com os marcadores substituídos: [{no, classe, texto, fonte}].
 
     Valores em 'R$ x,y bi' (R$ constantes). A fonte de toda nota é uma lista de citações (`tipo` "serie" ou "boletim");
     numa nota de contexto, cada citação precisa de publicação, página, nota, endereço e data de verificação. Fora disso,
-    ValueError. A observação (texto ou null) fica uma vez por nota.
+    ValueError. A observação (texto ou null) fica uma vez por nota. Uma nota com valor (marcador {linha}, {total},
+    {soma} ou {mes}) ganha `base_precos`, montada de `mes_base` (sem mes_base, ValueError); sem valor, `base_precos` é null.
     """
     for n in notas:
         if n["classe"] not in CLASSES_NOTA:
@@ -345,8 +354,15 @@ def aplicar_notas(notas, ano, R, nomes, nos_reais):
             return formatar_bi(valor_marcador(m.group(0), ano, R, nos_reais))
         raise ValueError(f"marcador desconhecido: {tipo}")
 
+    def base_precos(n):
+        if not any(_partes(m)[0] in MARCADORES_COM_VALOR for m in re.findall(MARCADOR, n["texto"])):
+            return None
+        if mes_base is None:
+            raise ValueError(f"nota {n['ano']} {n['no']} tem valores, mas o mês-base não foi informado")
+        return rotulo_base_precos(mes_base)
+
     return [{"no": n["no"], "classe": n["classe"], "texto": re.sub(MARCADOR, substituir, n["texto"]),
-             "fonte": n["fonte"], "observacao": n.get("observacao")}
+             "fonte": n["fonte"], "observacao": n.get("observacao"), "base_precos": base_precos(n)}
             for n in notas if n["ano"] == ano]
 
 
@@ -418,7 +434,7 @@ def montar_anos(xlsx, ipca_csv, pib_csv, base=None, mapa=None):
                 "ultimo_trimestre": rotulo_trimestre(pd.Period(year=ano, quarter=4, freq="Q")),
             },
             "subcontas": subcontas[ano],
-            "notas": aplicar_notas(notas, ano, R, nomes, nos_reais),
+            "notas": aplicar_notas(notas, ano, R, nomes, nos_reais, base),
         }
     return saida, {"ultimo_mes_publicado": f"{ultimo:%Y-%m}", "mes_base": base, "anos": [ano0, ano1],
                    "pib_ultimo_trimestre": ultimo_trimestre_arquivo}

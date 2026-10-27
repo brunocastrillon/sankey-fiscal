@@ -742,7 +742,8 @@
           "nota_na_tabela": null
         }
       ],
-      "observacao": null
+      "observacao": null,
+      "base_precos": "R$ constantes de dez/2025 (IPCA)"
     },
     {
       "no": "bolsa_familia",
@@ -759,7 +760,8 @@
           "nota_na_tabela": null
         }
       ],
-      "observacao": null
+      "observacao": null,
+      "base_precos": "R$ constantes de dez/2025 (IPCA)"
     },
     {
       "no": "fundeb_seguro_desemprego_outras",
@@ -770,6 +772,7 @@
           "tipo": "boletim",
           "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
           "boletim": "v. 26, n. 12",
+          "base_precos": "R$ correntes (o boletim publica a preços correntes)",
           "pagina": 9,
           "nota": "Nota 18 das Notas Explicativas do resultado acumulado",
           "nota_na_tabela": "Nota 17 da tabela do resultado acumulado (p. 7)",
@@ -781,7 +784,8 @@
           "menciona": "4.3.07"
         }
       ],
-      "observacao": "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente"
+      "observacao": "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente",
+      "base_precos": null
     },
     {
       "no": "fundeb_seguro_desemprego_outras",
@@ -792,6 +796,7 @@
           "tipo": "boletim",
           "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
           "boletim": "v. 26, n. 12",
+          "base_precos": "R$ correntes (o boletim publica a preços correntes)",
           "pagina": 9,
           "nota": "Nota 16 das Notas Explicativas do resultado acumulado",
           "nota_na_tabela": "Nota 15 da tabela do resultado acumulado (p. 7)",
@@ -806,6 +811,7 @@
           "tipo": "boletim",
           "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
           "boletim": "v. 26, n. 12",
+          "base_precos": "R$ correntes (o boletim publica a preços correntes)",
           "pagina": 9,
           "nota": "Nota 18 das Notas Explicativas do resultado acumulado",
           "nota_na_tabela": "Nota 17 da tabela do resultado acumulado (p. 7)",
@@ -817,7 +823,8 @@
           "menciona": "4.3.07"
         }
       ],
-      "observacao": "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente"
+      "observacao": "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente",
+      "base_precos": null
     },
     {
       "no": "bolsa_familia",
@@ -828,6 +835,7 @@
           "tipo": "boletim",
           "publicacao": "Resultado do Tesouro Nacional, dezembro de 2020",
           "boletim": "v. 26, n. 12",
+          "base_precos": "R$ correntes (o boletim publica a preços correntes)",
           "pagina": 9,
           "nota": "Nota 21 das Notas Explicativas do resultado acumulado",
           "nota_na_tabela": "Nota 20 da tabela do resultado acumulado (p. 7)",
@@ -839,7 +847,8 @@
           "menciona": "4.4.1.2"
         }
       ],
-      "observacao": "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente"
+      "observacao": "a numeração segue o texto das Notas Explicativas, p. 9; a tabela da p. 7 numera diferente",
+      "base_precos": null
     }
   ]
 }

@@ -703,7 +703,7 @@ CHAVES_ANO = {"ano", "unidade", "mes_base", "versao_dados", "mapeamento_versao",
               "estrutura", "nominal", "real", "pib", "subcontas", "notas"}
 CAMPOS_CITACAO = {
     "serie": {"tipo": str, "titulo": str, "linhas": list, "nota": (str, type(None)), "nota_na_tabela": (str, type(None))},
-    "boletim": {"tipo": str, "publicacao": str, "boletim": str, "pagina": int, "nota": str,
+    "boletim": {"tipo": str, "publicacao": str, "boletim": str, "base_precos": str, "pagina": int, "nota": str,
                 "nota_na_tabela": (str, type(None)), "endereco": str, "verificado_em": str, "arquivo_sha256": str,
                 "trecho": str, "linha_rtn": str, "menciona": str},
 }
@@ -737,7 +737,9 @@ def _erros_nota(n, quem, publicada):
         return [f"{quem}: nota não é objeto"]
     erros = []
     obrigatorias = {"no": str, "classe": str, "texto": str, "fonte": list, "observacao": (str, type(None))}
-    if not publicada:
+    if publicada:
+        obrigatorias["base_precos"] = (str, type(None))
+    else:
         obrigatorias["ano"] = int
     for k, t in obrigatorias.items():
         if k not in n:
