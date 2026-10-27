@@ -34,11 +34,40 @@ CAMPOS_FONTE_CONTEXTO = ("publicacao", "pagina", "nota", "endereco", "verificado
 TERMOS_COM_DIGITO = ("Covid-19",)
 
 
-def entradas_padrao():
-    """Arquivos de entrada em entrada/: a série histórica mais recente (por nome), o CSV do IPCA e o do PIB."""
-    pasta = AQUI / "entrada"
-    rtn = sorted(pasta.glob("seriehistorica*.xlsx"))
-    return (str(rtn[-1]) if rtn else None), str(pasta / "tabela1737.csv"), str(pasta / "tabela1846.csv")
+def data_do_nome(nome):
+    """'seriehistoricajul26.xlsx' -> (2026, 7); None se o nome não segue seriehistorica<mes><aa>."""
+    m = re.fullmatch(r"seriehistorica([a-z]{3})(\d{2})\.xlsx", Path(nome).name.lower())
+    if not m or m.group(1) not in MESES_ABREV:
+        return None
+    return 2000 + int(m.group(2)), MESES_ABREV.index(m.group(1)) + 1
+
+
+def escolher_rtn(pasta):
+    """A série histórica mais recente pela data do nome (jul26 = 2026-07), nunca pela ordem alfabética.
+
+    Um arquivo só é usado como está; com mais de um, um nome sem data é ValueError (passe --rtn).
+    """
+    arquivos = sorted(Path(pasta).glob("seriehistorica*.xlsx"))
+    if len(arquivos) <= 1:
+        return str(arquivos[0]) if arquivos else None
+    sem_data = [a.name for a in arquivos if data_do_nome(a.name) is None]
+    if sem_data:
+        raise ValueError(f"{len(arquivos)} séries em {pasta} e nome sem data (seriehistorica<mes><aa>): {sem_data}; "
+                         f"passe --rtn")
+    return str(max(arquivos, key=lambda a: data_do_nome(a.name)))
+
+
+def entradas_padrao(pasta=None):
+    """Arquivos de entrada (padrão: entrada/): a série histórica mais recente pela data do nome, o CSV do IPCA e o do PIB.
+
+    Se a escolha da série for ambígua, devolve None no lugar dela (escolher_rtn diz por quê).
+    """
+    pasta = Path(pasta) if pasta else AQUI / "entrada"
+    try:
+        rtn = escolher_rtn(pasta)
+    except ValueError:
+        rtn = None
+    return rtn, str(pasta / "tabela1737.csv"), str(pasta / "tabela1846.csv")
 
 
 def carregar_mapeamento(caminho=None):
@@ -459,6 +488,10 @@ if __name__ == "__main__":
     ap.add_argument("--base", default=None)
     a = ap.parse_args()
     if not a.rtn:
+        try:
+            escolher_rtn(AQUI / "entrada")
+        except ValueError as e:
+            ap.error(str(e))
         ap.error("nenhum arquivo entrada/seriehistorica*.xlsx encontrado; passe --rtn")
     s, idx = montar_anos(a.rtn, a.ipca, a.pib, a.base)
     gravar(s, idx, a.saida)

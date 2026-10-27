@@ -840,6 +840,10 @@ def main():
     ap.add_argument("--pib", default=pib0)
     a = ap.parse_args()
     if not a.rtn:
+        try:
+            P.escolher_rtn(P.AQUI / "entrada")
+        except ValueError as e:
+            ap.error(str(e))
         ap.error("nenhum arquivo entrada/seriehistorica*.xlsx encontrado; passe --rtn")
     c = contexto(a.rtn, a.ipca)
     testes = lista_testes(c, a.rtn, a.ipca, a.pib)

@@ -11,7 +11,8 @@ Cópias dos arquivos públicos usados pelo pipeline, guardadas aqui para que os 
 **Fonte dos dados:** Secretaria do Tesouro Nacional (STN) e IBGE. O Resultado do Tesouro Nacional informa que a reprodução é permitida desde que citada a fonte. Confira os termos de uso do Tesouro Transparente antes de redistribuir arquivos novos.
 
 A série do Tesouro é revisada a cada boletim. Ao atualizar o arquivo, guarde o novo com o mês no nome (`seriehistorica<mes><ano>.xlsx`);
-o pipeline usa o mais recente por ordem de nome, e `--rtn` força um arquivo específico.
+o pipeline usa o mais recente pela data do nome (`jul26` = jul/2026, `ago26` = ago/2026), nunca pela ordem alfabética, e
+`--rtn` força um arquivo específico. Com mais de um arquivo, um nome fora do padrão exige `--rtn`.
 Depois rode `python pipeline.py` e `pytest` e versione os JSON gerados em `dados/`.
 
 **PIB.** O IBGE revisa a série do PIB: a cada divulgação das Contas Nacionais Trimestrais, trimestres já publicados podem mudar.
