@@ -80,7 +80,8 @@ def test_t18_e_t19_usam_o_rtn_recebido(ctx, teste):
 
 
 @pytest.mark.parametrize("frase", ["a maior parte", "a maioria", "a maior fatia", "grande parte", "quase todo",
-                                   "quase toda", "praticamente todos"])
+                                   "quase toda", "praticamente todos", "boa parte", "boa fatia", "grande fatia",
+                                   "metade", "quase tudo"])
 def test_t19_recusa_quantificadores(ctx, frase):
     notas = P.carregar_notas()
     (n,) = [n for n in notas if n["classe"] == "contexto" and P.citacoes(n["fonte"])[0]["nota"].startswith("Nota 18")]

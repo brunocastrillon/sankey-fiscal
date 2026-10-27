@@ -473,7 +473,8 @@ SHA256_PDF_RTN_2020 = "1417803c9eddbca4ece724d264138a2d0c44d1b8c0a024699d763c0fc
 # mas a variação real entre dois anos não depende do mês-base)
 QUEDA_REAL_BOLSA_FAMILIA_NOTA_21 = -44.3
 # Quantificadores que as notas de contexto não usam (o boletim não diz que o auxílio é a maior parte de nada)
-QUANTIFICADORES_PROIBIDOS = r"\b(maior parte|maioria|maior fatia|grande parte|quase tod[oa]s?|praticamente tod[oa]s?)\b"
+QUANTIFICADORES_PROIBIDOS = (r"\b(maior parte|maioria|maior fatia|grande parte|boa parte|boa fatia|grande fatia|metade|"
+                             r"quase tudo|quase tod[oa]s?|praticamente tod[oa]s?)\b")
 TOL_QUEDA_BOLSA_FAMILIA = 0.2  # pontos percentuais
 
 
