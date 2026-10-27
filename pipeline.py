@@ -399,24 +399,36 @@ def aplicar_notas(notas, ano, R, nomes, nos_reais, mes_base=None):
 # Uma função só (validar_notas) para notas.json e outra (validar_ano) para cada AAAA.json; o pipeline chama as duas antes de
 # gravar, e os testes chamam as mesmas.
 
-# Esquema fechado: chaves permitidas em cada nível. Chave desconhecida é erro.
-CHAVES_NOTA = {"ano", "no", "classe", "texto", "comparacoes", "observacao", "fonte"}  # notas.json
-CHAVES_NOTA_OPCIONAIS = {"comparacoes"}
-CHAVES_NOTA_PUBLICADA = {"no", "classe", "texto", "fonte", "observacao", "base_precos"}  # AAAA.json
-CHAVES_CITACAO = {
-    "serie": {"tipo", "titulo", "linhas", "nota", "nota_na_tabela"},
-    "boletim": {"tipo", "publicacao", "boletim", "base_precos", "pagina", "nota", "nota_na_tabela", "endereco",
-                "verificado_em", "arquivo_sha256", "trecho", "linha_rtn", "menciona"},
+# Esquema declarativo e fechado: chaves e tipos em cada nível. Chave desconhecida, chave que falta e tipo errado são erros
+# relatados (nunca exceção). Formas: um tipo (ou tupla de tipos); [esquema] para lista; {"*": esquema} para objeto de
+# chaves livres; {"chave": esquema, "chave?": esquema} para objeto fechado (com "?" a chave é opcional); POR_TIPO para a
+# citação, escolhida pelo campo "tipo".
+NUMERO = (int, float)
+TEXTO_OU_NULO = (str, type(None))
+CITACAO = {"_por": "tipo", "_opcoes": {
+    "serie": {"tipo": str, "titulo": str, "linhas": [str], "nota": TEXTO_OU_NULO, "nota_na_tabela": TEXTO_OU_NULO},
+    "boletim": {"tipo": str, "publicacao": str, "boletim": str, "base_precos": str, "pagina": int, "nota": str,
+                "nota_na_tabela": TEXTO_OU_NULO, "endereco": str, "verificado_em": str, "arquivo_sha256": str,
+                "trecho": str, "linha_rtn": str, "menciona": str},
+}}
+ESQUEMA_NOTA = {"ano": int, "no": str, "classe": str, "texto": str, "comparacoes?": [[str]], "observacao": TEXTO_OU_NULO,
+                "fonte": [CITACAO]}  # notas.json
+ESQUEMA_NOTA_PUBLICADA = {"no": str, "classe": str, "texto": str, "fonte": [CITACAO], "observacao": TEXTO_OU_NULO,
+                          "base_precos": TEXTO_OU_NULO}  # AAAA.json
+BLOCO_VALORES = {"nos": {"*": NUMERO}, "totais": {"*": NUMERO}, "financiamento": {"*": NUMERO}}
+ESQUEMA_ANO = {
+    "ano": int, "unidade": str, "mes_base": str, "versao_dados": str, "mapeamento_versao": int,
+    "rotulos": {"*": str}, "grupos_despesa": {"*": str},
+    "linhas": {"*": [{"codigo": str, "nome": str, "operacao": str}]},
+    "estrutura": {"receita": [str], "repasse": str, "obrigatorias": [str], "discricionarias": str},
+    "nominal": BLOCO_VALORES, "real": BLOCO_VALORES,
+    "pib": {"valor_nominal": float, "fonte": str, "trimestres": int, "ultimo_trimestre": str},
+    "subcontas": {"*": [{"codigo": str, "nome": str, "real": NUMERO, "nominal": NUMERO}]},
+    "notas": [ESQUEMA_NOTA_PUBLICADA],
 }
+ESQUEMA_INDICE = {"ultimo_mes_publicado": str, "mes_base": str, "anos": [int], "pib_ultimo_trimestre": str}
 TIPO_DA_CLASSE = {"fatos": "serie", "contexto": "boletim"}
-CHAVES_ANO = {"ano", "unidade", "mes_base", "versao_dados", "mapeamento_versao", "rotulos", "grupos_despesa", "linhas",
-              "estrutura", "nominal", "real", "pib", "subcontas", "notas"}
-CHAVES_BLOCO_VALORES = {"nos", "totais", "financiamento"}
-CHAVES_PIB = {"valor_nominal", "fonte", "trimestres", "ultimo_trimestre"}
-CHAVES_ESTRUTURA = {"receita", "repasse", "obrigatorias", "discricionarias"}
-CHAVES_LINHA = {"codigo", "nome", "operacao"}
-CHAVES_SUBCONTA = {"codigo", "nome", "real", "nominal"}
-CHAVES_INDICE = {"ultimo_mes_publicado", "mes_base", "anos", "pib_ultimo_trimestre"}
+VALOR_FORMATADO = r"R\$ -?[\d.]+,\d bi"
 # Formas fixas: "Nota N …" sem outro dígito; na tabela, também "(p. N)" no fim
 FORMA_NOTA = r"Nota [1-9]\d* [^\d()]+"
 FORMA_NOTA_NA_TABELA = r"Nota [1-9]\d* [^\d()]+(?: \(p\. [1-9]\d*\))?"
@@ -445,6 +457,69 @@ def _sem_digito(texto, permitidos=()):
     for p in permitidos:
         texto = re.sub(p, "", texto)
     return re.search(r"\d", texto) is None
+
+
+def _nome_do_tipo(esquema):
+    if isinstance(esquema, list):
+        return "lista"
+    if isinstance(esquema, dict):
+        return "objeto"
+    tipos = esquema if isinstance(esquema, tuple) else (esquema,)
+    nomes = {int: "int", float: "float", str: "str", type(None): "null"}
+    return " ou ".join(nomes.get(t, t.__name__) for t in tipos)
+
+
+def _rotulo_item(caminho, chave, i):
+    """Como chamar o item i de uma lista: as citações contam de 1 ("citação 1"); o resto, de 0 ("notas[0]")."""
+    return f"{caminho} citação {i + 1}" if chave == "fonte" else f"{caminho} {chave}[{i}]".strip()
+
+
+def erros_esquema(valor, esquema, caminho, chave=""):
+    """Erros de `valor` contra o esquema declarativo (lista vazia se confere). Nunca levanta exceção por forma errada."""
+    if isinstance(esquema, dict) and "_por" in esquema:
+        if not isinstance(valor, dict):
+            return [f"{caminho}: citação não é objeto"]
+        opcao = esquema["_opcoes"].get(valor.get(esquema["_por"]))
+        if opcao is None:
+            return [f"{caminho}: tipo {valor.get(esquema['_por'])!r} (esperado {' ou '.join(esquema['_opcoes'])})"]
+        return erros_esquema(valor, opcao, caminho)
+    if isinstance(esquema, list):
+        if not isinstance(valor, list):
+            return [f"{caminho}: tipo {type(valor).__name__} (esperado lista)"]
+        return [e for i, v in enumerate(valor) for e in erros_esquema(v, esquema[0], _rotulo_item(caminho, chave, i))]
+    if isinstance(esquema, dict):
+        if not isinstance(valor, dict):
+            return [f"{caminho}: tipo {type(valor).__name__} (esperado objeto)"]
+        if "*" in esquema:
+            erros = []
+            for k, v in valor.items():
+                erros += _erros_filho(v, esquema["*"], caminho, k)
+            return erros
+        campos = {k.rstrip("?"): (sub, k.endswith("?")) for k, sub in esquema.items()}
+        erros = [f"{caminho}: chave desconhecida {k!r}" for k in sorted(set(valor) - set(campos))]
+        erros += [f"{caminho}: sem {k}" for k, (_, opcional) in sorted(campos.items()) if not opcional and k not in valor]
+        for k, (sub, _) in campos.items():
+            if k in valor:
+                erros += _erros_filho(valor[k], sub, caminho, k)
+        return erros
+    tipos = esquema if isinstance(esquema, tuple) else (esquema,)
+    if not isinstance(valor, tipos) or (isinstance(valor, bool) and bool not in tipos):
+        return [f"{caminho}: tipo {type(valor).__name__} (esperado {_nome_do_tipo(esquema)})"]
+    return []
+
+
+def _erros_filho(valor, esquema, caminho, chave):
+    """Um campo de objeto: tipo errado num campo simples sai como "chave com tipo X"; num contêiner, desce de nível."""
+    simples = not isinstance(esquema, (list, dict))
+    if simples or not isinstance(valor, (list, dict)):
+        if erros_esquema(valor, esquema, caminho):
+            return [f"{caminho}: {chave} com tipo {type(valor).__name__} (esperado {_nome_do_tipo(esquema)})"]
+        return []
+    if isinstance(esquema, list):
+        if not isinstance(valor, list):
+            return [f"{caminho}: {chave} com tipo {type(valor).__name__} (esperado lista)"]
+        return erros_esquema(valor, esquema, caminho, chave)
+    return erros_esquema(valor, esquema, f"{caminho} {chave}")
 
 
 def erros_campos(n, quem, mes_base=None, publicada=False):
@@ -501,43 +576,19 @@ def erros_campos(n, quem, mes_base=None, publicada=False):
 
 
 def erros_esquema_nota(n, quem, publicada=False):
-    """Chaves (fechadas) e tipos de uma nota e de suas citações."""
+    """Chaves (fechadas) e tipos de uma nota e de suas citações, pelo esquema declarativo; mais a classe, a fonte não vazia,
+    o tipo de citação certo para a classe e a forma das comparações."""
     if not isinstance(n, dict):
         return [f"{quem}: nota não é objeto"]
-    permitidas = CHAVES_NOTA_PUBLICADA if publicada else CHAVES_NOTA
-    obrigatorias = permitidas - (set() if publicada else CHAVES_NOTA_OPCIONAIS)
-    erros = [f"{quem}: chave desconhecida {k!r}" for k in sorted(set(n) - permitidas)]
-    erros += [f"{quem}: sem {k}" for k in sorted(obrigatorias - set(n))]
-    tipos = {"ano": int, "no": str, "classe": str, "texto": str, "fonte": list, "comparacoes": list}
-    erros += [f"{quem}: {k} com tipo {type(n[k]).__name__}" for k, t in tipos.items() if k in n and not _tipo_ok(n[k], t)]
-    for k in ("observacao", "base_precos"):
-        if k in n and n[k] is not None and not isinstance(n[k], str):
-            erros.append(f"{quem}: {k} com tipo {type(n[k]).__name__}")
+    erros = erros_esquema(n, ESQUEMA_NOTA_PUBLICADA if publicada else ESQUEMA_NOTA, quem)
     if n.get("classe") not in TIPO_DA_CLASSE:
         return erros + [f"{quem}: classe {n.get('classe')!r}"]
     if isinstance(n.get("fonte"), list):
         if not n["fonte"]:
             erros.append(f"{quem}: fonte vazia")
         for i, c in enumerate(n["fonte"], 1):
-            q = f"{quem} citação {i}"
-            if not isinstance(c, dict):
-                erros.append(f"{q}: citação não é objeto")
-                continue
-            tipo = c.get("tipo")
-            if tipo not in CHAVES_CITACAO:
-                erros.append(f"{q}: tipo {tipo!r} (esperado serie ou boletim)")
-                continue
-            if tipo != TIPO_DA_CLASSE[n["classe"]]:
-                erros.append(f"{q}: citação {tipo} numa nota de {n['classe']}")
-            erros += [f"{q}: chave desconhecida {k!r}" for k in sorted(set(c) - CHAVES_CITACAO[tipo])]
-            erros += [f"{q}: sem {k}" for k in sorted(CHAVES_CITACAO[tipo] - set(c))]
-            textos = {"titulo", "publicacao", "boletim", "base_precos", "endereco", "verificado_em", "arquivo_sha256",
-                      "trecho", "linha_rtn", "menciona"}
-            erros += [f"{q}: {k} com tipo {type(c[k]).__name__}" for k in sorted(textos & set(c)) if not isinstance(c[k], str)]
-            erros += [f"{q}: {k} com tipo {type(c[k]).__name__}" for k in ("nota", "nota_na_tabela")
-                      if k in c and c[k] is not None and not isinstance(c[k], str)]
-            if tipo == "serie" and not (isinstance(c.get("linhas"), list) and all(isinstance(x, str) for x in c["linhas"])):
-                erros.append(f"{q}: linhas não é lista de códigos")
+            if isinstance(c, dict) and c.get("tipo") in CITACAO["_opcoes"] and c["tipo"] != TIPO_DA_CLASSE[n["classe"]]:
+                erros.append(f"{quem} citação {i}: citação {c['tipo']} numa nota de {n['classe']}")
     for comp in n.get("comparacoes", []) if isinstance(n.get("comparacoes"), list) else []:
         if not (isinstance(comp, list) and len(comp) == 3 and comp[1] in ("<", ">")):
             erros.append(f"{quem}: comparação malformada {comp}")
@@ -685,41 +736,31 @@ def validar_notas(notas, mapa, codigos_aba, R=None, nos_reais=None):
 
 
 def validar_ano(d):
-    """Todos os problemas de esquema de um AAAA.json (lista vazia se nenhum), inclusive das notas publicadas."""
-    quem = f"{d.get('ano')}.json"
-    erros = [f"{quem}: chave desconhecida {k!r}" for k in sorted(set(d) - CHAVES_ANO)]
-    erros += [f"{quem}: sem {k}" for k in sorted(CHAVES_ANO - set(d))]
-    for bloco in ("nominal", "real"):
-        if isinstance(d.get(bloco), dict) and set(d[bloco]) != CHAVES_BLOCO_VALORES:
-            erros.append(f"{quem}: {bloco} com chaves {sorted(d[bloco])}")
-    pib = d.get("pib", {})
-    if set(pib) != CHAVES_PIB or not (_tipo_ok(pib.get("valor_nominal"), float) and isinstance(pib.get("fonte"), str)
-                                      and pib.get("trimestres") == 4
-                                      and re.fullmatch(r"\d{4}T[1-4]", str(pib.get("ultimo_trimestre")))):
-        erros.append(f"{quem}: bloco pib")
-    if isinstance(d.get("estrutura"), dict) and set(d["estrutura"]) != CHAVES_ESTRUTURA:
-        erros.append(f"{quem}: estrutura com chaves {sorted(d['estrutura'])}")
-    for no, itens in (d.get("linhas") or {}).items():
-        if not isinstance(itens, list) or any(not isinstance(i, dict) or set(i) != CHAVES_LINHA for i in itens):
-            erros.append(f"{quem}: linhas de {no}")
-    for no, itens in (d.get("subcontas") or {}).items():
-        if not isinstance(itens, list) or not all(
-                isinstance(i, dict) and set(i) == CHAVES_SUBCONTA and isinstance(i["codigo"], str)
-                and isinstance(i["nome"], str) and all(_tipo_ok(i[k], (int, float)) for k in ("real", "nominal"))
-                for i in itens):
-            erros.append(f"{quem}: subcontas de {no}")
-    if not isinstance(d.get("notas"), list):
-        return erros + [f"{quem}: notas não é lista"]
-    for j, n in enumerate(d["notas"]):
+    """Todos os problemas de um AAAA.json (lista vazia se nenhum): o esquema declarativo inteiro, os campos de cada nota
+    publicada e o que o esquema não diz (trimestres = 4; base_precos obrigatório, e só, nas notas com valores)."""
+    quem = f"{d.get('ano')}.json" if isinstance(d, dict) else "AAAA.json"
+    erros = erros_esquema(d, ESQUEMA_ANO, quem)
+    if not isinstance(d, dict):
+        return erros
+    pib = d.get("pib")
+    if isinstance(pib, dict) and (pib.get("trimestres") != 4 or not re.fullmatch(r"\d{4}T[1-4]", str(pib.get("ultimo_trimestre")))):
+        erros.append(f"{quem}: bloco pib (trimestres = 4, ultimo_trimestre AAAAT1–4)")
+    for j, n in enumerate(d.get("notas") if isinstance(d.get("notas"), list) else []):
         q = f"{quem} notas[{j}]"
-        esquema = erros_esquema_nota(n, q, publicada=True)
-        erros += esquema + (erros_campos(n, q, d.get("mes_base"), publicada=True) if isinstance(n, dict) else [])
+        if not isinstance(n, dict):
+            continue
+        erros += [e for e in erros_esquema_nota(n, q, publicada=True) if e not in erros]
+        erros += erros_campos(n, q, d.get("mes_base"), publicada=True)
+        com_valor = isinstance(n.get("texto"), str) and re.search(VALOR_FORMATADO, n["texto"]) is not None
+        if com_valor and n.get("base_precos") is None:
+            erros.append(f"{q}: base_precos obrigatório numa nota com valores")
+        if not com_valor and n.get("base_precos") is not None:
+            erros.append(f"{q}: base_precos numa nota sem valores")
     return erros
 
 
 def validar_indice(indice):
-    erros = [f"indice.json: chave desconhecida {k!r}" for k in sorted(set(indice) - CHAVES_INDICE)]
-    return erros + [f"indice.json: sem {k}" for k in sorted(CHAVES_INDICE - set(indice))]
+    return erros_esquema(indice, ESQUEMA_INDICE, "indice.json")
 
 
 def pib_implicito(xlsx):

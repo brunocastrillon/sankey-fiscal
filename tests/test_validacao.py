@@ -150,3 +150,36 @@ def test_b3_notas_validadas_antes_de_ler_o_pib(monkeypatch, tmp_path):
     monkeypatch.setattr(P, "carregar_notas", lambda caminho=None: notas)
     with pytest.raises(ValueError, match="notas.json"):
         P.montar_anos(RTN, IPCA, str(tmp_path / "pib-que-nao-existe.csv"))
+
+
+# B1: esquema declarativo do AAAA.json; objeto no lugar de lista ou tipo errado viram erros relatados, nunca exceção
+@pytest.mark.parametrize("mudar,erro", [
+    (lambda d: d["real"].update(nos=list(d["real"]["nos"].values())), "real nos: tipo list (esperado objeto)"),
+    (lambda d: d["nominal"].update(financiamento=[1, 2]), "nominal financiamento: tipo list (esperado objeto)"),
+    (lambda d: d["pib"].update(valor_nominal="7609597"), "pib: valor_nominal com tipo str"),
+    (lambda d: d["subcontas"]["imposto_renda"][0].update(real="1"), "subcontas imposto_renda[0]: real com tipo str"),
+    (lambda d: d.update(notas={"x": 1}), "notas com tipo dict"),
+    (lambda d: d["notas"][0].update(fonte=d["notas"][0]["fonte"][0]), "notas[0]: fonte com tipo dict"),
+    (lambda d: d["notas"][0].update(base_precos=None), "notas[0]: base_precos obrigatório numa nota com valores"),
+    (lambda d: d["rotulos"].update(bpc=7), "rotulos: bpc com tipo int"),
+    (lambda d: d["real"]["nos"].update(bpc="1"), "real nos: bpc com tipo str"),
+    (lambda d: d["linhas"].update(bpc={"codigo": "4.3.05"}), "linhas: bpc com tipo dict"),
+], ids=["real.nos lista (X4)", "financiamento lista", "valor_nominal texto (X5)", "subconta real texto (X6)",
+        "notas objeto (X7)", "fonte objeto (X8)", "base_precos nulo com valores (X10)", "rotulo número", "nó texto",
+        "linhas objeto"])
+def test_b1_esquema_declarativo_do_ano(mudar, erro):
+    d = copy.deepcopy(_ano(2020))
+    mudar(d)
+    erros = P.validar_ano(d)
+    assert any(erro in e for e in erros), erros
+
+
+@pytest.mark.parametrize("mudar", [
+    lambda d: d.clear() or d.update(notas="x"), lambda d: d.update(subcontas=[]), lambda d: d.update(pib=None),
+    lambda d: d["notas"][0].update(fonte="x"), lambda d: d["notas"].append(7), lambda d: d.update(estrutura=[1]),
+], ids=["só notas texto", "subcontas lista", "pib nulo", "fonte texto", "nota número", "estrutura lista"])
+def test_b1_formas_erradas_viram_erros_e_nunca_excecao(mudar):
+    d = copy.deepcopy(_ano(2020))
+    mudar(d)
+    assert P.validar_ano(d)
+    assert P.validar_ano([]) and P.validar_indice([])
