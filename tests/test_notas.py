@@ -87,3 +87,47 @@ def test_t19_recusa_quantificadores(ctx, frase):
     n["texto"] += f" O auxílio é {frase} do grupo."
     ok, detalhe = T.t19_notas_contexto(ctx, RTN, notas=notas)
     assert not ok and "quantificador" in detalhe
+
+
+def _citacao(notas, nota_boletim):
+    """A citação do boletim com a nota dada (por exemplo, 'Nota 18'), em qualquer nota de contexto."""
+    return next(c for n in notas if n["classe"] == "contexto" for c in P.citacoes(n["fonte"])
+                if (c.get("nota") or "").startswith(nota_boletim + " "))
+
+
+def _fatos(notas, no):
+    return next(n for n in notas if n["classe"] == "fatos" and n["no"] == no)
+
+
+def _linha_rtn(nota_boletim, codigo):
+    def mudar(notas):
+        _citacao(notas, nota_boletim)["linha_rtn"] = codigo
+    return mudar
+
+
+def _fatos_fundeb_com_4305(notas):
+    n = _fatos(notas, "fundeb_seguro_desemprego_outras")
+    n["texto"] += " O BPC soma {linha:4.3.05}."
+    for c in P.citacoes(n["fonte"]):
+        c.setdefault("linhas", []).append("4.3.05")
+
+
+@pytest.mark.parametrize("caso,mudar", [
+    ("Fundeb com linha_rtn 4", _linha_rtn("Nota 18", "4")),
+    ("Fundeb com linha_rtn 4.3.05", _linha_rtn("Nota 18", "4.3.05")),
+    ("fatos do Fundeb com {linha:4.3.05}, mesmo na fonte", _fatos_fundeb_com_4305),
+    ("Bolsa com linha_rtn 4", _linha_rtn("Nota 21", "4")),
+    ("Bolsa com linha_rtn 4.4.1.3", _linha_rtn("Nota 21", "4.4.1.3")),
+])
+def test_t17_regra_unica_rejeita(ctx, caso, mudar):
+    notas = P.carregar_notas()
+    mudar(notas)
+    ok, detalhe = T.t17_notas_comparacoes(ctx, RTN, notas=notas)
+    assert not ok, f"{caso}: {detalhe}"
+
+
+def test_t17_regra_unica_aceita_bolsa_com_4_4_1(ctx):
+    notas = P.carregar_notas()
+    assert _citacao(notas, "Nota 21")["linha_rtn"] == "4.4.1"
+    ok, detalhe = T.t17_notas_comparacoes(ctx, RTN, notas=notas)
+    assert ok, detalhe

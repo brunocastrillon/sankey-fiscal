@@ -406,11 +406,18 @@ def _no_do_mapa(mapa, no_id):
     return next(n for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"] if n["id"] == no_id)
 
 
-def _linhas_do_no(mapa, no_id, codigos_aba):
-    """Linhas da aba 1.2 que formam o nó: as de soma e de subtrai e todas as suas descendentes."""
-    n = _no_do_mapa(mapa, no_id)
-    raizes = n["soma"] + n.get("subtrai", [])
+def _descendentes(raizes, codigos_aba):
     return {c for c in codigos_aba if any(c == r or c.startswith(r + ".") for r in raizes)}
+
+
+def _linhas_L(mapa, no_id, codigos_aba):
+    """L: as linhas de soma do nó e todas as suas descendentes."""
+    return _descendentes(_no_do_mapa(mapa, no_id)["soma"], codigos_aba)
+
+
+def _linhas_X(mapa, no_id, codigos_aba):
+    """X: as linhas de subtrai do nó e suas descendentes, mais os totais do mapeamento (1 a 5)."""
+    return _descendentes(_no_do_mapa(mapa, no_id).get("subtrai", []), codigos_aba) | set(mapa["totais"].values())
 
 
 def _maes_do_no(mapa, no_id):
@@ -425,12 +432,12 @@ def _codigos_das_fontes(n):
     return {f.get(k) for f in P.citacoes(n["fonte"]) for k in ("linha_rtn", "menciona")} - {None}
 
 
-def t17_notas_comparacoes(c, rtn):
+def t17_notas_comparacoes(c, rtn, notas=None):
     mapa, M, *_ = c
     R, nos_reais = _reais(c)
     ids = {n["id"] for n in mapa["receita"] + [mapa["repasse"]] + mapa["despesa"]}
     falsas, avaliadas, erros = [], [], []
-    for n in P.carregar_notas():
+    for n in (P.carregar_notas() if notas is None else notas):
         quem = f"{n['ano']} {n['no']} ({n['classe']})"
         for a, op, b in n.get("comparacoes", []):
             va, vb = (P.valor_marcador(x, n["ano"], R, nos_reais) for x in (a, b))
@@ -441,19 +448,20 @@ def t17_notas_comparacoes(c, rtn):
         if n["no"] not in ids:
             erros.append(f"{quem}: nó inexistente no mapeamento")
             continue
-        do_no = _linhas_do_no(mapa, n["no"], M.index)
+        # Regra única: marcadores e menciona em L e fora de X; linha_rtn em L ou mãe direta de uma linha de soma, nunca em X
+        L, X = _linhas_L(mapa, n["no"], M.index), _linhas_X(mapa, n["no"], M.index)
         citadas, das_fontes = P.linhas_citadas(n), _codigos_das_fontes(n)
-        fora_do_no = sorted(citadas - do_no)
+        fora_do_no = sorted(c for c in citadas if c not in L or c in X)
         if fora_do_no:
             erros.append(f"{quem}: marcadores com linhas fora do nó {fora_do_no}")
         if not citadas <= das_fontes:
             erros.append(f"{quem}: marcadores com linhas fora da fonte {sorted(citadas - das_fontes)}")
         if n["classe"] == "contexto":
             for f in P.citacoes(n["fonte"]):
-                if f.get("menciona") not in do_no:
+                if f.get("menciona") not in L or f.get("menciona") in X:
                     erros.append(f"{quem}: menciona {f.get('menciona')} fora do nó")
-                if f.get("linha_rtn") not in do_no | _maes_do_no(mapa, n["no"]):
-                    erros.append(f"{quem}: linha_rtn {f.get('linha_rtn')} fora do nó e da linha-mãe")
+                if f.get("linha_rtn") not in L | _maes_do_no(mapa, n["no"]) or f.get("linha_rtn") in X:
+                    erros.append(f"{quem}: linha_rtn {f.get('linha_rtn')} fora do nó e da linha-mãe, ou em subtrai/totais")
     ok = bool(avaliadas) and not falsas and not erros
     return ok, (f"{len(avaliadas)} comparações ({'; '.join(avaliadas)}); falsas: {falsas or 'nenhuma'}; "
                 f"nó, linhas e fontes: {erros or 'tudo certo'}")
