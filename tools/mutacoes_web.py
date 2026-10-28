@@ -103,6 +103,22 @@ MUTACOES = [
     mut("D1", "elemento title de volta no SVG (dica nativa)",
         [("web/src/ui/Sankey.tsx", "    >\n      <defs>", "    >\n      <title>{`${TEXTOS.tituloSvg}, ${grafo.ano}`}</title>\n      <defs>")],
         {"vitest": 1, "e2e": 1}, grep="sem dica nativa"),
+    # B3: superávit (duas posições, rótulo A′, guia em L) e nó zero
+    mut("S1", "rótulo do superávit junto do nó (abaixo dele, na quarta coluna) no celular",
+        [("web/src/layout/layout.ts", "    const nl = n.papel === 'resultado' ? posicoesResultado.deficit : nos.get(n.id)!;",
+          "    const nl = n.papel === 'resultado' && !(cfg.alvoToque > 0 && resultado > 0) ? posicoesResultado.deficit : nos.get(n.id)!;")],
+        {"vitest": 1}),
+    mut("S2", "nó com valor zero entra nos rótulos (e na fila)",
+        [("web/src/layout/layout.ts", "  const visiveis = g.nos.filter((n) => n.valor > 0);", "  const visiveis = g.nos;")], {"vitest": 1}),
+    mut("S3", "nó com valor zero desenhado como g.no focável",
+        [("web/src/ui/Sankey.tsx", "{L.nos.filter((nl) => porId.get(nl.id)!.valor > 0).map((nl) => {", "{L.nos.map((nl) => {")], {"vitest": 1}),
+    mut("S4", "nó com valor zero com linha na tabela de valores",
+        [("web/src/ui/TabelaValores.tsx", "{grafo.nos.filter((n) => n.valor > 0).map((n) => {", "{grafo.nos.map((n) => {")], {"vitest": 1}),
+    mut("S5", "sem a guia em L do superávit",
+        [("web/src/layout/layout.ts", "    if (distancia > LIMIAR_GUIA_RESULTADO) guias.push(", "    if (distancia > 1e9) guias.push(")], {"vitest": 1}),
+    mut("S6", "\"não inclui juros\" só no déficit (o superávit sem a nota)",
+        [("web/src/layout/layout.ts", "      ...(n.papel === 'resultado' ? [{ texto: TEXTOS.naoIncluiJuros",
+          "      ...(n.papel === 'resultado' && g.resultado === 'deficit' ? [{ texto: TEXTOS.naoIncluiJuros")], {"vitest": 1}),
 ]
 
 # Esperado de cada mutação: (testes que caem no vitest, testes que caem no e2e). Observado com --esboco e revisado um a um.
