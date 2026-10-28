@@ -90,9 +90,15 @@ O desenho do original só funciona em ano de déficit moderado; quatro situaçõ
 tratadas antes da primeira versão.
 
 - **Anos de superávit.** Com F negativo, o nó "Déficit primário" deixa de ser origem de fluxo e passa a ser destino (a receita
-  líquida excede a despesa). Regra de layout: um único nó "Resultado primário" que fica do lado da entrada em déficit e do lado da
-  saída em superávit, com o rótulo trocando entre "Déficit" e "Superávit". Em 2015–2025, 2022 é o único ano de superávit primário
-  (R$ 54,1 bi); os demais anos fecharam em déficit.
+  líquida excede a despesa). Regra de layout (fase 3b): um único nó "Resultado primário" com duas posições fixas, que existem em
+  todos os anos. A do déficit é origem, na terceira coluna, abaixo da Receita líquida; a do superávit (posição A) é destino, na
+  quarta coluna, logo abaixo do Gasto total. A que não se aplica no ano vale zero e segue a regra do nó com valor zero (sem rótulo,
+  guia, alvo de toque, parada no Tab nem linha na tabela). Fluxos: Receita líquida → Gasto total = mín(receita líquida, despesa
+  total); Déficit → Gasto total = máx(0, −resultado); Receita líquida → Superávit = máx(0, resultado). O rótulo do resultado fica
+  sempre no lugar do rótulo do déficit (A′: sob a Receita líquida, à esquerda no desktop e abaixo no celular), com "Superávit
+  primário", o valor e "não inclui juros" (nunca "financiado com dívida"); a mais de 12 px do segmento onde nasce o fluxo do
+  superávit, ganha uma guia em L até o nó. Em 2015–2025, 2022 é o único ano de superávit primário (R$ 54,1 bi); os demais anos
+  fecharam em déficit.
 - **Escala compartilhada.** O déficit primário de 2020 foi de R$ 743,3 bi, cerca de 12 vezes o de 2025. Em cada modo, a escala é
   a da maior coluna da série (hoje, as origens de 2025), recalculada a cada build: um ano novo maior faz todos encolherem. O topo da
   terceira coluna (repasse, receita líquida e déficit) fica na mesma linha em todos os anos e o vazio dos anos menores fica

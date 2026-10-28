@@ -78,6 +78,8 @@ export const LARGURA_MAX_DESKTOP = 1200;
 export const FOLGA_ROTULOS = 3;
 /** Espessura mínima visível (px) de todo nó com valor positivo nos layouts estáticos. Não é piso: é teste. */
 export const ESPESSURA_MINIMA = 3;
+/** Distância (px) entre o rótulo do superávit (em A′) e o segmento onde nasce o fluxo dele, acima da qual o rótulo ganha guia. */
+export const LIMIAR_GUIA_RESULTADO = 12;
 export const OPACIDADE_FLUXO = 0.36;
 export const ALTURA_LINHA = 1.27; // em múltiplos do tamanho da fonte
 // Extremos da caixa do texto (getBBox) em relação à linha de base, em múltiplos da fonte. Medido: Segoe UI 1,094 e 0,27;

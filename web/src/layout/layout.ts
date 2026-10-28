@@ -1,7 +1,17 @@
 import { formatarValor } from '../formatar';
 import type { Grafo, No } from '../grafo/tipos';
 import { TEXTOS } from '../textos';
-import { ALTURA_LINHA, ASCENDENTE, DESCENDENTE, FOLGA_ROTULOS, LARGURA_MAX_DESKTOP, type ConfigFormato, type IdMeio, type PosicaoMeio } from './constantes';
+import {
+  ALTURA_LINHA,
+  ASCENDENTE,
+  DESCENDENTE,
+  FOLGA_ROTULOS,
+  LARGURA_MAX_DESKTOP,
+  LIMIAR_GUIA_RESULTADO,
+  type ConfigFormato,
+  type IdMeio,
+  type PosicaoMeio,
+} from './constantes';
 import type { EstiloTexto, MedirTexto } from './medir';
 import { quebrarPorLargura, resolverFila } from './rotulos';
 
@@ -69,6 +79,8 @@ export interface Layout {
   paradas: { bordas: [number, number]; viavel: boolean } | null;
   /** A fila de rótulos laterais encostou em [margem + 4, alturaSvg − margem − 4] e foi empurrada: falta altura. */
   filaApertada: boolean;
+  /** As duas posições do resultado (a que não se aplica tem altura 0); em `nos`, o resultado é a que se aplica. */
+  posicoesResultado: { deficit: NoLayout; superavit: NoLayout };
 }
 
 const ID_MEIO: Record<string, IdMeio> = {
@@ -149,6 +161,18 @@ function tracarGuias(pendentes: GuiaPendente[], s: 1 | -1): GuiaLayout[] {
   });
 }
 
+/**
+ * Guia do resultado em L: sai de baixo do nó (no meio da barra), desce até a altura do centro do rótulo e segue na
+ * horizontal até 3 px dele; se o rótulo está logo abaixo do nó, só o trecho vertical, até 1 px do rótulo.
+ */
+function guiaEmL(no: NoLayout, c: Caixa): GuiaLayout {
+  const cx = (no.x0 + no.x1) / 2;
+  const inicio: [number, number] = [cx, no.y1 + 1];
+  if (cx >= c.x0 - 3 && cx <= c.x1 + 3) return { id: no.id, pontos: [inicio, [cx, c.y0 - 1]] };
+  const cl = (c.y0 + c.y1) / 2;
+  return { id: no.id, pontos: [inicio, [cx, cl], [c.x1 + 3 < cx ? c.x1 + 3 : c.x0 - 3, cl]] };
+}
+
 const colidem = (a: Caixa, b: Caixa, folga: number) =>
   a.x0 < b.x1 + folga && b.x0 < a.x1 + folga && a.y0 < b.y1 + folga && b.y0 < a.y1 + folga;
 
@@ -191,12 +215,12 @@ function textosDoGrafo(g: Grafo, cfg: ConfigFormato, medir: MedirTexto): Map<str
   for (const n of g.nos) {
     const lado = ladoDo(n);
     const posicao = lado === 'meio' ? cfg.posicaoMeio[ID_MEIO[n.papel]] : null;
-    const deficit = n.papel === 'resultado' && g.resultado === 'deficit';
+    // o resultado, déficit ou superávit, lembra que não inclui juros
     const max = lado !== 'meio' ? cfg.larguraMaxRotulo.lado : n.papel === 'resultado' ? cfg.larguraMaxRotulo.deficit : cfg.larguraMaxRotulo.meio;
     const linhas: LinhaRotulo[] = [
       ...quebrarPorLargura(n.rotulo, max, normal, medir).map((texto) => ({ texto, negrito: false, secundario: false })),
       { texto: formatarValor(n.valor, g.modo), negrito: true, secundario: false },
-      ...(deficit ? [{ texto: TEXTOS.naoIncluiJuros, negrito: false, secundario: true }] : []),
+      ...(n.papel === 'resultado' ? [{ texto: TEXTOS.naoIncluiJuros, negrito: false, secundario: true }] : []),
     ];
     const largura = Math.max(...linhas.map((l) => medir(l.texto, l.negrito ? negrito : normal)));
     // altura da caixa real do texto: da ascendente da primeira linha à descendente da última
@@ -305,15 +329,28 @@ export function calcularLayout(g: Grafo, cfg: ConfigFormato, medir: MedirTexto, 
   const empilhar = (ids: string[], topo: number) => ids.reduce((y, id) => pos(id, y) + pad, topo);
   const alturaPilha = (ids: string[]) => ids.reduce((s, id) => s + porId.get(id)!.valor * escala, 0) + (ids.length - 1) * pad;
 
+  const semResultado = (c: No[]) => c.filter((n) => n.papel !== 'resultado').map((n) => n.id);
   const repasse = colunas[2].find((n) => n.papel === 'repasse')!.id;
-  empilhar(colunas[2].map((n) => n.id), 0);
+  empilhar(semResultado(colunas[2]), 0);
   const rt = nos.get(repasse)!;
   const rl = nos.get('receita_liquida')!;
   pos('receita_total', (rt.y0 + rl.y1) / 2 - (porId.get('receita_total')!.valor * escala) / 2);
   const rtc = (nos.get('receita_total')!.y0 + nos.get('receita_total')!.y1) / 2;
   const origens = colunas[0].map((n) => n.id);
   empilhar(origens, rtc - alturaPilha(origens) / 2);
-  empilhar(colunas[3].map((n) => n.id), rl.y0);
+  empilhar(semResultado(colunas[3]), rl.y0);
+  const dt = nos.get('despesa_total')!;
+  // o resultado: um nó, duas posições fixas — a do déficit (terceira coluna, abaixo da receita líquida) e a do superávit
+  // (quarta coluna, abaixo do Gasto total); a que não se aplica fica com altura 0
+  const resultado = g.resultadoComSinal;
+  const posicoesResultado = {
+    deficit: { id: 'resultado_primario', x0: xs[2], x1: xs[2] + nw, y0: rl.y1 + pad, y1: rl.y1 + pad + Math.max(0, -resultado) * escala },
+    superavit: { id: 'resultado_primario', x0: xs[3], x1: xs[3] + nw, y0: dt.y1 + pad, y1: dt.y1 + pad + Math.max(0, resultado) * escala },
+  };
+  nos.set('resultado_primario', resultado > 0 ? posicoesResultado.superavit : posicoesResultado.deficit);
+  const naoSeAplica = resultado > 0 ? posicoesResultado.deficit : posicoesResultado.superavit;
+  // nó com valor zero: sem rótulo, guia, alvo de toque nem lugar na fila de rótulos
+  const visiveis = g.nos.filter((n) => n.valor > 0);
   pos('obrigatorias', rl.y0);
   const ob = nos.get('obrigatorias')!;
   const folhas = g.obrigatorias;
@@ -321,25 +358,28 @@ export function calcularLayout(g: Grafo, cfg: ConfigFormato, medir: MedirTexto, 
   const discr = colunas[5].filter((n) => !folhas.includes(n.id)).map((n) => n.id);
   empilhar(discr, fimFolhas + pad);
 
-  // fluxos: saídas e entradas de cada nó ordenadas pela posição vertical do outro nó
+  // fluxos: saídas e entradas de cada nó ordenadas pela posição vertical do outro nó. O resultado sai da posição do
+  // déficit (resultado → Gasto total) e chega à do superávit (receita líquida → resultado)
+  const saidaDe = (id: string) => (id === 'resultado_primario' ? posicoesResultado.deficit : nos.get(id)!);
+  const chegadaEm = (id: string) => (id === 'resultado_primario' ? posicoesResultado.superavit : nos.get(id)!);
   const fluxos: FluxoLayout[] = g.fluxos.map((f) => ({
     origem: f.origem,
     destino: f.destino,
     valor: f.valor,
     espessura: f.valor * escala,
-    x0: nos.get(f.origem)!.x1,
-    x1: nos.get(f.destino)!.x0,
+    x0: saidaDe(f.origem).x1,
+    x1: chegadaEm(f.destino).x0,
     ySaida: 0,
     yEntrada: 0,
   }));
-  for (const nl of nos.values()) {
-    let y = nl.y0;
-    for (const f of fluxos.filter((x) => x.origem === nl.id).sort((a, b) => nos.get(a.destino)!.y0 - nos.get(b.destino)!.y0)) {
+  for (const id of nos.keys()) {
+    let y = saidaDe(id).y0;
+    for (const f of fluxos.filter((x) => x.origem === id).sort((a, b) => chegadaEm(a.destino).y0 - chegadaEm(b.destino).y0)) {
       f.ySaida = y;
       y += f.espessura;
     }
-    y = nl.y0;
-    for (const f of fluxos.filter((x) => x.destino === nl.id).sort((a, b) => nos.get(a.origem)!.y0 - nos.get(b.origem)!.y0)) {
+    y = chegadaEm(id).y0;
+    for (const f of fluxos.filter((x) => x.destino === id).sort((a, b) => saidaDe(a.origem).y0 - saidaDe(b.origem).y0)) {
       f.yEntrada = y;
       y += f.espessura;
     }
@@ -355,9 +395,10 @@ export function calcularLayout(g: Grafo, cfg: ConfigFormato, medir: MedirTexto, 
     const t = textos.get(id)!;
     rotulos.push({ id, linhas: t.linhas, x, ancora, topo, alturaLinha, caixa: caixaDe(x, ancora, topo, t), lado: t.lado, deslocado });
   };
-  for (const n of g.nos.filter((x) => textos.get(x.id)!.lado === 'meio')) {
+  for (const n of visiveis.filter((x) => textos.get(x.id)!.lado === 'meio')) {
     const t = textos.get(n.id)!;
-    const nl = nos.get(n.id)!;
+    // o rótulo do resultado fica sempre no lugar do rótulo do déficit (A′), também nos anos de superávit
+    const nl = n.papel === 'resultado' ? posicoesResultado.deficit : nos.get(n.id)!;
     const cy = (nl.y0 + nl.y1) / 2;
     switch (t.posicao) {
       case 'direita': novoRotulo(n.id, nl.x1 + 6, 'start', cy - t.altura / 2); break;
@@ -384,7 +425,7 @@ export function calcularLayout(g: Grafo, cfg: ConfigFormato, medir: MedirTexto, 
   // rótulos laterais: fila sem colisão (faixa ≥ alvo de toque); primeiro sem limites, para achar o deslocamento vertical
   const filas = (['esquerda', 'direita'] as const).map((lado) => ({
     lado,
-    itens: g.nos
+    itens: visiveis
       .filter((n) => textos.get(n.id)!.lado === lado)
       .map((n) => ({ id: n.id, centro: (nos.get(n.id)!.y0 + nos.get(n.id)!.y1) / 2, altura: Math.max(textos.get(n.id)!.altura, cfg.alvoToque) })),
   }));
@@ -412,7 +453,7 @@ export function calcularLayout(g: Grafo, cfg: ConfigFormato, medir: MedirTexto, 
   );
   // a terceira coluna começa em 0: o deslocamento é o y do topo dela (a âncora)
   const dy = opcoes.ancoraY ?? cfg.margem + 4 - minY;
-  for (const nl of nos.values()) {
+  for (const nl of [...nos.values(), naoSeAplica]) {
     nl.y0 += dy;
     nl.y1 += dy;
   }
@@ -461,6 +502,16 @@ export function calcularLayout(g: Grafo, cfg: ConfigFormato, medir: MedirTexto, 
     guias.push(...tracarGuias(pendentes, fila.lado === 'direita' ? 1 : -1));
   }
   if (cfg.alvoToque > 0) for (const r of rotulos.filter((x) => x.lado === 'meio')) alvos.push({ id: r.id, caixa: alvoDoMeio(r) });
+  // superávit: o rótulo fica em A′, longe do nó; a mais de LIMIAR_GUIA_RESULTADO px do segmento onde nasce o fluxo do
+  // superávit, uma guia em L sai de baixo do nó e chega ao rótulo
+  const rotuloResultado = rotulos.find((x) => x.id === 'resultado_primario');
+  const fluxoSuperavit = fluxos.find((f) => f.origem === 'receita_liquida' && f.destino === 'resultado_primario')!;
+  if (resultado > 0 && rotuloResultado) {
+    const c = rotuloResultado.caixa;
+    const nascente: Caixa = { x0: fluxoSuperavit.x0, x1: fluxoSuperavit.x0, y0: fluxoSuperavit.ySaida, y1: fluxoSuperavit.ySaida + fluxoSuperavit.espessura };
+    const distancia = Math.hypot(Math.max(0, c.x0 - nascente.x1, nascente.x0 - c.x1), Math.max(0, c.y0 - nascente.y1, nascente.y0 - c.y1));
+    if (distancia > LIMIAR_GUIA_RESULTADO) guias.push(guiaEmL(posicoesResultado.superavit, c));
+  }
 
   return {
     largura,
@@ -475,5 +526,6 @@ export function calcularLayout(g: Grafo, cfg: ConfigFormato, medir: MedirTexto, 
     alvos,
     paradas,
     filaApertada,
+    posicoesResultado,
   };
 }

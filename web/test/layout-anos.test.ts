@@ -134,8 +134,9 @@ describe.each(MODOS)('modo %s', (modo) => {
           expect(noMaisFino(L, g).px).toBeGreaterThanOrEqual(ESPESSURA_MINIMA);
         });
 
-        it('guias ligam a barra ao rótulo do mesmo nó e não cruzam outra barra nem outro rótulo', () => {
-          for (const gd of L.guias) {
+        it('guias laterais ligam a barra ao rótulo do mesmo nó e não cruzam outra barra nem outro rótulo', () => {
+          // a guia em L do superávit (de baixo do nó até o rótulo em A′) é provada em superavit.test.tsx
+          for (const gd of L.guias.filter((x) => x.id !== 'resultado_primario')) {
             const n = L.nos.find((x) => x.id === gd.id)!;
             const r = L.rotulos.find((x) => x.id === gd.id)!;
             const [px, py] = gd.pontos[0];

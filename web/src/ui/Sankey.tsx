@@ -67,7 +67,8 @@ export function Sankey({ grafo, layout: L, idSvg, aoPassarMouse, aoEscolher, aoS
             );
           })}
       </g>
-      {L.nos.map((nl) => {
+      {/* nó com valor zero: nem barra, nem parada no Tab */}
+      {L.nos.filter((nl) => porId.get(nl.id)!.valor > 0).map((nl) => {
         const n = porId.get(nl.id)!;
         const r = L.rotulos.find((x) => x.id === nl.id);
         const guia = L.guias.find((x) => x.id === nl.id);
@@ -80,7 +81,7 @@ export function Sankey({ grafo, layout: L, idSvg, aoPassarMouse, aoEscolher, aoS
             data-id={nl.id}
             role="button"
             tabIndex={0}
-            aria-label={`${n.rotulo}: ${formatarBi(n.valor)}${deficit ? `, ${TEXTOS.naoIncluiJuros}` : ''}`}
+            aria-label={`${n.rotulo}: ${formatarBi(n.valor)}${n.papel === 'resultado' ? `, ${TEXTOS.naoIncluiJuros}` : ''}`}
             onPointerEnter={(e) => {
               const barra = e.currentTarget.querySelector('rect.barra');
               if (e.pointerType === 'mouse' && barra) aoPassarMouse(nl.id, barra);
