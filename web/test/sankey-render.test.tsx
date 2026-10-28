@@ -32,6 +32,13 @@ describe.each([
     expect(attr(svg, 'aria-labelledby')).toBe('');
   });
 
+  it('o <svg> é um grupo (nunca role="img", que esconderia os nós focáveis) com um botão por nó de valor positivo', () => {
+    const svg = html.match(/<svg[^>]*class="sankey"[^>]*>/)![0];
+    expect(attr(svg, 'role')).toBe('group');
+    const botoes = [...html.matchAll(/<g class="no" data-id="([^"]+)" role="button" tabindex="0"/g)].map((m) => m[1]);
+    expect(botoes).toEqual(g.nos.filter((n) => n.valor > 0).map((n) => n.id));
+  });
+
   it('desenha um path.fluxo por fluxo do grafo com valor > 0', () => {
     expect(fluxos).toHaveLength(g.fluxos.filter((f) => f.valor > 0).length);
   });

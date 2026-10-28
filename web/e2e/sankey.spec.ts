@@ -325,6 +325,21 @@ test.describe('desenho do celular sem rolagem (1024 px)', () => {
   });
 });
 
+for (const ano of [2022, 2025])
+  test.describe(`árvore de acessibilidade · ${ano}`, () => {
+    test('o desenho é um grupo com o nome e o ano, e cada nó é um botão dentro dele (nunca role="img")', async ({ page }) => {
+      await abrir(page, ano);
+      const grupo = page.getByRole('group', { name: `${TEXTOS.tituloSvg}, ${ano}`, exact: true });
+      await expect(grupo).toHaveCount(1);
+      const ids = await idsDosNos(page);
+      expect(ids.length).toBeGreaterThan(10);
+      await expect(grupo.getByRole('button')).toHaveCount(ids.length);
+      // o nome de cada botão começa pelo rótulo do nó (o resultado de 2022 é o superávit)
+      const rotulo = ano === 2022 ? TEXTOS.rotulos.superavit : TEXTOS.rotulos.deficit;
+      await expect(grupo.getByRole('button', { name: new RegExp(`^${rotulo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:`) })).toHaveCount(1);
+    });
+  });
+
 test.describe('sem dica nativa do navegador · 1280x720', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
   // a dica nativa (de um elemento title do SVG ou de um atributo title) é do sistema e não sai no print: o teste prova a
