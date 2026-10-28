@@ -40,7 +40,7 @@ def resumir(nomes):
     """Testes que caem ("arquivo > descrição > teste") agrupados com o ano e o fator normalizados: {nome: quantos}."""
     contagem = {}
     for n in nomes:
-        n = re.sub(r"medidor ×[\d.]+", "medidor ×F", re.sub(r" > \d{4} > ", " > AAAA > ", n))
+        n = re.sub(r"medidor ×[\d.]+", "medidor ×F", re.sub(r" > \d{4} > ", " > AAAA > ", re.sub(r"(?<= em )\d{4}(?= >)", "AAAA", n)))
         contagem[n] = contagem.get(n, 0) + 1
     return dict(sorted(contagem.items()))
 
@@ -122,7 +122,13 @@ MUTACOES = [
 ]
 
 # Esperado de cada mutação: (testes que caem no vitest, testes que caem no e2e). Observado com --esboco e revisado um a um.
-ERRO_DE_CARGA = 'sankey.spec.ts > foco da revisão > erro de carga em UM dos anos: mensagem e "Tentar de novo"; sem a falha, o clique desenha'
+NO_ZERO = {  # os testes do nó zero nos 11 anos, dois formatos, resultado zerado e folha zerada
+    f"test/superavit.test.tsx > nó zero em AAAA > {formato} > {caso}": 11
+    for formato in ("celular 390", "desktop 1200")
+    for caso in ("folha zerada (BPC): sem rótulo, guia, alvo, parada no Tab nem linha na tabela",
+                 "resultado zerado: sem rótulo, guia, alvo, parada no Tab nem linha na tabela; as duas posições com altura 0")
+}
+ERRO_DE_CARGA ='sankey.spec.ts > foco da revisão > erro de carga em UM dos anos: mensagem e "Tentar de novo"; sem a falha, o clique desenha'
 CAEM = {
     "W1": ([MODOS_PCT_DESP.format(a) for a in ANOS], []),
     "W2": (["test/modos.test.ts > % do PIB com duas casas > déficit de 2025 = 0,48% e superávit de 2022 = 0,46%, diferentes",
@@ -138,6 +144,26 @@ CAEM = {
         'test/sankey-render.test.tsx > Sankey renderizado (celular) > sem <title> no SVG (dica nativa); o nome acessível é o aria-label, com o ano': 1,
         'test/sankey-render.test.tsx > Sankey renderizado (desktop) > sem <title> no SVG (dica nativa); o nome acessível é o aria-label, com o ano': 1,
     }, {'sankey.spec.ts > sem dica nativa do navegador · 1280x720 > mouse parado 2 s sobre um nó e sobre um fluxo: só a Dica, nenhum title sob o ponteiro': 1}),
+    # B3
+    "S1": ({
+        'test/superavit.test.tsx > 2022, superávit (celular 390) > medidor ×F > o rótulo não colide com outro rótulo, outra guia, outra barra nem com a faixa do fluxo Gasto total → discricionárias': 3,
+        'test/superavit.test.tsx > 2022, superávit (celular 390) > medidor ×F > rótulo A′: no lugar do rótulo do déficit, com "Superávit primário", o valor e "não inclui juros"': 3,
+    }, {}),
+    "S2": ({
+        'test/layout.test.ts > folha zerada > celular: sem NaN, sem espessura negativa, conservação na geometria e sem rótulo da folha zerada': 1,
+        'test/layout.test.ts > folha zerada > desktop: sem NaN, sem espessura negativa, conservação na geometria e sem rótulo da folha zerada': 1,
+        **NO_ZERO,
+    }, {}),
+    "S3": (NO_ZERO, {}),
+    "S4": (NO_ZERO, {}),
+    "S5": ({
+        'test/superavit.test.tsx > 2022, superávit (celular 390) > medidor ×F > a mais de 12 px do segmento onde nasce o fluxo do superávit, o rótulo ganha guia em L até o nó': 3,
+        'test/superavit.test.tsx > 2022, superávit (desktop 1200) > medidor ×F > a mais de 12 px do segmento onde nasce o fluxo do superávit, o rótulo ganha guia em L até o nó': 3,
+    }, {}),
+    "S6": ({
+        'test/superavit.test.tsx > 2022, superávit (celular 390) > medidor ×F > rótulo A′: no lugar do rótulo do déficit, com "Superávit primário", o valor e "não inclui juros"': 3,
+        'test/superavit.test.tsx > 2022, superávit (desktop 1200) > medidor ×F > rótulo A′: no lugar do rótulo do déficit, com "Superávit primário", o valor e "não inclui juros"': 3,
+    }, {}),
     # B2 (agrupados: ano e fator normalizados, com a contagem)
     "E1": ({
         'test/escala.test.ts > altura do SVG > constantes da fase 3: 752 no desktop, 744 no celular, espessura mínima de 3 px': 1,
