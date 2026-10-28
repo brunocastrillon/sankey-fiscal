@@ -25,6 +25,13 @@ describe.each([
   const fluxos = [...html.matchAll(/<path[^>]*class="fluxo"[^>]*>/g)].map((m) => m[0]);
   const attr = (tag: string, nome: string) => tag.match(new RegExp(`${nome}="([^"]*)"`))?.[1] ?? '';
 
+  it('sem <title> no SVG (dica nativa); o nome acessível é o aria-label, com o ano', () => {
+    expect(html).not.toMatch(/<title\b/);
+    const svg = html.match(/<svg[^>]*class="sankey"[^>]*>/)![0];
+    expect(attr(svg, 'aria-label')).toBe(`${TEXTOS.tituloSvg}, ${g.ano}`);
+    expect(attr(svg, 'aria-labelledby')).toBe('');
+  });
+
   it('desenha um path.fluxo por fluxo do grafo com valor > 0', () => {
     expect(fluxos).toHaveLength(g.fluxos.filter((f) => f.valor > 0).length);
   });

@@ -309,6 +309,44 @@ test.describe('desenho do celular sem rolagem (1024 px)', () => {
   });
 });
 
+test.describe('sem dica nativa do navegador · 1280x720', () => {
+  test.use({ viewport: { width: 1280, height: 720 } });
+  // a dica nativa (de um elemento title do SVG ou de um atributo title) é do sistema e não sai no print: o teste prova a
+  // ausência da fonte dela em tudo o que está sob o ponteiro, e o print mostra que só a nossa Dica aparece
+  const fonteDeDicaNativa = (page: Page, x: number, y: number) =>
+    page.evaluate(
+      ([px, py]) => {
+        const achados: string[] = [];
+        for (let el = document.elementFromPoint(px, py); el; el = el.parentElement) {
+          if (el.hasAttribute('title')) achados.push(`${el.tagName}[title]`);
+          if ([...el.children].some((c) => c.tagName.toLowerCase() === 'title')) achados.push(`${el.tagName} > title`);
+        }
+        return achados;
+      },
+      [x, y],
+    );
+
+  test('mouse parado 2 s sobre um nó e sobre um fluxo: só a Dica, nenhum title sob o ponteiro', async ({ page }, info) => {
+    await abrir(page, 2025);
+    const barra = (await page.locator('g.no[data-id="imposto_renda"] rect.barra').boundingBox())!;
+    const no = { x: barra.x + barra.width / 2, y: barra.y + barra.height / 2 };
+    await page.mouse.move(no.x, no.y);
+    await page.waitForTimeout(2000);
+    await expect(page.getByTestId('tooltip')).toBeVisible();
+    expect(await fonteDeDicaNativa(page, no.x, no.y)).toEqual([]);
+    await page.screenshot({ path: info.outputPath('no-2s.png') });
+
+    const fluxo = (await page.locator('path.fluxo[data-origem="receita_total"][data-destino="receita_liquida"]').boundingBox())!;
+    const ponto = { x: fluxo.x + fluxo.width / 2, y: fluxo.y + fluxo.height / 2 };
+    await page.mouse.move(ponto.x, ponto.y);
+    await page.waitForTimeout(2000);
+    expect(await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.getAttribute('class'), [ponto.x, ponto.y])).toBe('fluxo');
+    await expect(page.getByTestId('tooltip')).toHaveCount(0);
+    expect(await fonteDeDicaNativa(page, ponto.x, ponto.y)).toEqual([]);
+    await page.screenshot({ path: info.outputPath('fluxo-2s.png') });
+  });
+});
+
 test.describe('foco da revisão', () => {
   test('erro de carga em UM dos anos: mensagem e "Tentar de novo"; sem a falha, o clique desenha', async ({ page }) => {
     // a escala compartilhada precisa dos 11 anos: um ano que não é o desenhado também derruba a carga

@@ -9,7 +9,7 @@ import { TEXTOS } from '../textos';
 interface Props {
   grafo: Grafo;
   layout: Layout;
-  /** Prefixo único dos ids internos do SVG (título e hachura). */
+  /** Prefixo único dos ids internos do SVG (hachura). */
   idSvg: string;
   /** Mouse sobre o nó (só pointerType 'mouse'): dica flutuante perto da barra, sem mover o foco. */
   aoPassarMouse: (id: string, barra: Element) => void;
@@ -38,10 +38,10 @@ export function Sankey({ grafo, layout: L, idSvg, aoPassarMouse, aoEscolher, aoS
       height={L.altura}
       viewBox={`0 0 ${L.largura} ${L.altura}`}
       role="group"
-      aria-labelledby={`${idSvg}-titulo`}
+      // nome acessível por aria-label, não por um elemento title do SVG: ele viraria dica nativa do navegador sobre o desenho
+      aria-label={`${TEXTOS.tituloSvg}, ${grafo.ano}`}
       onPointerLeave={aoSair}
     >
-      <title id={`${idSvg}-titulo`}>{`${TEXTOS.tituloSvg}, ${grafo.ano}`}</title>
       <defs>
         <pattern id={hachura} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <rect className="hachura-fundo" width="6" height="6" />
