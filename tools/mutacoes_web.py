@@ -99,6 +99,10 @@ MUTACOES = [
           "const larguraX = (id: string) => textos.get(id)!.largura;")], {"vitest": 1}),
     mut("E7", "filaApertada desligada (a fila empurrada pelos limites não acusa)",
         [("web/src/layout/layout.ts", " > 1e-6)) filaApertada = true;", " > 1e-6)) filaApertada = false;")], {"vitest": 1}),
+    # antes da B3: dica nativa do navegador
+    mut("D1", "elemento title de volta no SVG (dica nativa)",
+        [("web/src/ui/Sankey.tsx", "    >\n      <defs>", "    >\n      <title>{`${TEXTOS.tituloSvg}, ${grafo.ano}`}</title>\n      <defs>")],
+        {"vitest": 1, "e2e": 1}, grep="sem dica nativa"),
 ]
 
 # Esperado de cada mutação: (testes que caem no vitest, testes que caem no e2e). Observado com --esboco e revisado um a um.
