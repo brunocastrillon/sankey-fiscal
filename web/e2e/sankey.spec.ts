@@ -87,6 +87,17 @@ async function idsDosNos(page: Page) {
   return page.locator('g.no').evaluateAll((gs) => gs.map((g) => (g as SVGGElement).dataset.id!));
 }
 
+/** Nós por coluna, lida das barras: a primeira (origens), a última (folhas) e as do meio. */
+const GRUPOS = ['origens', 'meio', 'folhas'] as const;
+async function idsDoGrupo(page: Page, grupo: (typeof GRUPOS)[number]) {
+  const nos = await page.locator('g.no').evaluateAll((gs) =>
+    gs.map((g) => ({ id: (g as SVGGElement).dataset.id!, x: Number(g.querySelector('rect.barra')!.getAttribute('x')) })),
+  );
+  const xs = nos.map((n) => n.x);
+  const [min, max] = [Math.min(...xs), Math.max(...xs)];
+  return nos.filter((n) => (grupo === 'origens' ? n.x === min : grupo === 'folhas' ? n.x === max : n.x !== min && n.x !== max)).map((n) => n.id);
+}
+
 for (const tela of TELAS)
   for (const esquema of ESQUEMAS)
     for (const ano of ANOS)
@@ -105,34 +116,39 @@ for (const tela of TELAS)
           expect(fora.map((r) => r.id)).toEqual([]);
         });
 
-        test('painel: sem pulo ao abrir, trocar e fechar; sem transbordar; sem cobrir texto', async ({ page }) => {
-          await abrir(page, ano);
-          const svg = page.getByTestId('svg-sankey');
-          const rodape = page.getByTestId('rodape');
-          const painel = page.getByTestId('painel');
-          // no desenho do celular o painel tem altura automática: só o SVG fica parado; no desktop, também o rodapé
-          const celular = await page.getByTestId('cartao').evaluate((el) => el.classList.contains('formato-celular'));
-          const antes = { svg: await caixaDoc(svg), rodape: await caixaDoc(rodape) };
-          for (const id of await idsDosNos(page)) {
-            await acionar(page, id, tela.toque);
-            await expect(painel.locator('.painel-titulo')).toBeVisible();
+        // repartido por colunas de nós em testes independentes (rodam em paralelo): com todos os nós num teste só, ele
+        // passava de 30 s localmente sob carga
+        for (const grupo of GRUPOS)
+          test(`painel (${grupo}): sem pulo ao abrir, trocar e fechar; sem transbordar; sem cobrir texto`, async ({ page }) => {
+            await abrir(page, ano);
+            const svg = page.getByTestId('svg-sankey');
+            const rodape = page.getByTestId('rodape');
+            const painel = page.getByTestId('painel');
+            // no desenho do celular o painel tem altura automática: só o SVG fica parado; no desktop, também o rodapé
+            const celular = await page.getByTestId('cartao').evaluate((el) => el.classList.contains('formato-celular'));
+            const antes = { svg: await caixaDoc(svg), rodape: await caixaDoc(rodape) };
+            const ids = await idsDoGrupo(page, grupo);
+            expect(ids.length).toBeGreaterThan(0);
+            for (const id of ids) {
+              await acionar(page, id, tela.toque);
+              await expect(painel.locator('.painel-titulo')).toBeVisible();
+              igual(await caixaDoc(svg), antes.svg, ['y0', 'y1']);
+              if (!celular) igual(await caixaDoc(rodape), antes.rodape);
+              expect(await painel.evaluate((el) => el.scrollHeight <= el.clientHeight + 1), `painel de ${id} transborda`).toBe(true);
+              const caixaPainel = await caixaDoc(painel);
+              const textos = await page.locator('svg.sankey text.rotulo').evaluateAll((ts) =>
+                ts.map((t) => {
+                  const r = t.getBoundingClientRect();
+                  return { x0: r.left + scrollX, y0: r.top + scrollY, x1: r.right + scrollX, y1: r.bottom + scrollY };
+                }),
+              );
+              expect(textos.filter((t) => sobrepoe(t, caixaPainel)).length, `painel de ${id} cobre rótulo`).toBe(0);
+            }
+            await page.getByRole('button', { name: TEXTOS.fechar }).click();
+            await expect(painel.locator('.convite')).toBeVisible();
             igual(await caixaDoc(svg), antes.svg, ['y0', 'y1']);
-            if (!celular) igual(await caixaDoc(rodape), antes.rodape);
-            expect(await painel.evaluate((el) => el.scrollHeight <= el.clientHeight + 1), `painel de ${id} transborda`).toBe(true);
-            const caixaPainel = await caixaDoc(painel);
-            const textos = await page.locator('svg.sankey text.rotulo').evaluateAll((ts) =>
-              ts.map((t) => {
-                const r = t.getBoundingClientRect();
-                return { x0: r.left + scrollX, y0: r.top + scrollY, x1: r.right + scrollX, y1: r.bottom + scrollY };
-              }),
-            );
-            expect(textos.filter((t) => sobrepoe(t, caixaPainel)).length, `painel de ${id} cobre rótulo`).toBe(0);
-          }
-          await page.getByRole('button', { name: TEXTOS.fechar }).click();
-          await expect(painel.locator('.convite')).toBeVisible();
-          igual(await caixaDoc(svg), antes.svg, ['y0', 'y1']);
-          igual(await caixaDoc(rodape), antes.rodape);
-        });
+            igual(await caixaDoc(rodape), antes.rodape);
+          });
 
         if (tela.toque)
           test('toque: o nó continua na tela, 120 px do painel entram, o SVG não se move; "ver no desenho" volta ao nó', async ({ page }) => {

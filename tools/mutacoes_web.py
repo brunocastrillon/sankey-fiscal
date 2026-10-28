@@ -116,6 +116,12 @@ CAEM = {
     "W4": (["test/carregar.test.ts > carregarTodos > um arquivo com 404 rejeita a carga, com o nome do arquivo"], [ERRO_DE_CARGA]),
     "W5": ([], [ERRO_DE_CARGA]),
     "W6": ([], ["sankey.spec.ts > foco da revisão > carregamento: texto enquanto os anos chegam, depois o desenho"]),
+    "D1": ({
+        'test/dica-nativa.test.ts > dica nativa do navegador > nenhum <title> nem atributo title em web/src': 1,
+        'test/sankey-render.test.tsx > Sankey renderizado (celular 2020) > sem <title> no SVG (dica nativa); o nome acessível é o aria-label, com o ano': 1,
+        'test/sankey-render.test.tsx > Sankey renderizado (celular) > sem <title> no SVG (dica nativa); o nome acessível é o aria-label, com o ano': 1,
+        'test/sankey-render.test.tsx > Sankey renderizado (desktop) > sem <title> no SVG (dica nativa); o nome acessível é o aria-label, com o ano': 1,
+    }, {'sankey.spec.ts > sem dica nativa do navegador · 1280x720 > mouse parado 2 s sobre um nó e sobre um fluxo: só a Dica, nenhum title sob o ponteiro': 1}),
     # B2 (agrupados: ano e fator normalizados, com a contagem)
     "E1": ({
         'test/escala.test.ts > altura do SVG > constantes da fase 3: 752 no desktop, 744 no celular, espessura mínima de 3 px': 1,
