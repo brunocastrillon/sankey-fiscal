@@ -10,12 +10,12 @@ import { grafoDeValores, montarGrafo, valoresDoModo } from '../src/grafo/grafo';
 import type { Grafo, Modo } from '../src/grafo/tipos';
 import { CELULAR, DESKTOP, LIMIAR_GUIA_RESULTADO, type ConfigFormato } from '../src/layout/constantes';
 import { calcularEscalaCompartilhada, calcularReserva } from '../src/layout/escala';
-import { calcularLayout, type Caixa, type FluxoLayout, type Layout } from '../src/layout/layout';
+import { calcularLayout, type Caixa, type Layout } from '../src/layout/layout';
 import { TEXTOS } from '../src/textos';
 import { Sankey } from '../src/ui/Sankey';
 import { TabelaValores } from '../src/ui/TabelaValores';
 import { anos, dadosDosAnos, lerAno } from './apoio/dados';
-import { distanciaSegmentoCaixa, sobrepoe } from './apoio/geometria';
+import { caixaCruzaFaixa, distanciaSegmentoCaixa, sobrepoe } from './apoio/geometria';
 import { medidorDeterministico } from './apoio/medidor';
 
 const FOLGA = 2;
@@ -55,19 +55,6 @@ function comFolhaZero(d: DadosAno): Grafo {
   return grafoDeValores(v, d);
 }
 
-/** Pontos (x, topo, fundo) da faixa de um fluxo, amostrada em n pontos ao longo das curvas de Bézier. */
-function amostrarFaixa(f: FluxoLayout, n = 201): [number, number, number][] {
-  const xm = (f.x0 + f.x1) / 2;
-  const bez = (t: number, a: number, b: number, c: number, d: number) =>
-    (1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t ** 2 * c + t ** 3 * d;
-  return Array.from({ length: n }, (_, i) => {
-    const t = i / (n - 1);
-    const y = bez(t, f.ySaida, f.ySaida, f.yEntrada, f.yEntrada);
-    return [bez(t, f.x0, xm, xm, f.x1), y, y + f.espessura];
-  });
-}
-const caixaCruzaFaixa = (c: Caixa, f: FluxoLayout, folga: number) =>
-  amostrarFaixa(f).some(([x, y0, y1]) => x >= c.x0 - folga && x <= c.x1 + folga && y0 < c.y1 + folga && c.y0 < y1 + folga);
 
 const caixaDoNo = (L: Layout, id: string): Caixa => {
   const n = L.nos.find((x) => x.id === id)!;

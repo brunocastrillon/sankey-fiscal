@@ -9,7 +9,7 @@ import { CELULAR, DESKTOP, ESPESSURA_MINIMA, LARGURA_MIN_DESKTOP, type ConfigFor
 import { calcularEscalaCompartilhada, calcularReserva } from '../src/layout/escala';
 import { calcularLayout, type Layout } from '../src/layout/layout';
 import { dadosDosAnos } from './apoio/dados';
-import { colisoesDeRotulos, distanciaSegmentoCaixa, emendas, extensao, noMaisFino, sobrepoe } from './apoio/geometria';
+import { caixaCruzaFaixa, colisoesDeRotulos, distanciaSegmentoCaixa, emendas, extensao, noMaisFino, sobrepoe } from './apoio/geometria';
 import { medidorDeterministico } from './apoio/medidor';
 
 const MARGEM = 12;
@@ -114,6 +114,13 @@ describe.each(MODOS)('modo %s', (modo) => {
             for (const n of L.nos)
               if (n.id !== r.id && sobrepoe(r.caixa, { x0: n.x0, x1: n.x1, y0: n.y0, y1: n.y1 }, FOLGA)) sobre.push(`${r.id} sobre ${n.id}`);
           expect(sobre).toEqual([]);
+        });
+
+        // a exceção de contraste "texto secundário × fluxo do déficit" (tema.test.ts) só vale porque nenhum texto cai sobre ele
+        it('nenhum rótulo (com "não inclui juros") sobre a faixa do fluxo do déficit, amostrada em 201 pontos', () => {
+          const f = L.fluxos.find((x) => x.origem === 'resultado_primario' && x.destino === 'despesa_total')!;
+          if (f.valor === 0) return; // superávit: não há fluxo do déficit
+          expect(L.rotulos.filter((r) => caixaCruzaFaixa(r.caixa, f, 0)).map((r) => r.id)).toEqual([]);
         });
 
         it('o desenho não passa da largura pedida', () => {

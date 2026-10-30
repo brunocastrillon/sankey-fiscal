@@ -1,5 +1,21 @@
 import type { Grafo } from '../../src/grafo/tipos';
-import type { Caixa, Layout } from '../../src/layout/layout';
+import type { Caixa, FluxoLayout, Layout } from '../../src/layout/layout';
+
+/** Pontos (x, topo, fundo) da faixa de um fluxo, amostrada em n pontos ao longo das curvas de Bézier de caminhoFaixa. */
+export function amostrarFaixa(f: FluxoLayout, n = 201): [number, number, number][] {
+  const xm = (f.x0 + f.x1) / 2;
+  const bez = (t: number, a: number, b: number, c: number, d: number) =>
+    (1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t ** 2 * c + t ** 3 * d;
+  return Array.from({ length: n }, (_, i) => {
+    const t = i / (n - 1);
+    const y = bez(t, f.ySaida, f.ySaida, f.yEntrada, f.yEntrada);
+    return [bez(t, f.x0, xm, xm, f.x1), y, y + f.espessura];
+  });
+}
+
+/** A caixa encosta na faixa do fluxo (a menos de `folga` px) em algum dos 201 pontos amostrados. */
+export const caixaCruzaFaixa = (c: Caixa, f: FluxoLayout, folga: number) =>
+  amostrarFaixa(f).some(([x, y0, y1]) => x >= c.x0 - folga && x <= c.x1 + folga && y0 < c.y1 + folga && c.y0 < y1 + folga);
 
 /** Extremos verticais de tudo o que se desenha: barras, rótulos, alvos de toque e guias. */
 export function extensao(L: Layout): { topo: number; fundo: number } {
