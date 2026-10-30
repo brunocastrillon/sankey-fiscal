@@ -104,7 +104,7 @@ MUTACOES = [
         [("web/src/ui/Sankey.tsx", "    >\n      <defs>", "    >\n      <title>{`${TEXTOS.tituloSvg}, ${grafo.ano}`}</title>\n      <defs>")],
         {"vitest": 1, "e2e": 1}, grep="sem dica nativa"),
     mut("D2", "o <svg> como role=\"img\" (esconderia os nós focáveis)",
-        [("web/src/ui/Sankey.tsx", '      role="group"', '      role="img"')], {"vitest": 1}),
+        [("web/src/ui/Sankey.tsx", '      role="group"', '      role="img"')], {"vitest": 1, "e2e": 1}, grep="árvore de acessibilidade"),
     # B3: superávit (duas posições, rótulo A′, guia em L) e nó zero
     mut("R1", "resultadoComSinal invertido (2022 sairia como déficit)",
         [("web/src/grafo/grafo.ts", "    resultadoComSinal: r,", "    resultadoComSinal: -r,")], {"vitest": 1}),
@@ -157,7 +157,10 @@ CAEM = {
         'test/sankey-render.test.tsx > Sankey renderizado (celular 2020) > o <svg> é um grupo (nunca role="img", que esconderia os nós focáveis) com um botão por nó de valor positivo': 1,
         'test/sankey-render.test.tsx > Sankey renderizado (celular) > o <svg> é um grupo (nunca role="img", que esconderia os nós focáveis) com um botão por nó de valor positivo': 1,
         'test/sankey-render.test.tsx > Sankey renderizado (desktop) > o <svg> é um grupo (nunca role="img", que esconderia os nós focáveis) com um botão por nó de valor positivo': 1,
-    }, {}),
+    }, {
+        'sankey.spec.ts > árvore de acessibilidade · 2022 > o desenho é um grupo com o nome e o ano, e cada nó é um botão dentro dele (nunca role="img")': 1,
+        'sankey.spec.ts > árvore de acessibilidade · 2025 > o desenho é um grupo com o nome e o ano, e cada nó é um botão dentro dele (nunca role="img")': 1,
+    }),
     "R1": ({
         'test/escala.test.ts > altura do SVG > celular 390: a série de hoje cabe na altura declarada': 1,
         'test/escala.test.ts > altura do SVG > desktop 1100: a série de hoje cabe na altura declarada': 1,
