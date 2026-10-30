@@ -21,7 +21,8 @@ const TELAS = [
   { nome: '390x844', viewport: { width: 390, height: 844 }, toque: true },
 ];
 const ESQUEMAS = ['light', 'dark'] as const;
-const ANOS = [2025, 2020];
+// 2022: o superávit (posição própria, rótulo no lugar do déficit, guia em L)
+const ANOS = [2025, 2020, 2022];
 const FOLGA = 2;
 const MARGEM = 12;
 
@@ -214,6 +215,21 @@ for (const tela of TELAS)
             await page.waitForTimeout(400);
             const final = await rolagem.evaluate((el) => el.scrollLeft);
             expect(paradas.some((p) => Math.abs(final - p) <= 1), `encaixou em ${final}`).toBe(true);
+          });
+
+        if (ano === 2022)
+          test('superávit: o rótulo no lugar do rótulo do déficit e a guia em L visíveis', async ({ page }) => {
+            await abrir(page, ano);
+            const rotulo = page.locator('text.rotulo[data-id="resultado_primario"]');
+            await rotulo.scrollIntoViewIfNeeded();
+            await expect(rotulo).toBeVisible();
+            await expect(rotulo).toContainText(TEXTOS.rotulos.superavit);
+            await expect(rotulo).toContainText(TEXTOS.naoIncluiJuros);
+            const guia = page.locator('path.guia[data-id="resultado_primario"]');
+            await expect(guia).toHaveCount(1);
+            await expect(guia).toBeVisible();
+            // a barra do superávit tem os pontos (a cor não é o único sinal)
+            await expect(page.locator('g.no[data-id="resultado_primario"] rect.barra')).toHaveAttribute('data-superavit', 'true');
           });
 
         if (ano === 2025)

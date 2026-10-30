@@ -34,6 +34,32 @@ export function deslocamentoMaximo(L: Layout): number {
   );
 }
 
+/**
+ * Emendas (INFORMATIVO, não é regra): pares de segmentos verticais de guias de nós diferentes, em faixas vizinhas do mesmo
+ * feixe (guias que saem da mesma borda de coluna), cujos intervalos no eixo y terminam e começam a menos de `limiar` px
+ * um do outro (sobreposição ou vão menor que o limiar). De longe, duas guias assim parecem uma linha só com um degrau.
+ */
+export function emendas(L: Layout, limiar = 8): string[] {
+  const verticais = L.guias.flatMap((g) =>
+    g.pontos.slice(1).flatMap((p, i) => {
+      const a = g.pontos[i];
+      return a[0] === p[0] && a[1] !== p[1] ? [{ id: g.id, feixe: g.pontos[0][0], x: a[0], y0: Math.min(a[1], p[1]), y1: Math.max(a[1], p[1]) }] : [];
+    }),
+  );
+  const pares: string[] = [];
+  for (const feixe of new Set(verticais.map((v) => v.feixe))) {
+    const doFeixe = verticais.filter((v) => v.feixe === feixe);
+    const xs = [...new Set(doFeixe.map((v) => v.x))].sort((a, b) => a - b);
+    for (const s of doFeixe)
+      for (const t of doFeixe) {
+        if (s.id >= t.id || Math.abs(xs.indexOf(s.x) - xs.indexOf(t.x)) !== 1) continue;
+        const sobreposicao = Math.min(s.y1, t.y1) - Math.max(s.y0, t.y0);
+        if (sobreposicao > -limiar && sobreposicao < limiar) pares.push(`${s.id} × ${t.id}`);
+      }
+  }
+  return pares;
+}
+
 /** Barra mais fina entre os nós com valor positivo no grafo. */
 export function noMaisFino(L: Layout, g: Grafo): { id: string; px: number } {
   const positivos = new Set(g.nos.filter((n) => n.valor > 0).map((n) => n.id));

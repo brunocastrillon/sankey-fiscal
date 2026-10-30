@@ -163,6 +163,13 @@ JSON antigos e novos, sem as chaves `pib.fonte`/`pib.trimestres`/`pib.ultimo_tri
   afastam mais das barras. Pior caso medido: 105,6 px (% do PIB, 2021, medidor ×1,25), mais folga. No desktop, 45,5 px (% do
   PIB, 2021, ×1,25; limite 48). O teste vale nos 3 fatores, nos 11 anos e nos 3 modos; no ano sintético × 1,3 o deslocamento
   entra só na tabela (119,7 px no celular, modo R$, 2017, ×1,25).
+- **Passo entre faixas de guias [registrado em 29/10/2026, na 3b]:** as guias em cotovelo ocupam faixas a 5 px uma da outra
+  (`tracarGuias`: início 5, passo até 5). O teste "guias de nós diferentes a pelo menos 3 px" tem folga de 0,02 px no pior caso
+  (3,02 px: 2023, celular 390, medidor ×1,25, % do PIB, BPC × Demais com controle de fluxo). Se um dado futuro derrubar esse
+  teste, a resposta é **aumentar o passo, não afrouxar o limiar**. No celular, guias de faixas vizinhas podem terminar e
+  começar quase no mesmo y e parecer uma linha só com um degrau (Demais × Discricionárias em 2015: 5,00 px, sem se tocar);
+  decidido não corrigir na 3b. A tabela de métricas traz a coluna informativa "emendas" (pares de guias de faixas vizinhas
+  que terminam e começam a menos de 8 px no eixo y), que não falha.
 - **Rótulo do modo R$ [decidido]:** "R$ constantes de dez/2025 (IPCA) · mesma escala para todos os anos", em `TEXTOS`, sem
   dígitos (o mês-base vem de `mes_base`). O "aviso de 2020" deixa de existir.
 

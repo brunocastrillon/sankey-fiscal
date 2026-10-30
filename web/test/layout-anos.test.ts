@@ -9,7 +9,7 @@ import { CELULAR, DESKTOP, ESPESSURA_MINIMA, LARGURA_MIN_DESKTOP, type ConfigFor
 import { calcularEscalaCompartilhada, calcularReserva } from '../src/layout/escala';
 import { calcularLayout, type Layout } from '../src/layout/layout';
 import { dadosDosAnos } from './apoio/dados';
-import { colisoesDeRotulos, distanciaSegmentoCaixa, extensao, noMaisFino, sobrepoe } from './apoio/geometria';
+import { colisoesDeRotulos, distanciaSegmentoCaixa, emendas, extensao, noMaisFino, sobrepoe } from './apoio/geometria';
 import { medidorDeterministico } from './apoio/medidor';
 
 const MARGEM = 12;
@@ -82,7 +82,8 @@ afterAll(() => {
   if (process.env.METRICAS_ESCALA) {
     const cab =
       '| Modo | Formato | Fator | Ano | Coluna do meio (px) | Resultado (px) | Folha mais fina (px) | Vazio abaixo (px) | ' +
-      'Desloc. máx. de rótulo (px) | Folga até a altura (px) |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |';
+      'Desloc. máx. de rótulo (px) | Folga até a altura (px) | Emendas (informativo) |\n' +
+      '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |';
     writeFileSync(process.env.METRICAS_ESCALA, `${cab}\n${tabela.join('\n')}\n`, 'utf8');
   }
 });
@@ -208,6 +209,8 @@ describe.each(MODOS)('modo %s', (modo) => {
               vazio: (L.altura - fundoBarras).toFixed(1),
               desloc: deslocamentoMax(L).toFixed(1),
               folga: (L.altura - MARGEM - extensao(L).fundo).toFixed(1),
+              // informativo (não falha): guias de faixas vizinhas que terminam e começam a menos de 8 px no eixo y
+              emendas: ((e) => `${e.length}${e.includes('demais_controle_fluxo × discricionarias') ? ' (Demais × Discricionárias)' : ''}`)(emendas(L)),
             };
             tabela.push(`| ${modo} | ${nome} | ${fator} | ${ano} | ${Object.values(linha).join(' | ')} |`);
             if (modo === 'rs' && fator === 1) resumo.push({ ano, formato: nome, ...linha });
