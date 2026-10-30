@@ -105,6 +105,14 @@ MUTACOES = [
         {"vitest": 1, "e2e": 1}, grep="sem dica nativa"),
     mut("D2", "o <svg> como role=\"img\" (esconderia os nós focáveis)",
         [("web/src/ui/Sankey.tsx", '      role="group"', '      role="img"')], {"vitest": 1, "e2e": 1}, grep="árvore de acessibilidade"),
+    # ajuste final da 3b: discricionária do claro e rótulos fora do fluxo do déficit
+    mut("K1", "discricionária do claro de volta a #1baf7a (barra a 2,74:1)",
+        [("web/src/ui/tema.ts", "      discricionaria: '#169064',", "      discricionaria: '#1baf7a',")], {"vitest": 1}),
+    mut("K2", "discricionária do claro em #19a170 (repasse × discricionária a 7,3 sob deuteranopia)",
+        [("web/src/ui/tema.ts", "      discricionaria: '#169064',", "      discricionaria: '#19a170',")], {"vitest": 1}),
+    mut("K3", "rótulo do resultado (desktop) dentro do fluxo do déficit, à direita da barra",
+        [("web/src/layout/layout.ts", "      case 'esquerda': novoRotulo(n.id, nl.x0 - 6, 'end', nl.y0); break;",
+          "      case 'esquerda': novoRotulo(n.id, nl.x1 + 6, 'start', nl.y0); break;")], {"vitest": 1}),
     # B6: hífen inicial e checagem de tipos no e2e
     mut("T1", "erro de tipo proposital num spec do e2e (o tsc -b tem de pegar)",
         [("web/e2e/sankey.spec.ts", "const ULTIMO_ANO: number = JSON.parse(", "const TIPO_ERRADO: number = 'texto';\nvoid TIPO_ERRADO;\nconst ULTIMO_ANO: number = JSON.parse(")],
