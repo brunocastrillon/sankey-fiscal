@@ -108,7 +108,7 @@ MUTACOES = [
     # B6: hífen inicial e checagem de tipos no e2e
     mut("T1", "erro de tipo proposital num spec do e2e (o tsc -b tem de pegar)",
         [("web/e2e/sankey.spec.ts", "const ULTIMO_ANO: number = JSON.parse(", "const TIPO_ERRADO: number = 'texto';\nvoid TIPO_ERRADO;\nconst ULTIMO_ANO: number = JSON.parse(")],
-        {"tsc": 2}),
+        {"tsc": 1}),
     mut("T2", "a quebra de rótulos volta a perder o hífen inicial",
         [("web/src/layout/rotulos.ts", "(palavra.match(/-*[^-]+-+|-*[^-]+$|-+$/g)", "(palavra.match(/[^-]+-+|[^-]+$|-+$/g)")], {"vitest": 1}),
     # B5: ano e modo pelo endereço
@@ -312,6 +312,11 @@ CAEM = {
         'test/superavit.test.tsx > 2022, superávit (desktop 1200) > medidor ×F > a mais de 12 px do segmento onde nasce o fluxo do superávit, o rótulo ganha guia em L até o nó': 3,
         'test/superavit.test.tsx > 2022, superávit (desktop 1200) > medidor ×F > posição A: o superávit abaixo do Gasto total, na quarta coluna; a posição do déficit com altura 0': 3,
         'test/superavit.test.tsx > 2022, superávit (desktop 1200) > medidor ×F > rótulo A′: no lugar do rótulo do déficit, com "Superávit primário", o valor e "não inclui juros"': 3,
+    }, {}),
+    # B6
+    "T1": ({}, {}),
+    "T2": ({
+        'test/rotulos.test.ts > quebrarPorLargura > palavra que começa com hífen preserva o hífen (com e sem quebra)': 1,
     }, {}),
     # B5
     "H1": ({
