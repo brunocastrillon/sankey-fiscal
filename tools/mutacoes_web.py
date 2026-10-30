@@ -105,6 +105,12 @@ MUTACOES = [
         {"vitest": 1, "e2e": 1}, grep="sem dica nativa"),
     mut("D2", "o <svg> como role=\"img\" (esconderia os nós focáveis)",
         [("web/src/ui/Sankey.tsx", '      role="group"', '      role="img"')], {"vitest": 1, "e2e": 1}, grep="árvore de acessibilidade"),
+    # B6: hífen inicial e checagem de tipos no e2e
+    mut("T1", "erro de tipo proposital num spec do e2e (o tsc -b tem de pegar)",
+        [("web/e2e/sankey.spec.ts", "const ULTIMO_ANO: number = JSON.parse(", "const TIPO_ERRADO: number = 'texto';\nvoid TIPO_ERRADO;\nconst ULTIMO_ANO: number = JSON.parse(")],
+        {"tsc": 2}),
+    mut("T2", "a quebra de rótulos volta a perder o hífen inicial",
+        [("web/src/layout/rotulos.ts", "(palavra.match(/-*[^-]+-+|-*[^-]+$|-+$/g)", "(palavra.match(/[^-]+-+|[^-]+$|-+$/g)")], {"vitest": 1}),
     # B5: ano e modo pelo endereço
     mut("H1", "MODOS_NA_TELA com os três modos (o % aparece na tela antes da C2)",
         [("web/src/dados/hash.ts", "export const MODOS_NA_TELA: readonly Modo[] = ['rs'];",
