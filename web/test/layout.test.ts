@@ -22,10 +22,11 @@ describe.each(formatos)('geometria de 2025 ($nome)', ({ cfg, opcoes }) => {
   it('conservação na geometria: entradas = saídas = altura da barra', () => {
     for (const n of L.nos) {
       const h = n.y1 - n.y0;
+      // o fluxo do resultado que não se aplica no ano tem valor 0 e não conta
       const ent = L.fluxos.filter((f) => f.destino === n.id).reduce((s, f) => s + f.espessura, 0);
       const sai = L.fluxos.filter((f) => f.origem === n.id).reduce((s, f) => s + f.espessura, 0);
-      if (L.fluxos.some((f) => f.destino === n.id)) expect(Math.abs(ent - h), `entradas de ${n.id}`).toBeLessThan(0.01);
-      if (L.fluxos.some((f) => f.origem === n.id)) expect(Math.abs(sai - h), `saídas de ${n.id}`).toBeLessThan(0.01);
+      if (L.fluxos.some((f) => f.destino === n.id && f.valor > 0)) expect(Math.abs(ent - h), `entradas de ${n.id}`).toBeLessThan(0.01);
+      if (L.fluxos.some((f) => f.origem === n.id && f.valor > 0)) expect(Math.abs(sai - h), `saídas de ${n.id}`).toBeLessThan(0.01);
     }
   });
 
@@ -35,7 +36,7 @@ describe.each(formatos)('geometria de 2025 ($nome)', ({ cfg, opcoes }) => {
       const lf = L.fluxos.filter((x) => x.origem === f.origem && x.destino === f.destino);
       expect(lf, `${f.origem}→${f.destino}`).toHaveLength(1);
       expect(lf[0].valor).toBe(f.valor);
-      expect(Math.abs(lf[0].espessura / (f.valor * L.escala) - 1)).toBeLessThan(0.01);
+      expect(Math.abs(lf[0].espessura - f.valor * L.escala)).toBeLessThan(0.01);
     }
   });
 
@@ -49,8 +50,9 @@ describe.each(formatos)('geometria de 2025 ($nome)', ({ cfg, opcoes }) => {
       expect(e.fechado).toBe(true);
       expect(Math.abs(e.saida - f.espessura)).toBeLessThan(0.01);
       expect(Math.abs(e.entrada - f.espessura)).toBeLessThan(0.01);
-      expect(f.x0).toBe(no(f.origem).x1);
-      expect(f.x1).toBe(no(f.destino).x0);
+      // o resultado sai da posição do déficit e chega à do superávit
+      expect(f.x0).toBe(f.origem === 'resultado_primario' ? L.posicoesResultado.deficit.x1 : no(f.origem).x1);
+      expect(f.x1).toBe(f.destino === 'resultado_primario' ? L.posicoesResultado.superavit.x0 : no(f.destino).x0);
     }
   });
 });
@@ -99,12 +101,12 @@ describe('folha zerada', () => {
     for (const n of g.nos) {
       const ent = g.fluxos.filter((f) => f.destino === n.id).reduce((s, f) => s + f.valor, 0);
       const sai = g.fluxos.filter((f) => f.origem === n.id).reduce((s, f) => s + f.valor, 0);
-      if (g.fluxos.some((f) => f.destino === n.id)) expect(Math.abs(ent - n.valor), `entradas de ${n.id}`).toBeLessThan(0.01);
-      if (g.fluxos.some((f) => f.origem === n.id)) expect(Math.abs(sai - n.valor), `saídas de ${n.id}`).toBeLessThan(0.01);
+      if (g.fluxos.some((f) => f.destino === n.id && f.valor > 0)) expect(Math.abs(ent - n.valor), `entradas de ${n.id}`).toBeLessThan(0.01);
+      if (g.fluxos.some((f) => f.origem === n.id && f.valor > 0)) expect(Math.abs(sai - n.valor), `saídas de ${n.id}`).toBeLessThan(0.01);
     }
   });
 
-  it.each(formatos)('$nome: sem NaN, sem espessura negativa, conservação na geometria e rótulo da folha', ({ cfg, opcoes }) => {
+  it.each(formatos)('$nome: sem NaN, sem espessura negativa, conservação na geometria e sem rótulo da folha zerada', ({ cfg, opcoes }) => {
     const L = calcularLayout(g, cfg, medir, opcoes);
     const naoFinitos: string[] = [];
     const percorrer = (v: unknown, caminho: string): void => {
@@ -119,10 +121,13 @@ describe('folha zerada', () => {
       const h = n.y1 - n.y0;
       const ent = L.fluxos.filter((f) => f.destino === n.id).reduce((s, f) => s + f.espessura, 0);
       const sai = L.fluxos.filter((f) => f.origem === n.id).reduce((s, f) => s + f.espessura, 0);
-      if (L.fluxos.some((f) => f.destino === n.id)) expect(Math.abs(ent - h), `entradas de ${n.id}`).toBeLessThan(0.01);
-      if (L.fluxos.some((f) => f.origem === n.id)) expect(Math.abs(sai - h), `saídas de ${n.id}`).toBeLessThan(0.01);
+      if (L.fluxos.some((f) => f.destino === n.id && f.valor > 0)) expect(Math.abs(ent - h), `entradas de ${n.id}`).toBeLessThan(0.01);
+      if (L.fluxos.some((f) => f.origem === n.id && f.valor > 0)) expect(Math.abs(sai - h), `saídas de ${n.id}`).toBeLessThan(0.01);
     }
-    expect(L.rotulos.some((r) => r.id === 'bpc')).toBe(true);
+    // nó com valor zero: sem rótulo, guia nem alvo de toque (design da fase 3, T2)
+    expect(L.rotulos.some((r) => r.id === 'bpc')).toBe(false);
+    expect(L.guias.some((r) => r.id === 'bpc')).toBe(false);
+    expect(L.alvos.some((r) => r.id === 'bpc')).toBe(false);
   });
 });
 

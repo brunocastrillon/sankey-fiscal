@@ -28,6 +28,12 @@ describe('quebrarPorLargura', () => {
     expect(juntar(linhas)).toBe('Fundeb, seguro-desemprego e outras');
   });
 
+  it('palavra que começa com hífen preserva o hífen (com e sem quebra)', () => {
+    expect(quebrarPorLargura('-abc def', 500, estilo, medir)).toEqual(['-abc def']);
+    expect(quebrarPorLargura('-abc def', 30, estilo, medir)).toEqual(['-abc', 'def']);
+    expect(quebrarPorLargura('x -abc-def', 500, estilo, medir)).toEqual(['x -abc-def']);
+  });
+
   it('palavra sem hífen maior que o limite fica sozinha na linha', () => {
     const linhas = quebrarPorLargura('a discricionárias b', 40, estilo, medir);
     expect(linhas).toEqual(['a', 'discricionárias', 'b']);

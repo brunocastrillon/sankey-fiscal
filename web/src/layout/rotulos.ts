@@ -5,9 +5,10 @@ import type { EstiloTexto, MedirTexto } from './medir';
  * ("seguro-" / "desemprego"); um pedaço sem ponto de quebra maior que o limite fica sozinho na linha.
  */
 export function quebrarPorLargura(texto: string, larguraMax: number, estilo: EstiloTexto, medir: MedirTexto): string[] {
-  // pedaços: cada palavra, partida depois de cada hífen interno; `colado` = segue o pedaço anterior sem espaço
+  // pedaços: cada palavra, partida depois de cada hífen interno; `colado` = segue o pedaço anterior sem espaço. Hífens no
+  // começo da palavra ficam com o primeiro pedaço ("-abc" não perde o hífen)
   const pedacos = texto.split(' ').flatMap((palavra) =>
-    (palavra.match(/[^-]+-+|[^-]+$|-+$/g) ?? [palavra]).map((texto, i) => ({ texto, colado: i > 0 })),
+    (palavra.match(/-*[^-]+-+|-*[^-]+$|-+$/g) ?? [palavra]).map((texto, i) => ({ texto, colado: i > 0 })),
   );
   const linhas: string[] = [];
   let atual = '';

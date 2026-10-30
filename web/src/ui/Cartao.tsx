@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import type { DadosAno } from '../dados/tipos';
 import { formatarMesBase } from '../formatar';
-import type { Grafo } from '../grafo/tipos';
+import { montarGrafo } from '../grafo/grafo';
+import type { Grafo, Modo } from '../grafo/tipos';
 import { LARGURA_MAX_DESKTOP } from '../layout/constantes';
+import { calcularEscalaCompartilhada, calcularReserva } from '../layout/escala';
 import { calcularLayout } from '../layout/layout';
 import { TEXTOS } from '../textos';
 import { Dica } from './Dica';
@@ -39,7 +42,16 @@ function rolarAte(g: SVGGElement, painelTopo: number | null) {
   if (Math.abs(alvo - topo) > 0.5) window.scrollTo({ top: alvo, behavior: 'smooth' });
 }
 
-export function Cartao({ grafo }: { grafo: Grafo }) {
+const MODOS: Modo[] = ['rs', 'desp', 'pib'];
+
+/** Os 11 anos chegam juntos: a escala de cada modo é comum a todos. O modo na tela só muda na 3c; aqui é sempre R$. */
+export function Cartao({ dados, ano, modo = 'rs' }: { dados: DadosAno[]; ano: number; modo?: Modo }) {
+  // montados aqui, dentro da Protecao: dados corrompidos viram a mensagem de erro do desenho
+  const grafosPorModo = useMemo(
+    () => Object.fromEntries(MODOS.map((m) => [m, dados.map((d) => montarGrafo(d, m))])) as Record<Modo, Grafo[]>,
+    [dados],
+  );
+  const grafo = grafosPorModo[modo].find((g) => g.ano === ano)!;
   const idSvg = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const refArea = useRef<HTMLDivElement>(null);
   const refAmostra = useRef<SVGTextElement>(null);
@@ -59,12 +71,21 @@ export function Cartao({ grafo }: { grafo: Grafo }) {
   }, []);
 
   const formato = escolherFormato(largura || LARGURA_MAX_DESKTOP);
-  const layout = useMemo(() => {
-    if (!medidor || !largura) return null;
-    return formato.vaos
-      ? calcularLayout(grafo, formato, medidor, { larguraVisivel: largura })
-      : calcularLayout(grafo, formato, medidor, { largura: Math.min(largura, LARGURA_MAX_DESKTOP) });
-  }, [grafo, formato, medidor, largura]);
+  // largura reservada aos rótulos: a maior entre os anos e os três modos (as colunas não mudam de lugar)
+  const reservaLargura = useMemo(
+    () => (medidor ? calcularReserva(MODOS.flatMap((m) => grafosPorModo[m]), formato, medidor) : null),
+    [grafosPorModo, formato, medidor],
+  );
+  // escala e âncora comuns aos anos do modo, calculadas uma vez por modo, formato e largura
+  const compartilhada = useMemo(() => {
+    if (!medidor || !largura || !reservaLargura) return null;
+    const opcoes = formato.vaos ? { larguraVisivel: largura } : { largura: Math.min(largura, LARGURA_MAX_DESKTOP) };
+    return { ...opcoes, ...calcularEscalaCompartilhada(grafosPorModo[modo], formato, medidor, { ...opcoes, reservaLargura }) };
+  }, [grafosPorModo, modo, formato, medidor, largura, reservaLargura]);
+  const layout = useMemo(
+    () => (medidor && compartilhada ? calcularLayout(grafo, formato, medidor, compartilhada) : null),
+    [grafo, formato, medidor, compartilhada],
+  );
 
   const noNoDesenho = (id: string) => refArea.current?.querySelector<SVGGElement>(`g.no[data-id="${id}"]`) ?? null;
   const focarNo = (id: string) => noNoDesenho(id)?.focus();

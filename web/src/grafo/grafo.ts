@@ -1,19 +1,40 @@
-import type { DadosAno } from '../dados/tipos';
+import type { Bloco, DadosAno } from '../dados/tipos';
 import { TEXTOS } from '../textos';
-import type { Cor, Coluna, Fluxo, Grafo, No, Papel } from './tipos';
+import type { Cor, Coluna, Fluxo, Grafo, Modo, No, Papel, ValoresModo } from './tipos';
 
 const BASE_RECEITA: ReadonlySet<Papel> = new Set(['origem', 'receita_total', 'repasse', 'receita_liquida']);
 
+const multiplicar = (b: Bloco, k: number): Pick<ValoresModo, 'nos' | 'totais'> => ({
+  nos: Object.fromEntries(Object.entries(b.nos).map(([id, v]) => [id, v * k])),
+  totais: {
+    receita_total: b.totais.receita_total * k,
+    transferencias: b.totais.transferencias * k,
+    receita_liquida: b.totais.receita_liquida * k,
+    despesa_total: b.totais.despesa_total * k,
+    primario_acima: b.totais.primario_acima * k,
+  },
+});
+
 /**
- * Dados de um ano → nós e fluxos do Sankey, em R$ constantes (bloco `real`).
- * Papéis e ordem vêm de `estrutura`; os totais vêm do pipeline e não são recalculados.
- * O resultado primário carrega a magnitude; o sinal fica em `resultado`.
+ * A grandeza desenhada no modo: `rs` = bloco `real`; `desp` = `real` × 100 / despesa total real; `pib` = `nominal` × 100 /
+ * PIB corrente do IBGE. O resultado mantém o sinal.
  */
-export function montarGrafo(d: DadosAno): Grafo {
-  const { nos: v, totais } = d.real;
+export function valoresDoModo(d: DadosAno, modo: Modo): ValoresModo {
+  const k = modo === 'rs' ? 1 : modo === 'desp' ? 100 / d.real.totais.despesa_total : 100 / d.pib.valor_nominal;
+  return { ano: d.ano, modo, ...multiplicar(modo === 'pib' ? d.nominal : d.real, k) };
+}
+
+/**
+ * Valores de um modo → nós e fluxos do Sankey. Papéis, ordem, rótulos e linhas vêm de `d`; os totais vêm do pipeline e não
+ * são recalculados. O resultado primário carrega a magnitude (sinal em `resultado` e `resultadoComSinal`), e os dois fluxos
+ * dele existem sempre: o que não se aplica no ano vale 0.
+ */
+export function grafoDeValores(valores: ValoresModo, d: DadosAno): Grafo {
+  const { nos: v, totais } = valores;
   const e = d.estrutura;
-  const resultado = totais.primario_acima < 0 ? 'deficit' : 'superavit';
-  const magnitude = Math.abs(totais.primario_acima);
+  const r = totais.primario_acima;
+  const resultado = r < 0 ? 'deficit' : 'superavit';
+  const magnitude = Math.abs(r);
   const obrigatorias = e.obrigatorias.reduce((s, id) => s + v[id], 0);
 
   const nos: No[] = [];
@@ -26,7 +47,7 @@ export function montarGrafo(d: DadosAno): Grafo {
   no('receita_liquida', TEXTOS.rotulos.receita_liquida, totais.receita_liquida, 'receita_liquida', 2, 'receita');
   const noResultado = () =>
     no('resultado_primario', TEXTOS.rotulos[resultado], magnitude, 'resultado', resultado === 'deficit' ? 2 : 3,
-      resultado === 'deficit' ? 'deficit' : 'receita', d.linhas.primario_acima ?? []);
+      resultado, d.linhas.primario_acima ?? []);
   if (resultado === 'deficit') noResultado();
   no('despesa_total', TEXTOS.rotulos.despesa_total, totais.despesa_total, 'despesa_total', 3, 'gasto');
   if (resultado === 'superavit') noResultado();
@@ -39,19 +60,16 @@ export function montarGrafo(d: DadosAno): Grafo {
   for (const id of e.receita) fluxo(id, 'receita_total', v[id]);
   fluxo('receita_total', e.repasse, v[e.repasse]);
   fluxo('receita_total', 'receita_liquida', totais.receita_liquida);
-  if (resultado === 'deficit') {
-    fluxo('receita_liquida', 'despesa_total', totais.receita_liquida);
-    fluxo('resultado_primario', 'despesa_total', magnitude);
-  } else {
-    fluxo('receita_liquida', 'despesa_total', totais.despesa_total);
-    fluxo('receita_liquida', 'resultado_primario', magnitude);
-  }
+  fluxo('receita_liquida', 'despesa_total', Math.min(totais.receita_liquida, totais.despesa_total));
+  fluxo('resultado_primario', 'despesa_total', Math.max(0, -r));
+  fluxo('receita_liquida', 'resultado_primario', Math.max(0, r));
   fluxo('despesa_total', 'obrigatorias', obrigatorias);
   fluxo('despesa_total', e.discricionarias, v[e.discricionarias]);
   for (const id of e.obrigatorias) fluxo('obrigatorias', id, v[id]);
 
   return {
-    ano: d.ano,
+    ano: valores.ano,
+    modo: valores.modo,
     mesBase: d.mes_base,
     versaoDados: d.versao_dados,
     nos,
@@ -59,6 +77,12 @@ export function montarGrafo(d: DadosAno): Grafo {
     receitaTotal: totais.receita_total,
     despesaTotal: totais.despesa_total,
     resultado,
+    resultadoComSinal: r,
     obrigatorias: [...e.obrigatorias],
   };
+}
+
+/** Dados de um ano → grafo no modo (padrão: R$ constantes). */
+export function montarGrafo(d: DadosAno, modo: Modo = 'rs'): Grafo {
+  return grafoDeValores(valoresDoModo(d, modo), d);
 }

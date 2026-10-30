@@ -1,6 +1,11 @@
-// Testes no navegador real, contra o build de teste (?ano=). Medidas com getBBox e getBoundingClientRect reais.
+// Testes no navegador real, contra o build de produção (o ano vem do endereço, #AAAA). Medidas com getBBox e
+// getBoundingClientRect reais.
+import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { TEXTOS } from '../src/textos';
+
+/** O último ano do índice (o padrão quando o endereço não pede outro), lido de dados/indice.json. */
+const ULTIMO_ANO: number = JSON.parse(readFileSync(new URL('../../dados/indice.json', import.meta.url), 'utf8')).anos[1];
 
 interface Caixa {
   id?: string;
@@ -16,7 +21,8 @@ const TELAS = [
   { nome: '390x844', viewport: { width: 390, height: 844 }, toque: true },
 ];
 const ESQUEMAS = ['light', 'dark'] as const;
-const ANOS = [2025, 2020];
+// 2022: o superávit (posição própria, rótulo no lugar do déficit, guia em L)
+const ANOS = [2025, 2020, 2022];
 const FOLGA = 2;
 const MARGEM = 12;
 
@@ -24,7 +30,9 @@ const sobrepoe = (a: Caixa, b: Caixa, folga = 0) =>
   a.x0 < b.x1 + folga && b.x0 < a.x1 + folga && a.y0 < b.y1 + folga && b.y0 < a.y1 + folga;
 
 async function abrir(page: Page, ano: number) {
-  await page.goto(`./?ano=${ano}`);
+  // só o hash mudando não recarrega a página: parte de uma página em branco para abrir sempre do zero
+  await page.goto('about:blank');
+  await page.goto(`./#${ano}`);
   await expect(page.locator('h1 .ano')).toContainText(String(ano));
   await page.locator('svg.sankey').waitFor();
 }
@@ -87,6 +95,17 @@ async function idsDosNos(page: Page) {
   return page.locator('g.no').evaluateAll((gs) => gs.map((g) => (g as SVGGElement).dataset.id!));
 }
 
+/** Nós por coluna, lida das barras: a primeira (origens), a última (folhas) e as do meio. */
+const GRUPOS = ['origens', 'meio', 'folhas'] as const;
+async function idsDoGrupo(page: Page, grupo: (typeof GRUPOS)[number]) {
+  const nos = await page.locator('g.no').evaluateAll((gs) =>
+    gs.map((g) => ({ id: (g as SVGGElement).dataset.id!, x: Number(g.querySelector('rect.barra')!.getAttribute('x')) })),
+  );
+  const xs = nos.map((n) => n.x);
+  const [min, max] = [Math.min(...xs), Math.max(...xs)];
+  return nos.filter((n) => (grupo === 'origens' ? n.x === min : grupo === 'folhas' ? n.x === max : n.x !== min && n.x !== max)).map((n) => n.id);
+}
+
 for (const tela of TELAS)
   for (const esquema of ESQUEMAS)
     for (const ano of ANOS)
@@ -105,34 +124,39 @@ for (const tela of TELAS)
           expect(fora.map((r) => r.id)).toEqual([]);
         });
 
-        test('painel: sem pulo ao abrir, trocar e fechar; sem transbordar; sem cobrir texto', async ({ page }) => {
-          await abrir(page, ano);
-          const svg = page.getByTestId('svg-sankey');
-          const rodape = page.getByTestId('rodape');
-          const painel = page.getByTestId('painel');
-          // no desenho do celular o painel tem altura automática: só o SVG fica parado; no desktop, também o rodapé
-          const celular = await page.getByTestId('cartao').evaluate((el) => el.classList.contains('formato-celular'));
-          const antes = { svg: await caixaDoc(svg), rodape: await caixaDoc(rodape) };
-          for (const id of await idsDosNos(page)) {
-            await acionar(page, id, tela.toque);
-            await expect(painel.locator('.painel-titulo')).toBeVisible();
+        // repartido por colunas de nós em testes independentes (rodam em paralelo): com todos os nós num teste só, ele
+        // passava de 30 s localmente sob carga
+        for (const grupo of GRUPOS)
+          test(`painel (${grupo}): sem pulo ao abrir, trocar e fechar; sem transbordar; sem cobrir texto`, async ({ page }) => {
+            await abrir(page, ano);
+            const svg = page.getByTestId('svg-sankey');
+            const rodape = page.getByTestId('rodape');
+            const painel = page.getByTestId('painel');
+            // no desenho do celular o painel tem altura automática: só o SVG fica parado; no desktop, também o rodapé
+            const celular = await page.getByTestId('cartao').evaluate((el) => el.classList.contains('formato-celular'));
+            const antes = { svg: await caixaDoc(svg), rodape: await caixaDoc(rodape) };
+            const ids = await idsDoGrupo(page, grupo);
+            expect(ids.length).toBeGreaterThan(0);
+            for (const id of ids) {
+              await acionar(page, id, tela.toque);
+              await expect(painel.locator('.painel-titulo')).toBeVisible();
+              igual(await caixaDoc(svg), antes.svg, ['y0', 'y1']);
+              if (!celular) igual(await caixaDoc(rodape), antes.rodape);
+              expect(await painel.evaluate((el) => el.scrollHeight <= el.clientHeight + 1), `painel de ${id} transborda`).toBe(true);
+              const caixaPainel = await caixaDoc(painel);
+              const textos = await page.locator('svg.sankey text.rotulo').evaluateAll((ts) =>
+                ts.map((t) => {
+                  const r = t.getBoundingClientRect();
+                  return { x0: r.left + scrollX, y0: r.top + scrollY, x1: r.right + scrollX, y1: r.bottom + scrollY };
+                }),
+              );
+              expect(textos.filter((t) => sobrepoe(t, caixaPainel)).length, `painel de ${id} cobre rótulo`).toBe(0);
+            }
+            await page.getByRole('button', { name: TEXTOS.fechar }).click();
+            await expect(painel.locator('.convite')).toBeVisible();
             igual(await caixaDoc(svg), antes.svg, ['y0', 'y1']);
-            if (!celular) igual(await caixaDoc(rodape), antes.rodape);
-            expect(await painel.evaluate((el) => el.scrollHeight <= el.clientHeight + 1), `painel de ${id} transborda`).toBe(true);
-            const caixaPainel = await caixaDoc(painel);
-            const textos = await page.locator('svg.sankey text.rotulo').evaluateAll((ts) =>
-              ts.map((t) => {
-                const r = t.getBoundingClientRect();
-                return { x0: r.left + scrollX, y0: r.top + scrollY, x1: r.right + scrollX, y1: r.bottom + scrollY };
-              }),
-            );
-            expect(textos.filter((t) => sobrepoe(t, caixaPainel)).length, `painel de ${id} cobre rótulo`).toBe(0);
-          }
-          await page.getByRole('button', { name: TEXTOS.fechar }).click();
-          await expect(painel.locator('.convite')).toBeVisible();
-          igual(await caixaDoc(svg), antes.svg, ['y0', 'y1']);
-          igual(await caixaDoc(rodape), antes.rodape);
-        });
+            igual(await caixaDoc(rodape), antes.rodape);
+          });
 
         if (tela.toque)
           test('toque: o nó continua na tela, 120 px do painel entram, o SVG não se move; "ver no desenho" volta ao nó', async ({ page }) => {
@@ -191,6 +215,21 @@ for (const tela of TELAS)
             await page.waitForTimeout(400);
             const final = await rolagem.evaluate((el) => el.scrollLeft);
             expect(paradas.some((p) => Math.abs(final - p) <= 1), `encaixou em ${final}`).toBe(true);
+          });
+
+        if (ano === 2022)
+          test('superávit: o rótulo no lugar do rótulo do déficit e a guia em L visíveis', async ({ page }) => {
+            await abrir(page, ano);
+            const rotulo = page.locator('text.rotulo[data-id="resultado_primario"]');
+            await rotulo.scrollIntoViewIfNeeded();
+            await expect(rotulo).toBeVisible();
+            await expect(rotulo).toContainText(TEXTOS.rotulos.superavit);
+            await expect(rotulo).toContainText(TEXTOS.naoIncluiJuros);
+            const guia = page.locator('path.guia[data-id="resultado_primario"]');
+            await expect(guia).toHaveCount(1);
+            await expect(guia).toBeVisible();
+            // a barra do superávit tem os pontos (a cor não é o único sinal)
+            await expect(page.locator('g.no[data-id="resultado_primario"] rect.barra')).toHaveAttribute('data-superavit', 'true');
           });
 
         if (ano === 2025)
@@ -309,11 +348,135 @@ test.describe('desenho do celular sem rolagem (1024 px)', () => {
   });
 });
 
+for (const ano of [2022, 2025])
+  test.describe(`árvore de acessibilidade · ${ano}`, () => {
+    test('o desenho é um grupo com o nome e o ano, e cada nó é um botão dentro dele (nunca role="img")', async ({ page }) => {
+      await abrir(page, ano);
+      const grupo = page.getByRole('group', { name: `${TEXTOS.tituloSvg}, ${ano}`, exact: true });
+      await expect(grupo).toHaveCount(1);
+      const ids = await idsDosNos(page);
+      expect(ids.length).toBeGreaterThan(10);
+      await expect(grupo.getByRole('button')).toHaveCount(ids.length);
+      // o nome de cada botão começa pelo rótulo do nó (o resultado de 2022 é o superávit)
+      const rotulo = ano === 2022 ? TEXTOS.rotulos.superavit : TEXTOS.rotulos.deficit;
+      await expect(grupo.getByRole('button', { name: new RegExp(`^${rotulo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:`) })).toHaveCount(1);
+    });
+  });
+
+test.describe('ano e modo pelo endereço', () => {
+  /** Erros no console e exceções da página durante o teste. */
+  const errosDaPagina = (page: Page) => {
+    const erros: string[] = [];
+    page.on('console', (m) => m.type() === 'error' && erros.push(m.text()));
+    page.on('pageerror', (e) => erros.push(e.message));
+    return erros;
+  };
+
+  test('#2020 abre 2020: o ano no h1 e no title', async ({ page }) => {
+    await page.goto('./#2020');
+    await expect(page.locator('h1 .ano')).toContainText('2020');
+    await page.locator('svg.sankey').waitFor();
+    await expect(page).toHaveTitle(new RegExp(`${TEXTOS.titulo} · 2020`));
+    await expect(page.getByRole('group', { name: `${TEXTOS.tituloSvg}, 2020`, exact: true })).toHaveCount(1);
+  });
+
+  for (const hash of ['#1999', '#2020/xyz', '#abc', '#2020/PIB'])
+    test(`${hash} abre o padrão (último ano, R$), sem erro no console`, async ({ page }) => {
+      const erros = errosDaPagina(page);
+      await page.goto(`./${hash}`);
+      await expect(page.locator('h1 .ano')).toContainText(String(ULTIMO_ANO));
+      await page.locator('svg.sankey').waitFor();
+      await expect(page).toHaveTitle(new RegExp(`${TEXTOS.titulo} · ${ULTIMO_ANO}`));
+      expect(await page.locator('text.rotulo tspan.valor').evaluateAll((ts) => ts.some((t) => t.textContent!.includes('%')))).toBe(false);
+      expect(erros).toEqual([]);
+    });
+
+  test('trocar o hash redesenha o ano pedido', async ({ page }) => {
+    await page.goto('./#2020');
+    await page.locator('svg.sankey').waitFor();
+    await page.evaluate(() => (location.hash = '#2022'));
+    await expect(page.locator('h1 .ano')).toContainText('2022');
+    await expect(page.getByRole('group', { name: `${TEXTOS.tituloSvg}, 2022`, exact: true })).toHaveCount(1);
+    await expect(page).toHaveTitle(new RegExp(`${TEXTOS.titulo} · 2022`));
+  });
+
+  // TRANSITÓRIO (sai na C2, que põe os modos na tela): o hash lê o modo, mas a 3b desenha sempre em R$
+  test('#2022/pib desenha 2022 em R$ na 3b (nenhum rótulo em %)', async ({ page }) => {
+    await page.goto('./#2022/pib');
+    await expect(page.locator('h1 .ano')).toContainText('2022');
+    await page.locator('svg.sankey').waitFor();
+    const valores = await page.locator('text.rotulo tspan.valor').allTextContents();
+    expect(valores.length).toBeGreaterThan(10);
+    expect(valores.filter((v) => !v.startsWith('R$'))).toEqual([]);
+  });
+});
+
+test.describe('sem dica nativa do navegador · 1280x720', () => {
+  test.use({ viewport: { width: 1280, height: 720 } });
+  // a dica nativa (de um elemento title do SVG ou de um atributo title) é do sistema e não sai no print: o teste prova a
+  // ausência da fonte dela em tudo o que está sob o ponteiro, e o print mostra que só a nossa Dica aparece
+  const fonteDeDicaNativa = (page: Page, x: number, y: number) =>
+    page.evaluate(
+      ([px, py]) => {
+        const achados: string[] = [];
+        for (let el = document.elementFromPoint(px, py); el; el = el.parentElement) {
+          if (el.hasAttribute('title')) achados.push(`${el.tagName}[title]`);
+          if ([...el.children].some((c) => c.tagName.toLowerCase() === 'title')) achados.push(`${el.tagName} > title`);
+        }
+        return achados;
+      },
+      [x, y],
+    );
+
+  test('mouse parado 2 s sobre um nó e sobre um fluxo: só a Dica, nenhum title sob o ponteiro', async ({ page }, info) => {
+    await abrir(page, 2025);
+    const barra = (await page.locator('g.no[data-id="imposto_renda"] rect.barra').boundingBox())!;
+    const no = { x: barra.x + barra.width / 2, y: barra.y + barra.height / 2 };
+    await page.mouse.move(no.x, no.y);
+    await page.waitForTimeout(2000);
+    await expect(page.getByTestId('tooltip')).toBeVisible();
+    expect(await fonteDeDicaNativa(page, no.x, no.y)).toEqual([]);
+    await page.screenshot({ path: info.outputPath('no-2s.png') });
+
+    const fluxo = (await page.locator('path.fluxo[data-origem="receita_total"][data-destino="receita_liquida"]').boundingBox())!;
+    const ponto = { x: fluxo.x + fluxo.width / 2, y: fluxo.y + fluxo.height / 2 };
+    await page.mouse.move(ponto.x, ponto.y);
+    await page.waitForTimeout(2000);
+    expect(await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.getAttribute('class'), [ponto.x, ponto.y])).toBe('fluxo');
+    await expect(page.getByTestId('tooltip')).toHaveCount(0);
+    expect(await fonteDeDicaNativa(page, ponto.x, ponto.y)).toEqual([]);
+    await page.screenshot({ path: info.outputPath('fluxo-2s.png') });
+  });
+});
+
 test.describe('foco da revisão', () => {
-  test('erro de carga: mensagem em texto, não página em branco', async ({ page }) => {
-    await page.route('**/dados/2025.json', (r) => r.fulfill({ status: 404, body: '' }));
-    await page.goto('./?ano=2025');
+  test('erro de carga em UM dos anos: mensagem e "Tentar de novo"; sem a falha, o clique desenha', async ({ page }) => {
+    // a escala compartilhada precisa dos 11 anos: um ano que não é o desenhado também derruba a carga
+    let falhar = true;
+    await page.route('**/dados/2017.json', (r) => (falhar ? r.fulfill({ status: 404, body: '' }) : r.continue()));
+    await page.goto('./#2025');
     await expect(page.getByTestId('erro')).toHaveText(TEXTOS.erroCarga);
+    await expect(page.locator('svg.sankey')).toHaveCount(0);
+    await expect(page.locator('h1')).toBeVisible();
+    falhar = false;
+    await page.getByRole('button', { name: TEXTOS.tentarDeNovo }).click();
+    await page.locator('svg.sankey').waitFor();
+    await expect(page.getByTestId('erro')).toHaveCount(0);
+  });
+
+  test('carregamento: texto enquanto os anos chegam, depois o desenho', async ({ page }) => {
+    let soltar!: () => void;
+    const pronto = new Promise<void>((r) => (soltar = r));
+    await page.route('**/dados/2019.json', async (r) => {
+      await pronto;
+      await r.continue();
+    });
+    await page.goto('./#2025');
+    await expect(page.getByTestId('carregando')).toHaveText(TEXTOS.carregando);
+    await expect(page.locator('svg.sankey')).toHaveCount(0);
+    soltar();
+    await page.locator('svg.sankey').waitFor();
+    await expect(page.getByTestId('carregando')).toHaveCount(0);
   });
 
   test('erro ao desenhar (dados corrompidos): mensagem em texto, não página em branco', async ({ page }) => {
@@ -323,7 +486,7 @@ test.describe('foco da revisão', () => {
       d.real.nos.no_inexistente = 1;
       await r.fulfill({ json: d });
     });
-    await page.goto('./?ano=2025');
+    await page.goto('./#2025');
     await expect(page.getByTestId('erro')).toHaveText(TEXTOS.erroDesenho);
     await expect(page.locator('h1')).toBeVisible();
   });

@@ -17,7 +17,8 @@ export function TabelaValores({ grafo }: { grafo: Grafo }) {
           </tr>
         </thead>
         <tbody>
-          {grafo.nos.map((n) => {
+          {/* nó com valor zero: sem linha */}
+          {grafo.nos.filter((n) => n.valor > 0).map((n) => {
             const p = participacao(grafo, n.id);
             return (
               <tr key={n.id}>

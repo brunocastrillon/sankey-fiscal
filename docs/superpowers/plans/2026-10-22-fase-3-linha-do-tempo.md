@@ -197,13 +197,18 @@ repositório).
 
 ## 3b · Layout (branch `fase-3b-layout`, PR próprio a partir da `main`, depois do merge da 3a)
 
+**Modos na 3b:** "% da despesa" e "% do PIB" existem no grafo e no layout e são provados por teste (a tabela de métricas da B2
+cobre os 3 modos), mas só aparecem na tela na 3c (C2, seletor e legendas). As capturas da B2 e da B3 mostram o modo R$.
+
 ### Tarefa B1: Tipos, carga dos 11 anos, modos no grafo
 
 **Arquivos:**
 - Modificar: `web/src/dados/tipos.ts` (`Subconta`, `Nota`, `pib` novo, `subcontas?`, `notas?`)
 - Modificar: `web/src/dados/carregar.ts` (novo `carregarTodos`)
-- Modificar: `web/src/grafo/grafo.ts`, `web/src/grafo/tipos.ts`, `web/src/formatar.ts`, `web/src/textos.ts`
-- Teste: `web/test/grafo.test.ts`, `web/test/formatar.test.ts`, `web/test/modos.test.ts` (novo)
+- Modificar: `web/src/grafo/grafo.ts`, `web/src/grafo/tipos.ts`, `web/src/formatar.ts`, `web/src/textos.ts`,
+  `web/src/App.tsx` (carregamento e erro dos 11 arquivos)
+- Teste: `web/test/grafo.test.ts`, `web/test/formatar.test.ts`, `web/test/modos.test.ts` (novo), `web/test/carregar.test.ts`
+  (novo), `web/e2e/sankey.spec.ts`
 
 **Interfaces:**
 - Produz: `type Modo = 'rs' | 'desp' | 'pib'` (em `grafo/tipos.ts`); `carregarTodos(indice: Indice): Promise<DadosAno[]>`;
@@ -219,8 +224,16 @@ repositório).
   min(receita líquida, despesa total). A animação (C4) interpola `ValoresModo`, nunca `DadosAno`.
 - `TEXTOS` ganha: `modos` (`rs`, `desp`, `pib`: nomes do seletor), `legendas` (curta e longa por modo, sem dígitos; o mês-base é
   inserido pelo componente) e `receitaAcimaDoGasto` (frase do design).
+- **Carregamento e erro dos 11 arquivos:** a escala compartilhada só existe com os 11 anos, então o site só desenha depois de
+  carregar todos. Enquanto isso, um texto de carregamento (`TEXTOS.carregando`); se algum arquivo falhar, a mensagem de erro
+  (o mesmo `p.erro` com `role="alert"` de hoje) com um botão "Tentar de novo" (`TEXTOS.tentarDeNovo`) que refaz a carga, nunca
+  página em branco. `carregarTodos` rejeita com o nome do arquivo que falhou.
 
 - [ ] **Passo 1: Testes que falham.**
+  - `carregar.test.ts` (novo): `carregarTodos` com um `fetch` falso devolve os 11 anos em ordem; com UM arquivo respondendo
+    404, rejeita com o nome dele.
+  - `sankey.spec.ts`: com `page.route` fazendo UM `AAAA.json` falhar, aparecem a mensagem de erro e o botão "Tentar de novo";
+    sem a falha, o clique no botão desenha o Sankey; o texto de carregamento aparece antes do desenho.
   - `modos.test.ts`: (a) 11 anos × todos os nós, `desp`: |rótulo lido de `formatarValor` × despesa total real / 100 − valor
     real| ≤ 0,05 p.p.; (b) `pib`: rótulo do déficit de 2025 = "0,48%", do superávit de 2022 = "0,46%", diferentes; (c)
     conservação por nó nos 3 modos, 11 anos, inclusive 2022.
@@ -323,12 +336,18 @@ repositório).
 - Produz: `lerHash(hash: string, anos: [number, number]): { ano: number; modo: Modo } | null` — aceita só `#AAAA`,
   `#AAAA/despesa` e `#AAAA/pib`, com o ano dentro do intervalo do índice (sem sufixo = `rs`); lido com expressão regular, sem
   `URLSearchParams`; `escreverHash(ano: number, modo: Modo): void` (`history.replaceState`; `rs` sem sufixo).
+- O nome do job `site-navegador` **não muda** (é check obrigatório do ruleset da `main`); só os passos dele e do job `site` mudam.
+- **Modo na tela só na C2 [decidido em 27/10/2026]:** o hash lê o modo (`lerHash` devolve `{ ano, modo }`), mas na 3b a tela
+  desenha sempre em R$, por uma constante transitória `MODOS_NA_TELA = ['rs']` (o modo lido fora dela vira `rs` no desenho).
+  Motivo: cada sub-fase vira um PR e um deploy; modos em % sem legenda, sem seletor e sem a frase da receita acima do gasto
+  seriam uma funcionalidade pela metade em produção. A C2 tira a constante e substitui o teste transitório.
 
 - [ ] **Passo 1: Testes que falham.** `hash.test.ts`: `#2020` → `{ 2020, rs }`; `#2020/despesa` → `{ 2020, desp }`;
   `#2020/pib` → `{ 2020, pib }`; `#1999`, `#2026`, `#abc`, `#2020x`, `#`, `#02020`, `#2020/`, `#2020/xyz`, `#2020/PIB`, `#/pib`,
   `""` → `null`; `escreverHash(2022, 'pib')` deixa `#2022/pib`. Em `sankey.spec.ts`: abrir `./#2020` mostra 2020 no `h1` e no
   `title`; abrir `./#1999` e `./#2020/xyz` mostra o padrão (último ano, R$) e o console não tem erro; trocar o hash
-  (`location.hash = '#2022/despesa'`) redesenha 2022 em "% da despesa".
+  (`location.hash = '#2022'`) redesenha 2022. **Transitório (sai na C2):** abrir `./#2022/pib` desenha 2022 em R$ (rótulos em
+  "R$ … bi", nenhum em %); mutação: `MODOS_NA_TELA = ['rs', 'desp', 'pib']` derruba.
 - [ ] **Passo 2:** `npm test` e `npm run e2e` → FALHAM.
 - [ ] **Passo 3:** implementar; ajustar `conferir-bundle` (continua conferindo os caminhos sob `/sankey-fiscal/`).
 - [ ] **Passo 4:** `npm test`, `npm run build && node scripts/conferir-bundle.mjs dist`, `npm run e2e` → passam.
@@ -391,7 +410,8 @@ orçamento, **C5b** (canvas).
 - Teste: `web/e2e/controle.spec.ts`
 
 - [ ] **Passo 1:** E2E: trocar para "% da despesa" mostra rótulos em %, a legenda com a base e `receitaAcimaDoGasto`; "% do PIB"
-  mostra duas casas; no celular, a frase curta na barra, a legenda longa abaixo do desenho, os nomes completos do seletor sem
+  mostra duas casas; trocar o hash (`location.hash = '#2022/despesa'`) redesenha 2022 em "% da despesa" (vindo da B5, que tira
+  `MODOS_NA_TELA` e substitui o teste transitório "`#2022/pib` desenha R$"); no celular, a frase curta na barra, a legenda longa abaixo do desenho, os nomes completos do seletor sem
   corte (`scrollWidth ≤ clientWidth`), fontes da frase e da legenda ≥ 11 px, altura da barra medida e reportada.
 - [ ] **Passo 2:** FALHA. **Passo 3:** implementar. **Passo 4:** passa.
 - [ ] **Passo 5:** commit `feat: modos % da despesa e % do PIB na tela, com legendas`.

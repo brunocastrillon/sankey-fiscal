@@ -12,6 +12,33 @@ import { medidorDeterministico } from './apoio/medidor';
 
 const nada = () => {};
 
+describe('superávit de 2022 renderizado', () => {
+  const g = montarGrafo(lerAno(2022));
+  const L = calcularLayout(g, DESKTOP, medidorDeterministico(), { largura: 1200 });
+  const html = renderToStaticMarkup(<Sankey grafo={g} layout={L} idSvg="t" aoPassarMouse={nada} aoEscolher={nada} aoSair={nada} />);
+  const tag = (re: RegExp) => html.match(re)?.[0] ?? '';
+
+  it('nó com a cor cheia e pontos da cor do fundo; fluxo com a cor a 36% e pontos da cor cheia (cor nunca é o único sinal)', () => {
+    const no = html.match(/<pattern id="t-pontos-no"[\s\S]*?<\/pattern>/)?.[0] ?? '';
+    const fluxo = html.match(/<pattern id="t-pontos-fluxo"[\s\S]*?<\/pattern>/)?.[0] ?? '';
+    expect(no).toMatch(/class="pontos-no-fundo"/);
+    expect(no).toMatch(/<circle[^>]*class="pontos-no-ponto"/);
+    expect(fluxo).toMatch(/class="pontos-fluxo-fundo"/);
+    expect(fluxo).toMatch(/<circle[^>]*class="pontos-fluxo-ponto"/);
+    const barra = tag(/<g class="no" data-id="resultado_primario"[\s\S]*?<rect class="barra"[^>]*>/).match(/<rect class="barra"[^>]*>/)?.[0] ?? '';
+    expect(barra).toMatch(/fill="url\(#t-pontos-no\)"/);
+    expect(barra).toMatch(/data-superavit="true"/);
+    const f = tag(/<path class="fluxo" data-origem="receita_liquida" data-destino="resultado_primario"[^>]*>/);
+    expect(f).toMatch(/fill="url\(#t-pontos-fluxo\)"/);
+    expect(f).toMatch(/data-superavit="true"/);
+  });
+
+  it('nenhum outro nó ou fluxo usa os pontos', () => {
+    expect(html.match(/url\(#t-pontos-no\)/g)).toHaveLength(1);
+    expect(html.match(/url\(#t-pontos-fluxo\)/g)).toHaveLength(1);
+  });
+});
+
 describe.each([
   ['desktop', DESKTOP, { largura: 1200 }],
   ['celular', CELULAR, { larguraVisivel: 390 }],
@@ -24,6 +51,20 @@ describe.each([
   );
   const fluxos = [...html.matchAll(/<path[^>]*class="fluxo"[^>]*>/g)].map((m) => m[0]);
   const attr = (tag: string, nome: string) => tag.match(new RegExp(`${nome}="([^"]*)"`))?.[1] ?? '';
+
+  it('sem <title> no SVG (dica nativa); o nome acessível é o aria-label, com o ano', () => {
+    expect(html).not.toMatch(/<title\b/);
+    const svg = html.match(/<svg[^>]*class="sankey"[^>]*>/)![0];
+    expect(attr(svg, 'aria-label')).toBe(`${TEXTOS.tituloSvg}, ${g.ano}`);
+    expect(attr(svg, 'aria-labelledby')).toBe('');
+  });
+
+  it('o <svg> é um grupo (nunca role="img", que esconderia os nós focáveis) com um botão por nó de valor positivo', () => {
+    const svg = html.match(/<svg[^>]*class="sankey"[^>]*>/)![0];
+    expect(attr(svg, 'role')).toBe('group');
+    const botoes = [...html.matchAll(/<g class="no" data-id="([^"]+)" role="button" tabindex="0"/g)].map((m) => m[1]);
+    expect(botoes).toEqual(g.nos.filter((n) => n.valor > 0).map((n) => n.id));
+  });
 
   it('desenha um path.fluxo por fluxo do grafo com valor > 0', () => {
     expect(fluxos).toHaveLength(g.fluxos.filter((f) => f.valor > 0).length);

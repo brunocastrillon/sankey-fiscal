@@ -30,7 +30,21 @@ export const TEXTOS = {
   fechar: 'Fechar detalhes',
   verNoDesenho: '↑ ver no desenho',
   ariaRolagem: 'Diagrama de Sankey, mais largo que a tela. Role para a direita para ver os destinos do gasto.',
-  erroCarga: 'Não foi possível carregar os dados. Tente recarregar a página.',
+  carregando: 'Carregando os dados de todos os anos…',
+  erroCarga: 'Não foi possível carregar os dados.',
+  tentarDeNovo: 'Tentar de novo',
+  modos: { rs: 'R$ constantes', desp: '% da despesa', pib: '% do PIB' },
+  // {mes}: o mês-base (dados/indice.json), inserido pelo componente
+  legendas: {
+    rs: { curta: 'R$ constantes de {mes}', longa: 'R$ constantes de {mes} (IPCA) · mesma escala para todos os anos' },
+    desp: {
+      curta: '% da despesa total do ano',
+      longa: '% da despesa total do ano, sobre R$ constantes de {mes} (IPCA) · a despesa total tem a mesma altura em todos os anos',
+    },
+    pib: { curta: '% do PIB do ano', longa: '% do PIB do ano (IBGE), com valores correntes · mesma escala para todos os anos' },
+  },
+  receitaAcimaDoGasto:
+    'A receita total inclui o repasse a estados e municípios, que não é despesa do Governo Central; por isso pode passar do gasto total.',
   erroDesenho: 'Não foi possível desenhar o diagrama. Tente recarregar a página.',
   tabela: 'Ver os valores em tabela',
   colunasTabela: { no: 'Nó', valor: 'Valor', participacao: 'Participação' },

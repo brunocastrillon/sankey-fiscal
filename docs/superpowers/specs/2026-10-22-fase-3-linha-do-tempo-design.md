@@ -158,6 +158,18 @@ JSON antigos e novos, sem as chaves `pib.fonte`/`pib.trimestres`/`pib.ultimo_tri
 - **Espessura mínima visível [decidido]:** `ESPESSURA_MINIMA = 3` px para todo nó com valor positivo, nos layouts estáticos
   (não nos quadros da animação). Não é piso: é teste. Hoje o mais fino é Bolsa Família 2020 (4,69 px desktop, 4,24 celular, no
   modo R$). Mutações: ano sintético 2025 × 1,5 derruba (2,83 px no celular); 2025 × 1,3 passa.
+- **Deslocamento de rótulo no celular [decidido em 27/10/2026, na 3b]:** limite de 110 px (`CELULAR.deslocamentoMax`; era 90
+  na fase 2). A escala compartilhada encurta as folhas dos anos menores; os rótulos do celular, em faixas de toque de 44 px, se
+  afastam mais das barras. Pior caso medido: 105,6 px (% do PIB, 2021, medidor ×1,25), mais folga. No desktop, 45,5 px (% do
+  PIB, 2021, ×1,25; limite 48). O teste vale nos 3 fatores, nos 11 anos e nos 3 modos; no ano sintético × 1,3 o deslocamento
+  entra só na tabela (119,7 px no celular, modo R$, 2017, ×1,25).
+- **Passo entre faixas de guias [registrado em 29/10/2026, na 3b]:** as guias em cotovelo ocupam faixas a 5 px uma da outra
+  (`tracarGuias`: início 5, passo até 5). O teste "guias de nós diferentes a pelo menos 3 px" tem folga de 0,02 px no pior caso
+  (3,02 px: 2023, celular 390, medidor ×1,25, % do PIB, BPC × Demais com controle de fluxo). Se um dado futuro derrubar esse
+  teste, a resposta é **aumentar o passo, não afrouxar o limiar**. No celular, guias de faixas vizinhas podem terminar e
+  começar quase no mesmo y e parecer uma linha só com um degrau (Demais × Discricionárias em 2015: 5,00 px, sem se tocar);
+  decidido não corrigir na 3b. A tabela de métricas traz a coluna informativa "emendas" (pares de guias de faixas vizinhas
+  que terminam e começam a menos de 8 px no eixo y), que não falha.
 - **Rótulo do modo R$ [decidido]:** "R$ constantes de dez/2025 (IPCA) · mesma escala para todos os anos", em `TEXTOS`, sem
   dígitos (o mês-base vem de `mes_base`). O "aviso de 2020" deixa de existir.
 
@@ -195,6 +207,28 @@ Nó: cor cheia com pontos da cor do fundo; fluxo: a cor a 36% com pontos da cor 
 todos os pares, sem aviso novo. Contrastes: barra × fundo 5,7:1 e 3,6:1; texto secundário × fluxo do superávit 4,74:1 e 6,5:1
 (com o token antigo, 4,45:1); guia de 1,25 px × fundo 8,2:1 e 9,7:1. **O teste de contraste percorre a lista exata de cores de
 série de `TEMAS`** (inclusive o superávit); mutação: uma cor de série com contraste baixo em `TEMAS` derruba.
+
+- **Daltonismo [decidido em 28/10/2026, na 3b]:** simulação de protanopia, deuteranopia e tritanopia pelas matrizes de Machado,
+  Oliveira e Fernandes (2009), severidade 1,0, aplicadas em RGB linear (sRGB, D65), e distância CIEDE2000 (ΔE00) entre as cores
+  simuladas, implementada no teste (`web/test/apoio/daltonismo.ts`, conferida com os pares de Sharma, Wu e Dalal, 2005). É uma
+  aproximação: modela o dicromata médio. Limiar para todo par de séries: **ΔE00 ≥ 8**, nos dois temas e nos três tipos.
+  Medido (claro / escuro), ameixa contra: receita 14,7 / 14,9 (protanopia), 10,2 / 10,1 (deuteranopia), 57,1 / 59,6
+  (tritanopia); déficit 43,2 / 40,5, 43,9 / 41,8, 19,2 / 16,0; gasto 50,0 / 50,5, 49,5 / 47,9, 20,8 / 16,1. Nenhum par com a
+  ameixa abaixo de 8. **Exceção conhecida** (aprovada na fase 2, sem mudar cor): repasse × discricionária no escuro sob
+  deuteranopia, ΔE00 6,6 (colunas, posições e rótulos diferentes). Mutação: uma série nova parecida com a ameixa derruba.
+- **Discricionária no claro [decidido em 30/10/2026, na 3b]:** `#169064` (era `#1baf7a`, 2,74:1 contra o fundo), o mesmo
+  matiz com V × 0,82: barra × fundo 3,93:1 e menor ΔE00 8,8 (repasse, deuteranopia), com folga para a simulação ser
+  aproximada. Descartadas: `#19a170` (V × 0,92; repasse × discricionária sob deuteranopia a 7,3) e `#179366` (V × 0,84; só
+  0,3 de folga). O escuro não muda.
+- **Exceções conhecidas (lista final da 3b; nenhuma cor aprovada mudou em silêncio, e o teste confere que cada uma ainda está
+  abaixo do limiar):**
+  1. **Repasse × discricionária no escuro sob deuteranopia:** ΔE00 6,6 (limiar 8). Cinza × verde que a simulação aproxima;
+     ficam em colunas diferentes, com rótulos próprios, e nenhum dos dois é a ameixa.
+  2. **Texto secundário × fluxo do déficit a 36% no claro:** 4,31:1 (limiar 4,5). O fluxo do déficit não é desenhado a 36%: é
+     a hachura a 90%, e nenhum rótulo cai sobre ele, provado pelo teste "nenhum rótulo sobre a faixa do fluxo do déficit"
+     (11 anos × 3 fatores × 5 larguras × 3 modos, faixa amostrada em 201 pontos).
+  3. **Barra do déficit no escuro:** 2,93:1 contra o fundo (limiar 3). Coberta pelo contorno claro (`#f2b8b5`, testado ≥ 3:1)
+     e pela hachura.
 
 - **Nó com valor zero [decidido]:** sem rótulo, guia, alvo de toque, parada no Tab, linha na tabela de valores, nem lugar na
   fila de rótulos. Teste por ano (2021, 2022, 2023, depois os 11), nos dois formatos; mutação: desenhar o rótulo do nó zero.
