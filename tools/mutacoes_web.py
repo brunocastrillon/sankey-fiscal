@@ -307,6 +307,25 @@ CAEM = {
         'test/superavit.test.tsx > 2022, superávit (desktop 1200) > medidor ×F > posição A: o superávit abaixo do Gasto total, na quarta coluna; a posição do déficit com altura 0': 3,
         'test/superavit.test.tsx > 2022, superávit (desktop 1200) > medidor ×F > rótulo A′: no lugar do rótulo do déficit, com "Superávit primário", o valor e "não inclui juros"': 3,
     }, {}),
+    # B5
+    "H1": ({
+        'test/hash.test.ts > modo na tela (transitório da 3b; a C2 tira) > só R$ aparece na tela na 3b: o modo lido do hash fora de MODOS_NA_TELA vira R$': 1,
+    }, {
+        'sankey.spec.ts > ano e modo pelo endereço > #2022/pib desenha 2022 em R$ na 3b (nenhum rótulo em %)': 1,
+    }),
+    "H2": ({
+        'test/hash.test.ts > lerHash > "#1999" → null (padrão)': 1,
+        'test/hash.test.ts > lerHash > "#2014" → null (padrão)': 1,
+        'test/hash.test.ts > lerHash > "#2026" → null (padrão)': 1,
+    }, {}),
+    "H3": ({}, {
+        'sankey.spec.ts > ano e modo pelo endereço > trocar o hash redesenha o ano pedido': 1,
+    }),
+    "H4": ({
+        'test/hash.test.ts > lerHash > "#2020/PIB" → null (padrão)': 1,
+    }, {
+        'sankey.spec.ts > ano e modo pelo endereço > #2020/PIB abre o padrão (último ano, R$), sem erro no console': 1,
+    }),
     # B4
     "C1": ({
         'test/tema.test.ts > contraste, tema claro > barra de clara a pelo menos 3:1 contra o fundo': 1,
