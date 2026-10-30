@@ -105,6 +105,15 @@ MUTACOES = [
         {"vitest": 1, "e2e": 1}, grep="sem dica nativa"),
     mut("D2", "o <svg> como role=\"img\" (esconderia os nós focáveis)",
         [("web/src/ui/Sankey.tsx", '      role="group"', '      role="img"')], {"vitest": 1, "e2e": 1}, grep="árvore de acessibilidade"),
+    # B4: cor e padrão do superávit, contraste e daltonismo
+    mut("C1", "série nova clara (#e8e8e8) em TEMAS.claro.series",
+        [("web/src/ui/tema.ts", "      superavit: '#a03c9a',", "      superavit: '#a03c9a',\n      clara: '#e8e8e8',")], {"vitest": 1}),
+    mut("C2", "série nova parecida com a ameixa sob daltonismo (#a8409e) em TEMAS.claro.series",
+        [("web/src/ui/tema.ts", "      superavit: '#a03c9a',", "      superavit: '#a03c9a',\n      ameixa2: '#a8409e',")], {"vitest": 1}),
+    mut("C3", "texto secundário claro de volta ao antigo (#52514e)",
+        [("web/src/ui/tema.ts", "    secundario: '#4e4d4a',", "    secundario: '#52514e',")], {"vitest": 1}),
+    mut("C4", "nó do superávit sem os pontos (só a cor)",
+        [("web/src/ui/Sankey.tsx", "superavit ? `url(#${pontosNo})` : `var(--${n.cor})`", "`var(--${n.cor})`")], {"vitest": 1}),
     # B3: superávit (duas posições, rótulo A′, guia em L) e nó zero
     mut("R1", "resultadoComSinal invertido (2022 sairia como déficit)",
         [("web/src/grafo/grafo.ts", "    resultadoComSinal: r,", "    resultadoComSinal: -r,")], {"vitest": 1}),
