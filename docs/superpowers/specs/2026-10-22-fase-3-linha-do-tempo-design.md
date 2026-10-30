@@ -201,6 +201,18 @@ todos os pares, sem aviso novo. Contrastes: barra × fundo 5,7:1 e 3,6:1; texto 
 (com o token antigo, 4,45:1); guia de 1,25 px × fundo 8,2:1 e 9,7:1. **O teste de contraste percorre a lista exata de cores de
 série de `TEMAS`** (inclusive o superávit); mutação: uma cor de série com contraste baixo em `TEMAS` derruba.
 
+- **Daltonismo [decidido em 28/10/2026, na 3b]:** simulação de protanopia, deuteranopia e tritanopia pelas matrizes de Machado,
+  Oliveira e Fernandes (2009), severidade 1,0, aplicadas em RGB linear (sRGB, D65), e distância CIEDE2000 (ΔE00) entre as cores
+  simuladas, implementada no teste (`web/test/apoio/daltonismo.ts`, conferida com os pares de Sharma, Wu e Dalal, 2005). É uma
+  aproximação: modela o dicromata médio. Limiar para todo par de séries: **ΔE00 ≥ 8**, nos dois temas e nos três tipos.
+  Medido (claro / escuro), ameixa contra: receita 14,7 / 14,9 (protanopia), 10,2 / 10,1 (deuteranopia), 57,1 / 59,6
+  (tritanopia); déficit 43,2 / 40,5, 43,9 / 41,8, 19,2 / 16,0; gasto 50,0 / 50,5, 49,5 / 47,9, 20,8 / 16,1. Nenhum par com a
+  ameixa abaixo de 8. **Exceção conhecida** (aprovada na fase 2, sem mudar cor): repasse × discricionária no escuro sob
+  deuteranopia, ΔE00 6,6 (colunas, posições e rótulos diferentes). Mutação: uma série nova parecida com a ameixa derruba.
+- **Exceções conhecidas de contraste (cores da fase 2, sem mudança):** texto secundário × fluxo do déficit a 36% no claro,
+  4,31:1 (o fluxo do déficit é desenhado com hachura a 90%, não a 36%, e nenhum texto fica sobre ele); barra da discricionária
+  no claro, 2,74:1 (o rótulo identifica o nó); barra do déficit no escuro, 2,93:1 (coberta pelo contorno claro).
+
 - **Nó com valor zero [decidido]:** sem rótulo, guia, alvo de toque, parada no Tab, linha na tabela de valores, nem lugar na
   fila de rótulos. Teste por ano (2021, 2022, 2023, depois os 11), nos dois formatos; mutação: desenhar o rótulo do nó zero.
 

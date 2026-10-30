@@ -14,7 +14,7 @@ export interface ValoresModo {
   totais: Bloco['totais'];
 }
 
-export type Cor = 'receita' | 'repasse' | 'gasto' | 'discricionaria' | 'deficit';
+export type Cor = 'receita' | 'repasse' | 'gasto' | 'discricionaria' | 'deficit' | 'superavit';
 export type Papel =
   | 'origem'
   | 'receita_total'

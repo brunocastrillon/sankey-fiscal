@@ -124,6 +124,14 @@ h1 .ano {
   fill: var(--fundo);
   fill-opacity: 0.85;
 }
+.pontos-no-fundo,
+.pontos-fluxo-fundo,
+.pontos-fluxo-ponto {
+  fill: var(--superavit);
+}
+.pontos-no-ponto {
+  fill: var(--fundo);
+}
 .barra[data-deficit],
 .fluxo[data-deficit] {
   stroke: var(--contornoDeficit);

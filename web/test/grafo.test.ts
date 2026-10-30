@@ -71,6 +71,10 @@ describe('superávit de 2022', () => {
     expect(g.fluxos.filter((f) => f.origem === 'resultado_primario' && f.valor > 0)).toEqual([]);
     expect(g.nos.find((n) => n.id === 'resultado_primario')?.coluna).toBe(3);
   });
+  it('o superávit tem a cor própria (ameixa); nos anos de déficit, a do déficit', () => {
+    expect(g.nos.find((n) => n.id === 'resultado_primario')?.cor).toBe('superavit');
+    expect(montarGrafo(lerAno(2025)).nos.find((n) => n.id === 'resultado_primario')?.cor).toBe('deficit');
+  });
 });
 
 describe.each([2021, 2022])('fluxos do resultado em %i', (ano) => {

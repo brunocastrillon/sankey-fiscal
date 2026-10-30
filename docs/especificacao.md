@@ -222,6 +222,11 @@ descobrir isso antes de construir a linha do tempo. **Estado:** a fase 1 está c
   44 px e fonte mínima de 11 px. O desenho do desktop vale a partir de 1100 px de largura.
 - **Temas (fase 2).** Decidido: claro e escuro por `prefers-color-scheme`, com paletas validadas para daltonismo; déficit com
   hachura nos dois temas e contorno claro no escuro.
+- **Superávit e texto secundário (fase 3b).** Decidido: o superávit é ameixa (`#a03c9a` no claro, `#b04aa9` no escuro), com
+  pontos (no nó, pontos da cor do fundo; no fluxo, a cor a 36% com pontos da cor cheia), para a cor nunca ser o único sinal. O
+  texto secundário e as guias do claro passam a `#4e4d4a` (era `#52514e`). Os testes percorrem as cores de série de `TEMAS`:
+  texto ≥ 4,5:1, barras ≥ 3:1 e, sob daltonismo (Machado et al. 2009, CIEDE2000), todo par de séries a ΔE00 ≥ 8, com as
+  exceções conhecidas listadas no design da fase 3.
 
 ## Fontes
 

@@ -12,6 +12,33 @@ import { medidorDeterministico } from './apoio/medidor';
 
 const nada = () => {};
 
+describe('superávit de 2022 renderizado', () => {
+  const g = montarGrafo(lerAno(2022));
+  const L = calcularLayout(g, DESKTOP, medidorDeterministico(), { largura: 1200 });
+  const html = renderToStaticMarkup(<Sankey grafo={g} layout={L} idSvg="t" aoPassarMouse={nada} aoEscolher={nada} aoSair={nada} />);
+  const tag = (re: RegExp) => html.match(re)?.[0] ?? '';
+
+  it('nó com a cor cheia e pontos da cor do fundo; fluxo com a cor a 36% e pontos da cor cheia (cor nunca é o único sinal)', () => {
+    const no = html.match(/<pattern id="t-pontos-no"[\s\S]*?<\/pattern>/)?.[0] ?? '';
+    const fluxo = html.match(/<pattern id="t-pontos-fluxo"[\s\S]*?<\/pattern>/)?.[0] ?? '';
+    expect(no).toMatch(/class="pontos-no-fundo"/);
+    expect(no).toMatch(/<circle[^>]*class="pontos-no-ponto"/);
+    expect(fluxo).toMatch(/class="pontos-fluxo-fundo"/);
+    expect(fluxo).toMatch(/<circle[^>]*class="pontos-fluxo-ponto"/);
+    const barra = tag(/<g class="no" data-id="resultado_primario"[\s\S]*?<rect class="barra"[^>]*>/).match(/<rect class="barra"[^>]*>/)?.[0] ?? '';
+    expect(barra).toMatch(/fill="url\(#t-pontos-no\)"/);
+    expect(barra).toMatch(/data-superavit="true"/);
+    const f = tag(/<path class="fluxo" data-origem="receita_liquida" data-destino="resultado_primario"[^>]*>/);
+    expect(f).toMatch(/fill="url\(#t-pontos-fluxo\)"/);
+    expect(f).toMatch(/data-superavit="true"/);
+  });
+
+  it('nenhum outro nó ou fluxo usa os pontos', () => {
+    expect(html.match(/url\(#t-pontos-no\)/g)).toHaveLength(1);
+    expect(html.match(/url\(#t-pontos-fluxo\)/g)).toHaveLength(1);
+  });
+});
+
 describe.each([
   ['desktop', DESKTOP, { largura: 1200 }],
   ['celular', CELULAR, { larguraVisivel: 390 }],

@@ -47,7 +47,7 @@ export function grafoDeValores(valores: ValoresModo, d: DadosAno): Grafo {
   no('receita_liquida', TEXTOS.rotulos.receita_liquida, totais.receita_liquida, 'receita_liquida', 2, 'receita');
   const noResultado = () =>
     no('resultado_primario', TEXTOS.rotulos[resultado], magnitude, 'resultado', resultado === 'deficit' ? 2 : 3,
-      resultado === 'deficit' ? 'deficit' : 'receita', d.linhas.primario_acima ?? []);
+      resultado, d.linhas.primario_acima ?? []);
   if (resultado === 'deficit') noResultado();
   no('despesa_total', TEXTOS.rotulos.despesa_total, totais.despesa_total, 'despesa_total', 3, 'gasto');
   if (resultado === 'superavit') noResultado();
