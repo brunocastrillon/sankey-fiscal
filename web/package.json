@@ -12,8 +12,6 @@
     "dev": "vite",
     "prebuild": "npm run copiar-dados",
     "build": "tsc -b && vite build",
-    "prebuild:teste": "npm run copiar-dados",
-    "build:teste": "vite build --mode teste --outDir dist-teste",
     "preview": "vite preview",
     "test": "vitest run",
     "e2e": "playwright test",

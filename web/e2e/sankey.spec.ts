@@ -1,6 +1,11 @@
-// Testes no navegador real, contra o build de teste (?ano=). Medidas com getBBox e getBoundingClientRect reais.
+// Testes no navegador real, contra o build de produção (o ano vem do endereço, #AAAA). Medidas com getBBox e
+// getBoundingClientRect reais.
+import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { TEXTOS } from '../src/textos';
+
+/** O último ano do índice (o padrão quando o endereço não pede outro), lido de dados/indice.json. */
+const ULTIMO_ANO: number = JSON.parse(readFileSync(new URL('../../dados/indice.json', import.meta.url), 'utf8')).anos[1];
 
 interface Caixa {
   id?: string;
@@ -24,7 +29,9 @@ const sobrepoe = (a: Caixa, b: Caixa, folga = 0) =>
   a.x0 < b.x1 + folga && b.x0 < a.x1 + folga && a.y0 < b.y1 + folga && b.y0 < a.y1 + folga;
 
 async function abrir(page: Page, ano: number) {
-  await page.goto(`./?ano=${ano}`);
+  // só o hash mudando não recarrega a página: parte de uma página em branco para abrir sempre do zero
+  await page.goto('about:blank');
+  await page.goto(`./#${ano}`);
   await expect(page.locator('h1 .ano')).toContainText(String(ano));
   await page.locator('svg.sankey').waitFor();
 }
@@ -340,6 +347,54 @@ for (const ano of [2022, 2025])
     });
   });
 
+test.describe('ano e modo pelo endereço', () => {
+  /** Erros no console e exceções da página durante o teste. */
+  const errosDaPagina = (page: Page) => {
+    const erros: string[] = [];
+    page.on('console', (m) => m.type() === 'error' && erros.push(m.text()));
+    page.on('pageerror', (e) => erros.push(e.message));
+    return erros;
+  };
+
+  test('#2020 abre 2020: o ano no h1 e no title', async ({ page }) => {
+    await page.goto('./#2020');
+    await expect(page.locator('h1 .ano')).toContainText('2020');
+    await page.locator('svg.sankey').waitFor();
+    await expect(page).toHaveTitle(new RegExp(`${TEXTOS.titulo} · 2020`));
+    await expect(page.getByRole('group', { name: `${TEXTOS.tituloSvg}, 2020`, exact: true })).toHaveCount(1);
+  });
+
+  for (const hash of ['#1999', '#2020/xyz', '#abc', '#2020/PIB'])
+    test(`${hash} abre o padrão (último ano, R$), sem erro no console`, async ({ page }) => {
+      const erros = errosDaPagina(page);
+      await page.goto(`./${hash}`);
+      await expect(page.locator('h1 .ano')).toContainText(String(ULTIMO_ANO));
+      await page.locator('svg.sankey').waitFor();
+      await expect(page).toHaveTitle(new RegExp(`${TEXTOS.titulo} · ${ULTIMO_ANO}`));
+      expect(await page.locator('text.rotulo tspan.valor').evaluateAll((ts) => ts.some((t) => t.textContent!.includes('%')))).toBe(false);
+      expect(erros).toEqual([]);
+    });
+
+  test('trocar o hash redesenha o ano pedido', async ({ page }) => {
+    await page.goto('./#2020');
+    await page.locator('svg.sankey').waitFor();
+    await page.evaluate(() => (location.hash = '#2022'));
+    await expect(page.locator('h1 .ano')).toContainText('2022');
+    await expect(page.getByRole('group', { name: `${TEXTOS.tituloSvg}, 2022`, exact: true })).toHaveCount(1);
+    await expect(page).toHaveTitle(new RegExp(`${TEXTOS.titulo} · 2022`));
+  });
+
+  // TRANSITÓRIO (sai na C2, que põe os modos na tela): o hash lê o modo, mas a 3b desenha sempre em R$
+  test('#2022/pib desenha 2022 em R$ na 3b (nenhum rótulo em %)', async ({ page }) => {
+    await page.goto('./#2022/pib');
+    await expect(page.locator('h1 .ano')).toContainText('2022');
+    await page.locator('svg.sankey').waitFor();
+    const valores = await page.locator('text.rotulo tspan.valor').allTextContents();
+    expect(valores.length).toBeGreaterThan(10);
+    expect(valores.filter((v) => !v.startsWith('R$'))).toEqual([]);
+  });
+});
+
 test.describe('sem dica nativa do navegador · 1280x720', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
   // a dica nativa (de um elemento title do SVG ou de um atributo title) é do sistema e não sai no print: o teste prova a
@@ -383,7 +438,7 @@ test.describe('foco da revisão', () => {
     // a escala compartilhada precisa dos 11 anos: um ano que não é o desenhado também derruba a carga
     let falhar = true;
     await page.route('**/dados/2017.json', (r) => (falhar ? r.fulfill({ status: 404, body: '' }) : r.continue()));
-    await page.goto('./?ano=2025');
+    await page.goto('./#2025');
     await expect(page.getByTestId('erro')).toHaveText(TEXTOS.erroCarga);
     await expect(page.locator('svg.sankey')).toHaveCount(0);
     await expect(page.locator('h1')).toBeVisible();
@@ -400,7 +455,7 @@ test.describe('foco da revisão', () => {
       await pronto;
       await r.continue();
     });
-    await page.goto('./?ano=2025');
+    await page.goto('./#2025');
     await expect(page.getByTestId('carregando')).toHaveText(TEXTOS.carregando);
     await expect(page.locator('svg.sankey')).toHaveCount(0);
     soltar();
@@ -415,7 +470,7 @@ test.describe('foco da revisão', () => {
       d.real.nos.no_inexistente = 1;
       await r.fulfill({ json: d });
     });
-    await page.goto('./?ano=2025');
+    await page.goto('./#2025');
     await expect(page.getByTestId('erro')).toHaveText(TEXTOS.erroDesenho);
     await expect(page.locator('h1')).toBeVisible();
   });

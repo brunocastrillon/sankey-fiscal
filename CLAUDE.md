@@ -31,7 +31,7 @@ cd web
 npm ci
 npm run dev               # site em http://localhost:5173/sankey-fiscal/ (copia dados/ para public/dados/)
 npm test                  # Vitest: grafo, regressão contra o original, layout nos 11 anos, temas
-npm run e2e               # Playwright (build de teste com ?ano=); PW_CANAL=chrome usa o Chrome instalado
+npm run e2e               # Playwright (build de produção; ano e modo pelo endereço, #2020/pib); PW_CANAL=chrome usa o Chrome instalado
 ```
 
 ## Decisões fechadas (não reabrir sem perguntar)

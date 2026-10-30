@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-// Testes de navegador contra o build de teste (`--mode teste`, que aceita ?ano=), servido em /sankey-fiscal/.
+// Testes de navegador contra o build de produção, servido em /sankey-fiscal/; o ano vem do endereço (#AAAA). A checagem de
+// tipos (tsc -b) fica no job `site` do CI, para um erro de tipo não derrubar o servidor dos testes.
 // No CI usa o Chromium do Playwright; localmente, PW_CANAL=chrome usa o Chrome instalado.
 export default defineConfig({
   testDir: 'e2e',
@@ -14,7 +15,7 @@ export default defineConfig({
     ...(process.env.PW_CANAL ? { channel: process.env.PW_CANAL } : {}),
   },
   webServer: {
-    command: 'npm run build:teste && npx vite preview --outDir dist-teste --port 4173 --strictPort',
+    command: 'npm run copiar-dados && npx vite build && npx vite preview --port 4173 --strictPort',
     url: 'http://localhost:4173/sankey-fiscal/',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

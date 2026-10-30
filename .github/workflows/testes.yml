@@ -43,11 +43,8 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - run: npm test
       - run: npm run build
-      - name: Caminhos sob /sankey-fiscal/ e build de produção sem o parâmetro de teste
+      - name: Caminhos sob /sankey-fiscal/ no build de produção
         run: node scripts/conferir-bundle.mjs dist
-      - run: npm run build:teste
-      - name: Build de teste com o parâmetro ?ano= (sentinela PARAM_ANO_SO_TESTE)
-        run: node scripts/conferir-bundle.mjs dist-teste --teste
 
   site-navegador:
     runs-on: ubuntu-latest
@@ -70,5 +67,5 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci --prefer-offline
-      - name: Testes de navegador (Playwright, build de teste)
+      - name: Testes de navegador (Playwright, build de produção; ano pelo endereço)
         run: npm run e2e

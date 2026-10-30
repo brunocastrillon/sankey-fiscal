@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] }, viewport: { width: 1140, height: 1000 } });
 
 test('perto de 1100 px, com barra de rolagem, o formato não oscila', async ({ page }) => {
-  await page.goto('./?ano=2025');
+  await page.goto('./#2025');
   await page.locator('svg.sankey').waitFor();
   const classes: string[] = [];
   for (let i = 0; i < 20; i++) {
