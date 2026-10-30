@@ -16,11 +16,10 @@ const series = (p: Paleta) => Object.entries(p.series) as [string, string][];
  * abaixo do limiar (senão, sai da lista).
  */
 const EXCECOES_CONTRASTE: Record<string, string> = {
-  // o fluxo do déficit não é desenhado a 36%: é a hachura (cor cheia com listras) a 90%, e nenhum texto fica sobre ele
+  // o fluxo do déficit não é desenhado a 36%: é a hachura (cor cheia com listras) a 90%, e nenhum rótulo cai sobre ele
+  // (provado em layout-anos.test.ts, "nenhum rótulo sobre a faixa do fluxo do déficit")
   'claro:deficit:secundario×fluxo': '4,31:1 (era 4,05:1 com o secundário antigo)',
-  // a barra verde tem 2,74:1; o rótulo ao lado (texto ≥ 4,5:1) e o fluxo identificam o nó
-  'claro:discricionaria:barra×fundo': '2,74:1',
-  // no escuro o déficit tem contorno claro (#f2b8b5), testado abaixo
+  // no escuro o déficit tem contorno claro (#f2b8b5, testado abaixo) e a hachura
   'escuro:deficit:barra×fundo': '2,93:1',
 };
 

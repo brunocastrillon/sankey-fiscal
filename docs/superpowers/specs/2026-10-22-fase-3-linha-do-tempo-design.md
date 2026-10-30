@@ -216,9 +216,10 @@ série de `TEMAS`** (inclusive o superávit); mutação: uma cor de série com c
   (tritanopia); déficit 43,2 / 40,5, 43,9 / 41,8, 19,2 / 16,0; gasto 50,0 / 50,5, 49,5 / 47,9, 20,8 / 16,1. Nenhum par com a
   ameixa abaixo de 8. **Exceção conhecida** (aprovada na fase 2, sem mudar cor): repasse × discricionária no escuro sob
   deuteranopia, ΔE00 6,6 (colunas, posições e rótulos diferentes). Mutação: uma série nova parecida com a ameixa derruba.
-- **Exceções conhecidas de contraste (cores da fase 2, sem mudança):** texto secundário × fluxo do déficit a 36% no claro,
-  4,31:1 (o fluxo do déficit é desenhado com hachura a 90%, não a 36%, e nenhum texto fica sobre ele); barra da discricionária
-  no claro, 2,74:1 (o rótulo identifica o nó); barra do déficit no escuro, 2,93:1 (coberta pelo contorno claro).
+- **Discricionária no claro [decidido em 30/10/2026, na 3b]:** `#169064` (era `#1baf7a`, 2,74:1 contra o fundo), o mesmo
+  matiz com V × 0,82: barra × fundo 3,93:1 e menor ΔE00 8,8 (repasse, deuteranopia), com folga para a simulação ser
+  aproximada. Descartadas: `#19a170` (V × 0,92; repasse × discricionária sob deuteranopia a 7,3) e `#179366` (V × 0,84; só
+  0,3 de folga). O escuro não muda.
 
 - **Nó com valor zero [decidido]:** sem rótulo, guia, alvo de toque, parada no Tab, linha na tabela de valores, nem lugar na
   fila de rótulos. Teste por ano (2021, 2022, 2023, depois os 11), nos dois formatos; mutação: desenhar o rótulo do nó zero.

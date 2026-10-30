@@ -23,7 +23,8 @@ export const TEMAS: { claro: Paleta; escuro: Paleta } = {
       receita: '#2a78d6',
       repasse: '#8b8a85',
       gasto: '#eb6834',
-      discricionaria: '#1baf7a',
+      // fase 3b: #1baf7a (2,74:1 contra o fundo) escurecido no mesmo matiz (V × 0,82) para a barra passar de 3:1
+      discricionaria: '#169064',
       deficit: '#b91c1c',
       superavit: '#a03c9a',
     },
