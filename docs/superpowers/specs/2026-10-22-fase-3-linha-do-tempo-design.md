@@ -220,6 +220,15 @@ série de `TEMAS`** (inclusive o superávit); mutação: uma cor de série com c
   matiz com V × 0,82: barra × fundo 3,93:1 e menor ΔE00 8,8 (repasse, deuteranopia), com folga para a simulação ser
   aproximada. Descartadas: `#19a170` (V × 0,92; repasse × discricionária sob deuteranopia a 7,3) e `#179366` (V × 0,84; só
   0,3 de folga). O escuro não muda.
+- **Exceções conhecidas (lista final da 3b; nenhuma cor aprovada mudou em silêncio, e o teste confere que cada uma ainda está
+  abaixo do limiar):**
+  1. **Repasse × discricionária no escuro sob deuteranopia:** ΔE00 6,6 (limiar 8). Cinza × verde que a simulação aproxima;
+     ficam em colunas diferentes, com rótulos próprios, e nenhum dos dois é a ameixa.
+  2. **Texto secundário × fluxo do déficit a 36% no claro:** 4,31:1 (limiar 4,5). O fluxo do déficit não é desenhado a 36%: é
+     a hachura a 90%, e nenhum rótulo cai sobre ele, provado pelo teste "nenhum rótulo sobre a faixa do fluxo do déficit"
+     (11 anos × 3 fatores × 5 larguras × 3 modos, faixa amostrada em 201 pontos).
+  3. **Barra do déficit no escuro:** 2,93:1 contra o fundo (limiar 3). Coberta pelo contorno claro (`#f2b8b5`, testado ≥ 3:1)
+     e pela hachura.
 
 - **Nó com valor zero [decidido]:** sem rótulo, guia, alvo de toque, parada no Tab, linha na tabela de valores, nem lugar na
   fila de rótulos. Teste por ano (2021, 2022, 2023, depois os 11), nos dois formatos; mutação: desenhar o rótulo do nó zero.
