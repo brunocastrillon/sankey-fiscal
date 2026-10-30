@@ -294,6 +294,23 @@ CAEM = {
         'test/superavit.test.tsx > 2022, superávit (desktop 1200) > medidor ×F > posição A: o superávit abaixo do Gasto total, na quarta coluna; a posição do déficit com altura 0': 3,
         'test/superavit.test.tsx > 2022, superávit (desktop 1200) > medidor ×F > rótulo A′: no lugar do rótulo do déficit, com "Superávit primário", o valor e "não inclui juros"': 3,
     }, {}),
+    # B4
+    "C1": ({
+        'test/tema.test.ts > contraste, tema claro > barra de clara a pelo menos 3:1 contra o fundo': 1,
+    }, {}),
+    "C2": ({
+        'test/tema.test.ts > daltonismo, tema claro > deuteranopia: todo par de séries a ΔE00 ≥ 8 (fora as exceções conhecidas)': 1,
+        'test/tema.test.ts > daltonismo, tema claro > protanopia: todo par de séries a ΔE00 ≥ 8 (fora as exceções conhecidas)': 1,
+        'test/tema.test.ts > daltonismo, tema claro > tritanopia: todo par de séries a ΔE00 ≥ 8 (fora as exceções conhecidas)': 1,
+    }, {}),
+    "C3": ({
+        'test/tema.test.ts > CSS dos temas > o contorno do déficit só existe no escuro; o texto secundário claro é #4e4d4a': 1,
+        'test/tema.test.ts > contraste, tema claro > texto e texto secundário a pelo menos 4,5:1 contra o fluxo de superavit (a cor a 36% sobre o fundo)': 1,
+    }, {}),
+    "C4": ({
+        'test/sankey-render.test.tsx > superávit de 2022 renderizado > nenhum outro nó ou fluxo usa os pontos': 1,
+        'test/sankey-render.test.tsx > superávit de 2022 renderizado > nó com a cor cheia e pontos da cor do fundo; fluxo com a cor a 36% e pontos da cor cheia (cor nunca é o único sinal)': 1,
+    }, {}),
     # B3
     "S1": ({
         'test/superavit.test.tsx > 2022, superávit (celular 390) > medidor ×F > o rótulo não colide com outro rótulo, outra guia, outra barra nem com a faixa do fluxo Gasto total → discricionárias': 3,
